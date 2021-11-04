@@ -1,0 +1,27 @@
+// As is, this batch file processes the currently-loaded file in Offline Sorter, and 
+// that file must contain spike data
+//
+// If you want to run instead on individual data file(s) on your hard drive, uncomment
+// the following line and edit the file path:
+// File C:\PlexonData\test.pl2
+//
+// If you want to run on all of the data files in a directory, uncomment the following
+// line and edit the file path:
+// Dir C:\PlexonData\*.pl2
+
+// Remove artifacts that are closer than 2 ticks and that appear on 75% of the channels
+ForEachFile InvalidateArtifacts
+Set ArtifactWidth 2
+Set ArtifactPercentage 75
+
+// Sort using T-Distribution E-M with a D.O.F. multipler of 10
+ForEachChannel TDist3D
+Set DOFMult 10
+
+// Export to a new .pl2 file, but do not save the invalidated spikes
+ForEachFile ExportToPl2
+Set SaveInvalidated 0
+
+
+// Execute it.
+Process
