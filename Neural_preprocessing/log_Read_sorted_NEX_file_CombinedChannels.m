@@ -99,20 +99,20 @@ end
 
 
 %% Sanity check 
-%Look at each traces in Unit_rasters and detect presence of abnormal signal drops or bursts of noise.
-close all
-for i = 1:size(Unit_rasters,1)
-    figure; plot(Unit_rasters(i,:)); title(['Unit',num2str(i)]) 
-    pause(1)
-    close
-end
-
-flagged_units = [];
-%flagged_units = [55, 97, 84, 152, 275]; %Amos_2021_07_29
-
-%Remove units which were visually flagged from Unit_rasters
-Unit_rasters(flagged_units,:)=[];
+% % % % % %Look at each traces in Unit_rasters and detect presence of abnormal signal drops or bursts of noise.
+% % % % % close all
+% % % % % for i = 1:size(Unit_rasters,1)
+% % % % %     figure; plot(Unit_rasters(i,:)); title(['Unit',num2str(i)]) 
+% % % % %     pause(1)
+% % % % %     close
+% % % % % end
+% % % % % 
+% % % % % flagged_units = [];
+% % % % % %flagged_units = [55, 97, 84, 152, 275]; %Amos_2021_07_29
+% % % % % 
+% % % % % %Remove units which were visually flagged from Unit_rasters
+% % % % % Unit_rasters(flagged_units,:)=[];
 
 %% Save variables
-filePath = uigetdir('', 'Please select the output directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-save([filePath '\Neural_data_array2.mat'],'Unit_rasters', 'SpikeData', 'neural_dir')
+filePath = uigetdir('', 'Please select the output directory'); % Enter the path for the location of your data output
+save([filePath '\Neural_data' filePath(end-10:end) '.mat'],'Unit_rasters', 'SpikeData', 'neural_dir')
