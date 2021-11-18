@@ -4,6 +4,9 @@
 #Load libraries: 
 library(timeline)
 library(ggplot2) 
+library(utils)
+
+setwd('~/Dropbox (Penn)/Deuteron_Backup/Deuteron_Data_Backup/EventLogs/EventLogs_Done')
 
 #Load data:
 file = file.choose() # chose the formatted behavior file
@@ -16,9 +19,11 @@ log=behavioral_log
 #Reorganize data for plotting
 behavs = as.character(unique(log$Behavior))
 #awakeness = behavs[c(2,3,5,11)] #sleep/wake states
+
 #Only keep behaviors. STOP!!!! need to check for each session because behavior ordering differs from one session to the next.
 #behavs = behavs[-c(1,2)] #only keep behaviors
-behavs = behavs[-c(1,2,length(behavs)-1, length(behavs))] #only keep behaviors
+to_remove = cbind("Started recording", "Camera Sync", "Stopped recording")
+behavs = behavs[-match(to_remove, behavs)]  #behavs[-c(1,2,length(behavs))] #only keep behaviors
 
 #For all behaviors outside of sleep/wake cycle:
 new_log=data.frame(); b=1
@@ -92,7 +97,7 @@ new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 #Save to .csv
 output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 dir <- dirname(output_file)
-write.csv(new_log_final[,-c(4,5)],file=paste(dir, '/EVENTLOG_restructured.csv',sep=""),row.names = F)
+write.csv(new_log_final[,-c(4,5)],file=paste(dir, '/EVENTLOG_restructured',as.character(substr(file, 108, 118)),'.csv',sep=""),row.names = F)
 
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
