@@ -1,5 +1,7 @@
 #Format_behavior_log.R
-#This script re-formats the deuteron behavior log in a way that is easily interpretable for neural data analysis
+#This script re-formats the deuteron behavior log in a way that is easily interpretable for 
+#neural data analysis. It also plots behavior during a session. 
+# Certain red flags to keep in mind: 
 #Camille Testard - November 2021
 
 #Load libraries: 
@@ -10,8 +12,9 @@ library(xlsx)
 
 #Load data:
 file = file.choose() # chose the formatted behavior file
-log = read.xlsx(file, sheetIndex = 1)
-#log = read.csv(file)
+monkey = "Hooke"
+#log = read.xlsx(file, sheetIndex = 1)
+log = read.csv(file)
 
 #Get all unique behaviors
 behavs = as.character(unique(log$Behavior))
@@ -61,7 +64,7 @@ if (length(which(new_log$duration.s<0))>0){stop("NEGATIVE DURATION")}
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
                               levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
-                                       "Submission", "Approach","Yawning","Self-groom","HIS","Voca from other monkeys",
+                                       "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR"))
 
 #Remove NAs (for behavior categories we do not consider here)
@@ -70,8 +73,8 @@ new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 #Save to .csv
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 # dir <- dirname(output_file)
-setwd('~/Dropbox (Penn)/Deuteron_Backup/Deuteron_Data_Backup/Ready to analyze output/')
-write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured',as.character(substr(file, 108, 118)),'.csv',sep=""),row.names = F)
+setwd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_',monkey,as.character(substr(file, 103, 113)),'.csv',sep=""),row.names = F)
 
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
@@ -83,5 +86,5 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
 #scale_x_continuous(breaks=c(0,600,2000,4000,6000))
 
 #Save plot
-ggsave(behavior.log,filename = paste("behavior_log_plot",as.character(substr(file, 108, 118)),".png"))
+ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,as.character(substr(file, 103, 113)),".png", sep=""))
 

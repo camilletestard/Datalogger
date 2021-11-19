@@ -6,7 +6,7 @@ library(timeline)
 library(ggplot2) 
 library(utils)
 
-setwd('~/Dropbox (Penn)/Deuteron_Backup/Deuteron_Data_Backup/EventLogs/EventLogs_Done')
+setwd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/EventLogs/EventLogs_Done')
 
 #Load data:
 file = file.choose() # chose the formatted behavior file
@@ -84,7 +84,7 @@ if (length(which(new_log$duration.s<0))>0){stop("NEGATIVE DURATION")}
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
                         levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
-                                 "Submission", "Approach","Yawning","Self-groom","HIS","Voca from other monkeys",
+                                 "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize",
                                  "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR"))
 
 #Remove NAs (for behavior categories we do not consider here)
@@ -103,7 +103,7 @@ new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 # output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 # dir <- dirname(output_file)
 setwd('~/Dropbox (Penn)/Deuteron_Backup/Deuteron_Data_Backup/Ready to analyze output/')
-write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured',as.character(substr(file, 108, 118)),'.csv',sep=""),row.names = F)
+write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured',as.character(substr(file, 95, 113)),'.csv',sep=""),row.names = F)
 
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
@@ -114,7 +114,7 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
         axis.ticks.y = element_blank())#+
   #scale_x_continuous(breaks=c(0,600,2000,4000,6000))
 
-ggsave(behavior.log,filename = paste("behavior_log_plot",as.character(substr(file, 108, 118)),".png"))
+ggsave(behavior.log,filename = paste("behavior_log_plot",as.character(substr(file, 95, 113)),".png"))
 
 # #Add sleep/wake sates:
 # new_log2=data.frame()
