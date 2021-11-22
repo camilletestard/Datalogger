@@ -27,7 +27,7 @@ channel_num{2} = 31:60;
 channel_num{3} = 61:90;
 channel_num{4} = 91:128;
 
-for part = [1,3:4]
+for part = 3;%[1:4]
     
     for neural_file = channel_num{part} %1:length(neural_dir)
         
@@ -61,9 +61,12 @@ for part = [1,3:4]
         %     end
         
         %For Hooke_2021-08-15 ONLY
-        cut_seconds = 6; %in sec. Due to the stop and start of recording x2 during the session
-        data = data(Sampling_rate*cut_seconds:end);
-        data = data(4610:end);
+        [~,name]=fileparts(filePath);
+        if strcmp(name, 'Hooke_2021-08-15')
+            cut_seconds = 6; %in sec. Due to the stop and start of recording x2 during the session
+            data = data(Sampling_rate*cut_seconds:end);
+            data = data(4610:end);
+        end
         
         %Remove invalid data at the beginnnig of the recording as the amplifier settles, and at the end because of the incomplete last data
         %file. This will eliminate some issues with very large values messing up the default zoom in OFS.
