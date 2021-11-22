@@ -25,7 +25,7 @@ behavs = behavs[-match(to_remove, behavs)] #only keep behaviors
 
 #Split all behavior events by start and end:
 new_log=data.frame(); b=1
-for (b in 1:length(behavs)){ #For all behaviors
+for (b in 12:length(behavs)){ #For all behaviors
   
   data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior

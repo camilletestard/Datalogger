@@ -12,9 +12,9 @@ library(xlsx)
 
 #Load data:
 file = file.choose() # chose the formatted behavior file
-monkey = "Hooke"
-#log = read.xlsx(file, sheetIndex = 1)
-log = read.csv(file)
+monkey = "Amos"
+log = read.xlsx(file, sheetIndex = 1)
+#log = read.csv(file)
 
 #Get all unique behaviors
 behavs = as.character(unique(log$Behavior))
@@ -58,8 +58,6 @@ new_log$Behavior=as.character(new_log$Behavior)
 new_log = new_log[order(new_log$start.time),]
 new_log$duration.s = new_log$end.time - new_log$start.time
 
-if (length(which(new_log$duration.s<0))>0){stop("NEGATIVE DURATION")}
-
 #Order behaviors
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
@@ -69,6 +67,8 @@ new_log_final$Behavior=factor(new_log_final$Behavior,
 
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
+
+if (length(which(new_log_final$duration.s<0))>0){stop("NEGATIVE DURATION")}
 
 #Save to .csv
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
