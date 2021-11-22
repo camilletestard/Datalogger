@@ -1,4 +1,6 @@
- %% Get firing rate of individual neuron under different behavioral conditions.
+%% Log_FiringRatePerBehavior
+%  This script generates firing rate of individual neuron under different
+%  behavioral conditions (considering individual secons as independent). 
 
 % Load data
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
@@ -34,30 +36,30 @@ end
 preferred_behav = strings(1,n_neurons);
 for unit = 1:n_neurons
 
-%     behav = [1,3:6,17];
-%     median_resp = med_response_matrix(unit,behav);
-%     resp_mat = {response_matrix{unit,behav}};
-%     subgroup = {group{1,behav}};
-%     sub_behav_categ = {behav_categ{behav}};
-% 
-%     [~,idx]=sort(median_resp,'descend');
-%     preferred_behav(unit) = sub_behav_categ{idx(1)};
-%     group_label = categorical({behav_categ{[subgroup{1,:}]'}});
-%     figure(unit)
-%     groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
-%     boxplot([resp_mat{1,:}]',groupDescend)
+    behav = [1,3:6,17];
+    median_resp = med_response_matrix(unit,behav);
+    resp_mat = {response_matrix{unit,behav}};
+    subgroup = {group{1,behav}};
+    sub_behav_categ = {behav_categ{behav}};
+
+    [~,idx]=sort(median_resp,'descend');
+    preferred_behav(unit) = sub_behav_categ{idx(1)};
+    group_label = categorical({behav_categ{[subgroup{1,:}]'}});
+    figure(unit)
+    groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
+    boxplot([resp_mat{1,:}]',groupDescend)
 
 %   hist([resp_mat{1,:}]')
 
-    [~,idx]=sort(med_response_matrix(unit,:),'descend');
-    preferred_behav(unit) = behav_categ{idx(1)};
-    group_label = categorical({behav_categ{[group{1,:}]'}});
+%     [~,idx]=sort(med_response_matrix(unit,:),'descend');
+%     preferred_behav(unit) = behav_categ{idx(1)};
+%     group_label = categorical({behav_categ{[group{1,:}]'}});
 %     figure(unit)
 %     groupDescend = reordercats(group_label,{behav_categ{idx}});
 %     boxplot([response_matrix{unit,:}]',groupDescend, 'PlotStyle','compact')
 
-%     pause(1)
-%     close all
+    pause(1)
+    close all
 end
 
 A = preferred_behav;

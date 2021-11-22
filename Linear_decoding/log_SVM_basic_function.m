@@ -29,27 +29,27 @@ end
 
 % Run through each fold:
 for fold = 1:kfolds
-    
-    testlbls = Labels(indices == fold); % test on the selected subsample 
+
+    testlbls = Labels(indices == fold); % test on the selected subsample
     testdata = Input_matrix(indices == fold,:); %these are the data of the selected observations for testing
     trainlbls = Labels(indices ~= fold); %these are the labels of the selected observations for training (all folds except one)
     traindata = Input_matrix(indices ~= fold,:); %these are the data of the selected observations for training
-    
+
     if ldaflag == 1 %If you wish to perform LDA
         ldaopts.FisherFace = 1;
         [fdaout, Weights] = fda(trainlbls, ldaopts, traindata);
         testdata = testdata*Weights; % Project testdata to same LDA subspace as traindata:
         traindata = fdaout;
     end
-        
+
     % Train/test SVM model:
     model = svmtrain(trainlbls, traindata, '-t, 0, -q'); %train the model using a linear kernel (-t: 0) or a RBF kernel (-t: 2) and default parameters
     [svmlbls] = svmpredict(testlbls, testdata, model, '-q'); %get predicted labels given model
-    
+
     nErr= length(find( (testlbls - svmlbls) ~= 0 )); %Find misclassifications
     cumError = cumError + nErr; %Count number of errors
     Predicted_labels(indices == fold) = svmlbls; %Keep track of the predicted labels
-    
+
 end
 
 %Compute performance of decoder
