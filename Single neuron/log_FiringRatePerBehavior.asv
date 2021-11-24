@@ -26,7 +26,7 @@ group = cell(1,n_behav);
 for unit = 1:n_neurons
     for b = 1:n_behav
         idx = find(behavior_labels == unqLabels(b+1));
-        response_matrix{unit, b} = Unit_rasters(unit, idx);
+        response_matrix{unit, b} = Unit_rasters_zscore(unit, idx);
         med_response_matrix(unit,b) = median(response_matrix{unit, b});
         sd_response_matrix(unit,b) = std(response_matrix{unit, b});
         group{1,b} = b* ones(1,length(idx));
@@ -48,8 +48,7 @@ for unit = 1:n_neurons
     group_label = categorical({behav_categ{[subgroup{1,:}]'}});
 %     figure(unit)
     groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
-    randgroupDescend = randsample(groupDescend, length(groupDescend));
-    p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend)%, 'off');
+    p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend, 'off');
 % % %     if p(unit)<0.0001
 % % %         figure
 % % %         boxplot([resp_mat{1,:}]',groupDescend,'Notch','on')
@@ -65,10 +64,8 @@ for unit = 1:n_neurons
 %     groupDescend = reordercats(group_label,{behav_categ{idx}});
 %     boxplot([response_matrix{unit,:}]',groupDescend, 'PlotStyle','compact')
 
-    pause(2)
+    pause(1)
     close all
-
-      disp([num2str(unit) '/' num2str(n_neurons)])
 end
 
 figure
@@ -78,4 +75,4 @@ bar(B{2});
 set(gca,'XTickLabel',B{1})
 
 figure
-histogram(p); xlim([0 0.001])
+histogram(p); xlim([0 0.1])

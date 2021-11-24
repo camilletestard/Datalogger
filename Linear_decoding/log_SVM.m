@@ -16,11 +16,11 @@ behav_freq_table = tabulate(behavior_labels);
 behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
 % Select behaviors with a minimum # of occurrences
-% % min_occurrences = 20;
-% % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
-% % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-% % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-behav = [5,6] ;%[1:6,9,17];%[1:6,9:11,16,17]; %manually select behaviors of interest 
+% min_occurrences = 30;
+% behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
+% behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+% behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+behav = [4:8,11,17];%[1:6,9:11,16,17]; %manually select behaviors of interest 
 behav_categ(behav)
 
 idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -34,7 +34,7 @@ tabulate(behavior_labels_final);
 % % % Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
 
 % Run SVM over multiple iterations
-num_iter = 1;
+num_iter = 500;
 
 for iter = 1:num_iter
     
