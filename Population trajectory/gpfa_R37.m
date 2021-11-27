@@ -4,6 +4,11 @@
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 
+session = filePath(end-9:end);
+monkey = filePath(end-14:end-10);
+
+%behav_log = readtable('behavioral_log_session1.csv');
+behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,'.csv']);% Behavioral data
 behav_log = readtable('behavioral_log_session1.csv');
 behavior_log = readtable('behav_log_restructured_session1.csv');% Behavioral data
 behavior_log{:,'start_time_round'}=round(behavior_log{:,'start_time'});
@@ -265,3 +270,48 @@ end
 
 % Call DataHigh
 DataHigh(avg_B,'DimReduce')
+
+%% Scrap code
+for row_num = 1:length(labels)
+    if strcmp(behavior_log.Behavior(row_num), 'Aggression')
+        behavior_log.Color(row_num) = {[1 0 0]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Approach')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Drinking')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Foraging')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Groom Give')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Groom Receive')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'HIP')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'HIS')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Leave')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Other monkeys vocalize')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Pacing/Travel')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Proximity')
+        behavior_log.Color(row_num) = {[0.8 1 0.6]};
+    elseif strcmp(behavior_log.Behavior(row_num),'RR')
+        behavior_log.Color(row_num) = {[0 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'SP')
+        behavior_log.Color(row_num) = {[1 0 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'SS')
+        behavior_log.Color(row_num) = {[0 1 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'SP')
+        behavior_log.Color(row_num) = {[0.8 0.8 1]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Scratch')
+        behavior_log.Color(row_num) = {[0 0.6 0.4]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Self-groom')
+        behavior_log.Color(row_num) = {[0.6 0.6 0.6]};
+    elseif strcmp(behavior_log.Behavior(row_num),'Vocalization')
+        behavior_log.Color(row_num) = {[1 0.5 0]};
+    else
+        behavior_log.Color(row_num) = {[0.6 0.8 0]};
+    end
+end

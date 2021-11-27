@@ -60,9 +60,7 @@ end
 
 % --- Executes just before Projection3D is made visible.
 function Projection3D_OpeningFcn(hObject, eventdata, handles, varargin)
-%CT added: add a debugger stop here to extract the relevant variable (D) which 
-%contains all the info needed to plot the trajectory
-
+    
     % pass the DataHighFigs handles onto the Projection3dFig
     initialize_handles(hObject, handles, varargin{1});
     handles = guidata(hObject);
@@ -74,9 +72,9 @@ function Projection3D_OpeningFcn(hObject, eventdata, handles, varargin)
     
     
     set(handles.mainAxes, 'NextPlot', 'replacechildren');
-%     set(handles.mainAxes, 'XTick', []);
-%     set(handles.mainAxes, 'YTick', []);
-%     set(handles.mainAxes, 'ZTick', []);
+    set(handles.mainAxes, 'XTick', []);
+    set(handles.mainAxes, 'YTick', []);
+    set(handles.mainAxes, 'ZTick', []);
     mL = [-handles.max_limit handles.max_limit];
     set(handles.mainAxes, 'XLim', mL);
     set(handles.mainAxes, 'YLim', mL);
@@ -109,8 +107,7 @@ function create_projection(hObject, handles)
 %  creates a new randomized projection vector orthogonal to the given two
 %  and then plots it in 3D
 
-%     set(ancestor(ax1,'figure'),'CurrentAxes',ax1)
-    set(hObject, 'CurrentAxes', handles.mainAxes); %set(gcf, 'CurrentAxes', handles.mainAxes);
+    set(gcf, 'CurrentAxes', handles.mainAxes);
     hold(handles.mainAxes, 'on');
     
     conditions = unique({handles.D.condition});
@@ -318,14 +315,12 @@ function pop_figure_Callback(hObject, eventdata, handles)
     a = axes;
     rotate3d(a);
     set(a, 'NextPlot', 'replacechildren');
-    %     set(a, 'XTick', []);
-    %     set(a, 'YTick', []);
-    %     set(a, 'ZTick', []);
-    grid on
-    
+    set(a, 'XTick', []);
+    set(a, 'YTick', []);
+    set(a, 'ZTick', []);
+
     % copy all the children over
     copyobj(get(handles.mainAxes, 'Children'), a);
-
 end
 
 
@@ -514,7 +509,6 @@ function plot_fading_trajectory(itraj, currentPoint, handles, fading_length)
 %  as the fade continues (up to the starting timepoint), a grey line
 %  traces out the trajectory
 
-    % CT added: GET TRAJECTORY COORDINATES HERE!
     % get projection of traj
     p = handles.orths * handles.D(itraj).data;
 
@@ -523,7 +517,7 @@ function plot_fading_trajectory(itraj, currentPoint, handles, fading_length)
     starting_point = handles.D(itraj).epochStarts(1);
 
     line(p(1,starting_point:min_traj_size), p(2,starting_point:min_traj_size), p(3,starting_point:min_traj_size), 'LineWidth', 1, 'Color', [0.7 0.7 0.7]);
-    
+
     for j = 1:fading_length
 
         if (currentPoint - j <= 0 || currentPoint - j > size(p,2) - 1)
@@ -542,7 +536,6 @@ function plot_fading_trajectory(itraj, currentPoint, handles, fading_length)
 
         line([p(1, currentPoint - j) p(1, currentPoint-(j-1))], [p(2, currentPoint - j) p(2, currentPoint-(j-1))], ...
                     [p(3, currentPoint - j) p(3, currentPoint - (j-1))], 'LineWidth', 1 + 2/fading_length*(fading_length-j), 'Color', color);
-        grid on
     end
 
 end

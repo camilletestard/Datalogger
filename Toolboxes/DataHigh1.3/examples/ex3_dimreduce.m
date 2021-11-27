@@ -1,4 +1,4 @@
-s%% Example 3:  Extract trial-averaged neural trajectories from PSTHs
+%% Example 3:  Extract trial-averaged neural trajectories from PSTHs
 %  Perform dimensionality reduction with DimReduce and automatically
 %  visualize data in DataHigh.  The data has 56 trials for two reach
 %  directions. Data is from (Yu et al., 2009).

@@ -188,7 +188,7 @@ function handles = get_D_from_original_data(DataHighFig)
     
     if (handles.num_dims > 17) % project onto 17 d space
         handles.origin = -mean([handles.orig_data.data],2);
-        [u sc lat] = pca([handles.orig_data.data]');
+        [u sc lat] = princomp([handles.orig_data.data]');
         next_interval_start = 1;
         for trial = 1:length(handles.orig_data)
             handles.D(trial).data = sc(next_interval_start:next_interval_start+size(handles.orig_data(trial).data,2)-1, 1:17)';

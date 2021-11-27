@@ -35,10 +35,9 @@ behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior la
 tabulate(behavior_labels_final);
 
 %% Time shift behaviors
-
-shift_length = 5;%in sec
-behavior_labels_shifted = behavior_labels_final(shift_length:end);
-Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
+% shift_length = 5;%in sec
+% behavior_labels_shifted = behavior_labels_final(shift_length:end);
+% Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
 
 %% Run SVM over multiple iterations
 num_iter = 500;

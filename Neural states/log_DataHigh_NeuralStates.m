@@ -4,15 +4,17 @@
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 
-%behav_log = readtable('behavioral_log_session1.csv');
-behavior_log = readtable('EVENTLOG_restructured.csv');% Behavioral data
-load('Neural_data.mat') % Neural data
+session = filePath(end-9:end);
+monkey = filePath(end-14:end-10);
 
-%Preprocessing: round times in behavioral log
+%Load behavioral data
+behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,'.csv']);% Behavioral data
 behavior_log{:,'start_time_round'}=round(behavior_log{:,'start_time'});
 behavior_log{:,'end_time_round'}=round(behavior_log{:,'end_time'});
 behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:,'start_time_round'};
 
+%Load neural data
+load(['Neural_data_' session '.mat']) % Neural data
 
 %% Neural states during "awake" state. 1- Compare active behaviors states
 
