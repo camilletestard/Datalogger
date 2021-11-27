@@ -11,7 +11,6 @@ cd(filePath)
 session = filePath(end-9:end);
 monkey = filePath(end-14:end-10);
 
-%behav_log = readtable('behavioral_log_session1.csv');
 behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,'.csv']);% Behavioral data
 load('Neural_data.mat') % Neural data; array1 is in TEO and array2 is in vlPFC
 session_length = size(Unit_rasters,2);
@@ -31,6 +30,7 @@ Intervals = [start_times end_times];
 
 %Create behavior key
 behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+behav_categ{20}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
 double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];%, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))]; %For behaviors that often co-occur with other behaviors
 omv = find(matches(behav_categ,'Other monkeys vocalize'));
 
@@ -62,7 +62,7 @@ for s = 1:session_length %for all secs in a session
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = 0; labels{s,3} = 0; %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = 20; labels{s,3} = 20; %Set behavior category to "NaN" and 
     end
 end
 

@@ -26,7 +26,7 @@ group = cell(1,n_behav);
 for unit = 1:n_neurons
     for b = 1:n_behav
         idx = find(behavior_labels == unqLabels(b+1));
-        response_matrix{unit, b} = Unit_rasters_zscore(unit, idx);
+        response_matrix{unit, b} = Unit_rasters(unit, idx);
         med_response_matrix(unit,b) = median(response_matrix{unit, b});
         sd_response_matrix(unit,b) = std(response_matrix{unit, b});
         group{1,b} = b* ones(1,length(idx));
@@ -34,9 +34,10 @@ for unit = 1:n_neurons
 end
 
 preferred_behav = strings(1,n_neurons);
+p = zeros(1,n_neurons);
 for unit = 1:n_neurons
 
-    behav = [1,3:6,17];
+    behav = [4:8,11,17];
     median_resp = med_response_matrix(unit,behav);
     resp_mat = {response_matrix{unit,behav}};
     subgroup = {group{1,behav}};
@@ -45,11 +46,17 @@ for unit = 1:n_neurons
     [~,idx]=sort(median_resp,'descend');
     preferred_behav(unit) = sub_behav_categ{idx(1)};
     group_label = categorical({behav_categ{[subgroup{1,:}]'}});
-    figure(unit)
+%     figure(unit)
     groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
-    boxplot([resp_mat{1,:}]',groupDescend)
+    randgroupDescend = randsample(groupDescend, length(groupDescend));
+    p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend)%, 'off');
+% % %     if p(unit)<0.0001
+% % %         figure
+% % %         boxplot([resp_mat{1,:}]',groupDescend,'Notch','on')
+% % %         ylabel('Z-scored firing rate') 
+% % %     end
 
-%   hist([resp_mat{1,:}]')
+   %figure; hold on; histogram([resp_mat{1,1}]'); histogram([resp_mat{1,2}]')
 
 %     [~,idx]=sort(med_response_matrix(unit,:),'descend');
 %     preferred_behav(unit) = behav_categ{idx(1)};
@@ -58,11 +65,17 @@ for unit = 1:n_neurons
 %     groupDescend = reordercats(group_label,{behav_categ{idx}});
 %     boxplot([response_matrix{unit,:}]',groupDescend, 'PlotStyle','compact')
 
-    pause(1)
+    pause(2)
     close all
+
+      disp([num2str(unit) '/' num2str(n_neurons)])
 end
 
+figure
 A = preferred_behav;
 B={sort(unique(A)) countmember(sort(unique(A)),A)};
 bar(B{2});
 set(gca,'XTickLabel',B{1})
+
+figure
+histogram(p); xlim([0 0.001])

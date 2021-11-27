@@ -10,17 +10,23 @@ load('Neural_data.mat') % Neural data; array1 is in TEO and array2 is in vlPFC
 session_length = size(Unit_rasters,2);
 Spike_count_raster = Unit_rasters';
 
-%Compute freq of behavior for the session
+%% Up-sample or down-sample data
+
+
+
+%% Select behaviors
+
+% Compute freq of behavior for the session
 behavior_labels = cell2mat({labels{:,3}}');
 behav_freq_table = tabulate(behavior_labels);
 behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
 % Select behaviors with a minimum # of occurrences
-% % min_occurrences = 20;
-% % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
-% % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-% % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-behav = [5,6] ;%[1:6,9,17];%[1:6,9:11,16,17]; %manually select behaviors of interest 
+% min_occurrences = 30;
+% behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
+% behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+% behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+behav = [4:8,11,17];%[1:6,9:11,16,17]; %manually select behaviors of interest 
 behav_categ(behav)
 
 idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -28,13 +34,13 @@ Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where
 behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
 tabulate(behavior_labels_final);
 
-% % % %Time shift behaviors
-% % % shift_length = 5;%in sec
-% % % behavior_labels_shifted = behavior_labels_final(shift_length:end);
-% % % Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
+%% Time shift behaviors
+% shift_length = 5;%in sec
+% behavior_labels_shifted = behavior_labels_final(shift_length:end);
+% Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
 
-% Run SVM over multiple iterations
-num_iter = 1;
+%% Run SVM over multiple iterations
+num_iter = 500;
 
 for iter = 1:num_iter
     

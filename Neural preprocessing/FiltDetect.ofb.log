@@ -1,0 +1,106 @@
+17:57:26.30, 08/17/2021 : Requesting low-cut filter type Butterworth
+17:57:26.30, 08/17/2021 : Requesting low-cut filter poles of 2
+17:57:26.31, 08/17/2021 : Requesting low-cut filter freq of 250.000000 hz
+17:57:26.31, 08/17/2021 : Setting waveform detection sigmas to -3.700000
+17:57:26.31, 08/17/2021 : Setting detection points per waveform to 32 samples
+17:57:26.31, 08/17/2021 : Setting waveform detection prethreshold to 8 samples
+17:57:26.31, 08/17/2021 : Setting waveform detection deadtime to 40 samples
+17:57:26.32, 08/17/2021 : Enabling saving continuous data to plx files
+17:57:26.32, 08/17/2021 : Enabling saving filtered and up-sampled continuous data to plx files
+17:57:26.32, 08/17/2021 : ***********************************
+17:57:26.32, 08/17/2021 : Processing file: d:\deuteron data\converted output\hooke\neural data\hooke_2021-08-15\Chan_1-30.nex5
+17:57:26.32, 08/17/2021 : ***********************************
+17:57:26.91, 08/17/2021 : File Opened: d:\deuteron data\converted output\hooke\neural data\hooke_2021-08-15\Chan_1-30.nex5
+17:57:26.94, 08/17/2021 : Loading channel 1...
+17:57:27.80, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 1
+17:57:28.24, 08/17/2021 : Extracting with threshold -0.347900% on ch 1
+17:57:34.82, 08/17/2021 : Loading channel 2...
+17:57:35.71, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 2
+17:57:36.15, 08/17/2021 : Extracting with threshold -0.329590% on ch 2
+17:57:42.39, 08/17/2021 : Loading channel 3...
+17:57:43.28, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 3
+17:57:43.72, 08/17/2021 : Extracting with threshold -0.366211% on ch 3
+17:57:50.40, 08/17/2021 : Loading channel 4...
+17:57:51.27, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 4
+17:57:51.71, 08/17/2021 : Extracting with threshold -0.491333% on ch 4
+17:57:58.25, 08/17/2021 : Loading channel 5...
+17:57:59.16, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 5
+17:57:59.61, 08/17/2021 : Extracting with threshold -0.381470% on ch 5
+17:58:6.46, 08/17/2021 : Loading channel 6...
+17:58:7.34, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 6
+17:58:7.79, 08/17/2021 : Extracting with threshold -0.366211% on ch 6
+17:58:14.47, 08/17/2021 : Loading channel 7...
+17:58:15.34, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 7
+17:58:15.79, 08/17/2021 : Extracting with threshold -0.354004% on ch 7
+17:58:22.25, 08/17/2021 : Loading channel 8...
+17:58:23.13, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 8
+17:58:23.55, 08/17/2021 : Extracting with threshold -0.421143% on ch 8
+17:58:29.70, 08/17/2021 : Loading channel 9...
+17:58:30.57, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 9
+17:58:31.00, 08/17/2021 : Extracting with threshold -0.335693% on ch 9
+17:58:37.02, 08/17/2021 : Loading channel 10...
+17:58:37.89, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 10
+17:58:38.32, 08/17/2021 : Extracting with threshold -0.424194% on ch 10
+17:58:44.95, 08/17/2021 : Loading channel 11...
+17:58:45.83, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 11
+17:58:46.28, 08/17/2021 : Extracting with threshold -0.369263% on ch 11
+17:58:52.57, 08/17/2021 : Loading channel 12...
+17:58:53.44, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 12
+17:58:53.87, 08/17/2021 : Extracting with threshold -0.402832% on ch 12
+17:59:0.25, 08/17/2021 : Loading channel 13...
+17:59:1.16, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 13
+17:59:1.61, 08/17/2021 : Extracting with threshold -0.326538% on ch 13
+17:59:8.09, 08/17/2021 : Loading channel 14...
+17:59:8.98, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 14
+17:59:9.42, 08/17/2021 : Extracting with threshold -0.430298% on ch 14
+17:59:15.60, 08/17/2021 : Loading channel 15...
+17:59:16.47, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 15
+17:59:16.92, 08/17/2021 : Extracting with threshold -0.344849% on ch 15
+17:59:23.05, 08/17/2021 : Loading channel 16...
+17:59:23.90, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 16
+17:59:24.31, 08/17/2021 : Extracting with threshold -0.415039% on ch 16
+17:59:30.48, 08/17/2021 : Loading channel 17...
+17:59:31.36, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 17
+17:59:31.81, 08/17/2021 : Extracting with threshold -0.335693% on ch 17
+17:59:37.90, 08/17/2021 : Loading channel 18...
+17:59:38.78, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 18
+17:59:39.22, 08/17/2021 : Extracting with threshold -0.405884% on ch 18
+17:59:45.38, 08/17/2021 : Loading channel 19...
+17:59:46.25, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 19
+17:59:46.68, 08/17/2021 : Extracting with threshold -0.408936% on ch 19
+17:59:53.10, 08/17/2021 : Loading channel 20...
+17:59:53.97, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 20
+17:59:54.38, 08/17/2021 : Extracting with threshold -0.427246% on ch 20
+18:00:0.43, 08/17/2021 : Loading channel 21...
+18:00:1.37, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 21
+18:00:1.81, 08/17/2021 : Extracting with threshold -0.344849% on ch 21
+18:00:8.49, 08/17/2021 : Loading channel 22...
+18:00:9.40, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 22
+18:00:9.84, 08/17/2021 : Extracting with threshold -0.347900% on ch 22
+18:00:15.98, 08/17/2021 : Loading channel 23...
+18:00:16.85, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 23
+18:00:17.27, 08/17/2021 : Extracting with threshold -0.524902% on ch 23
+18:00:23.58, 08/17/2021 : Loading channel 24...
+18:00:24.48, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 24
+18:00:24.89, 08/17/2021 : Extracting with threshold -0.427246% on ch 24
+18:00:31.25, 08/17/2021 : Loading channel 25...
+18:00:32.14, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 25
+18:00:32.60, 08/17/2021 : Extracting with threshold -0.228882% on ch 25
+18:00:38.74, 08/17/2021 : Loading channel 26...
+18:00:39.61, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 26
+18:00:40.03, 08/17/2021 : Extracting with threshold -0.415039% on ch 26
+18:00:46.89, 08/17/2021 : Loading channel 27...
+18:00:47.81, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 27
+18:00:48.24, 08/17/2021 : Extracting with threshold -0.457764% on ch 27
+18:00:54.64, 08/17/2021 : Loading channel 28...
+18:00:55.51, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 28
+18:00:55.92, 08/17/2021 : Extracting with threshold -0.402832% on ch 28
+18:01:1.79, 08/17/2021 : Loading channel 29...
+18:01:2.66, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 29
+18:01:3.11, 08/17/2021 : Extracting with threshold -0.375366% on ch 29
+18:01:9.14, 08/17/2021 : Loading channel 30...
+18:01:10.00, 08/17/2021 : Applying Low-cut 2-pole Butterworth filter with cutoff at 250.000000 Hz on ch 30
+18:01:10.42, 08/17/2021 : Extracting with threshold -0.424194% on ch 30
+18:01:16.33, 08/17/2021 : Exporting file to plx
+18:19:50.12, 08/17/2021 : Exported file: d:\deuteron data\converted output\hooke\neural data\hooke_2021-08-15\Chan_1-30.plx
+18:19:50.19, 08/17/2021 : Batch file processing complete.
