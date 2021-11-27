@@ -7,7 +7,7 @@ library(lubridate)
 #Load data
 file = file.choose()
 eventlog=read.csv(file)
-date = '2021-08-20'
+date = '2021-08-15'
 
 #Format time column
 eventlog$Time.stamp.no.ms=strtrim(eventlog$Time.stamp,8)
