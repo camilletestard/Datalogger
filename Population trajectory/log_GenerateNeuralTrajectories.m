@@ -3,7 +3,13 @@
 % CT 2021/11
 
 %% Load data
-cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+is_mac = 0;
+
+if is_mac
+    cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+else
+    cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+end
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 
@@ -40,6 +46,7 @@ behav_categ_color_label = {'Red','Dark Red','Light Blue','Dark Green','Turquoise
 behav_categ = [behav_categ, behav_categ_color, behav_categ_color_label];
 
 label_colors = cell2mat({behav_categ_color{[labels{:,3}]'}}');% Get a color for each second of the session
+label_colors(end,:) = [];
 
 %% Plot SDF (intergrated signal at the second resolution)
 % % Check what the neural signal looks like
@@ -60,8 +67,8 @@ label_colors = cell2mat({behav_categ_color{[labels{:,3}]'}}');% Get a color for 
 D =struct();
 D(1).type = 'traj';
 D(1).data = Unit_rasters;
-D(1).epochStarts= 1:length(labels);
-D(1).epochColors=label_colors;%0,1,1];
+D(1).epochStarts= 1:length(labels)-1;%[1, 1000];
+D(1).epochColors= label_colors; %[1,0,0;0,1,0];% 
 
 DataHigh(D,'DimReduce')
 
