@@ -10,13 +10,7 @@ load('Neural_data.mat') % Neural data; array1 is in TEO and array2 is in vlPFC
 session_length = size(Unit_rasters,2);
 Spike_count_raster = Unit_rasters';
 
-%% Up-sample or down-sample data
-
-
-
-%% Select behaviors
-
-% Compute freq of behavior for the session
+%Compute freq of behavior for the session
 behavior_labels = cell2mat({labels{:,3}}');
 behav_freq_table = tabulate(behavior_labels);
 behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
@@ -34,13 +28,12 @@ Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where
 behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
 tabulate(behavior_labels_final);
 
-%% Time shift behaviors
+% % % %Time shift behaviors
+% % % shift_length = 5;%in sec
+% % % behavior_labels_shifted = behavior_labels_final(shift_length:end);
+% % % Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
 
-shift_length = 5;%in sec
-behavior_labels_shifted = behavior_labels_final(shift_length:end);
-Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
-
-%% Run SVM over multiple iterations
+% Run SVM over multiple iterations
 num_iter = 500;
 
 for iter = 1:num_iter
