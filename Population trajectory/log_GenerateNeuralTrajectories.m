@@ -3,7 +3,7 @@
 % CT 2021/11
 
 %% Load data
-is_mac = 0;
+is_mac = 1;
 
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
@@ -37,7 +37,7 @@ behav_categ_color = {[1,0,0]; [0.6350, 0.0780, 0.1840]; [0.3010, 0.7450, 0.9330]
     [0, 1, 0]; [0.25, 0.25, 0.25]; [0.75, 0.75, 0];... %Other monkeys vocalize; Travel; Proximity
     [0.6831, 0.3651, 0.3651]; [0.7746, 0.6583, 0.5164]; [0.8563, 0.8563, 0.6325];...%RR; SP; SS
     [0.9290, 0.6940, 0.1250]; [0.8500, 0.3250, 0.0980]; [0, 0.2, 0]; %Scratch; Self-groom; Vocalization
-    [1.00, 0.54, 0.00]; [0.5, 0.5, 0.5]};% Yawning; Rest
+    [1.00, 0.54, 0.00]; [1, 1, 1]};% Yawning; Rest
 
 behav_categ_color_label = {'Red','Dark Red','Light Blue','Dark Green','Turquoise','Dark Blue',...
     'Magenta','Dark Purple','Yellow','Green','Dark grey','Light Green','Dark Beige','Beige','Pink yellow',...
@@ -46,7 +46,7 @@ behav_categ_color_label = {'Red','Dark Red','Light Blue','Dark Green','Turquoise
 behav_categ = [behav_categ, behav_categ_color, behav_categ_color_label];
 
 label_colors = cell2mat({behav_categ_color{[labels{:,3}]'}}');% Get a color for each second of the session
-label_colors(end,:) = [];
+%label_colors(end,:) = [];
 
 %% Plot SDF (intergrated signal at the second resolution)
 % % Check what the neural signal looks like
@@ -61,14 +61,22 @@ label_colors(end,:) = [];
 % included_units = [1:3 5:36 38:59];
 % Unit_rasters = Unit_rasters(included_units,:);
 
+%% Only condiser a chunk of the session
+interval = 1:900;
+neural_data = Unit_rasters(:,interval);
+label_data = labels(interval,:);
+color_data = label_colors(interval,:);
+hist([label_data{:,3}]')
+
+
 %% Neural trajectory color-coded by behavior
 
 %Create input structure for Data High:
 D =struct();
 D(1).type = 'traj';
 D(1).data = Unit_rasters;
-D(1).epochStarts= 1:length(labels)-1;%[1, 1000];
-D(1).epochColors= label_colors; %[1,0,0;0,1,0];% 
+D(1).epochStarts= [find(abs(diff([label_data{:,3}]'))>0)+1]';%1:length(labels)-1;%[1, 1000];
+D(1).epochColors= color_data(D(1).epochStarts',:); %[1,0,0;0,1,0];% 
 
 DataHigh(D,'DimReduce')
 
