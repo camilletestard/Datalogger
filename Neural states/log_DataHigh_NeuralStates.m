@@ -18,7 +18,7 @@ load(['Neural_data_' session '.mat']) % Neural data
 
 %% Neural states during "awake" state. 1- Compare active behaviors states
 
-% Start with "long behaviors":
+% Select behaviors of a particular duration:
 min_duration = 1;%in sec
 idx = find(behavior_log{:,'duration_round'}>=min_duration);
 new_log=behavior_log(idx,:);
@@ -92,9 +92,10 @@ end
 % Select a random subsample
 behaviors = unique({B.condition});
 B_subsample = B([],1);
+subsample_size = 50
 for b = 1:length(behaviors)
     idx=find(ismember({B.condition},behaviors(b)));
-    if length(idx)>50
+    if length(idx)>subsample_size
     B_subsample=[B_subsample;B(idx(randi(length(idx),50,1)))'];
     else
         B_subsample=[B_subsample;B(idx)'];

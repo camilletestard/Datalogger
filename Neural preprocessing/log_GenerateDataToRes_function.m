@@ -1,10 +1,20 @@
 function [Spike_rasters, labels, behav_categ] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
+        %Log GenerateDataToRes_function
+        % This function formats the raw data to have two elements:
+        % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
+        % 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
+            %1st column includes all behaviors in "plain english"
+            %2nd column behavior number code
+            %3rd column unique behavior code (when two occur
+            %simultaneously, we chose one, see below for details)
+            %4th column whether behavior happens in isolation or co-occurs
+            %with another.
+        %filePath is the experimental data path
+        %Temp_resolution is the temporal resolution at which we would like to
+        %analyze the dat
+        %Channel_flag specifies with channels to include: only TEO array, only
+        %vlPFC array or all channels
 
-%% Log GenerateDataToRes
-% Format the raw data to have two elements:
-% 1. Neural data matrix size [Time (to chosen resolution) x #neurons]
-% 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
-% I will make this into a function soon.
 % Camille Testard - Sept. 2021
 
 %% Load data
