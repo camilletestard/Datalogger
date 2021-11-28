@@ -35,10 +35,9 @@ behavior_log{:,'end_time_round'}=round(behavior_log{:,'end_time'}*temp_resolutio
 behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:,'start_time_round'};
 
 %Eliminte behaviors that do not meet the minimum length
-%Note that this will be an issue only for time resolution >1sec
-min_length = 1/temp_resolution;
-idx = find(behavior_log{:,'duration_s'}<min_length);
-behavior_log{idx,'start_time_round'} = 0; behavior_log{idx,'end_time_round'} = 0;
+%Note that this will be an issue only for time resoltion >1sec
+min_lenth = 1/temp_resolution;
+idx = find(behavior_log{:,'duration_s'}<min_length)
 
 %Neural data
 Chan_name = fieldnames(SpikeData); %Identify channel names

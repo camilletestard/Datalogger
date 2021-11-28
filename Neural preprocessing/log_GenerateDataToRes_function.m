@@ -1,3 +1,5 @@
+function [Spike_rasters, labels, behav_categ] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
+
 %% Log GenerateDataToRes
 % Format the raw data to have two elements:
 % 1. Neural data matrix size [Time (to chosen resolution) x #neurons]
@@ -6,14 +8,6 @@
 % Camille Testard - Sept. 2021
 
 %% Load data
-is_mac = 1;
-
-if is_mac
-    cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
-else
-    cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
-end
-filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 
 session = filePath(end-9:end);
@@ -25,16 +19,12 @@ length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
 %% Preprocessing: behavioral log and neural data at specified resolution
 
-%Set temporal resolution
-temp_resolution = 1/5; %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
-                      %0.1 for 10sec resolution, 1/5 for 5sec resolution
-
 %Behavioral log
 behavior_log{:,'start_time_round'}=round(behavior_log{:,'start_time'}*temp_resolution);
 behavior_log{:,'end_time_round'}=round(behavior_log{:,'end_time'}*temp_resolution);
 behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:,'start_time_round'};
 
-%Eliminte behaviors that do not meet the minimum length
+%Eliminate behaviors that do not meet the minimum length
 %Note that this will be an issue only for time resolution >1sec
 min_length = 1/temp_resolution;
 idx = find(behavior_log{:,'duration_s'}<min_length);
@@ -46,20 +36,30 @@ C = regexp(Chan_name,'\d*','Match');
 C_char = cellfun(@char, C{:}, 'UniformOutput', false);
 Chan_num = str2num(C_char{1, 1});
 
-% % % %Separate channels by array
-% % % array1_chan = [1,2,5,6,9,10,13,14,17,18,21,22,25,26,29,30,33,34,37,38,41,...
-% % %     42,45,46,49,50,53,54,57,58,61,62,65,66,69,70,73,74,77,78,81,82,85,86,...
-% % %     89,90,93,94,97,98,101,102,105,106,109,110,113,114,117,118,121,122,125,126];
-% % % 
-% % % array2_chan = [3,4,7,8,11,12,15,16,19,20,23,24,27,28,31,32,35,36,39,40,...
-% % %     43,44,47,48,51,52,55,56,59,60,63,64,67,68,71,72,75,76,79,80,83,84,...
-% % %     87,88,91,92,95,96,99,100,103,104,107,108,111,112,115,116,119,120,123,124,127,128];
-% % % 
-% % % chan_idx_array1 = find(ismember(Chan_num,array1_chan))';
-% % % chan_idx_array2 = find(ismember(Chan_num,array2_chan))';
+%Separate channels by array
+array1_chan = [1,2,5,6,9,10,13,14,17,18,21,22,25,26,29,30,33,34,37,38,41,...
+    42,45,46,49,50,53,54,57,58,61,62,65,66,69,70,73,74,77,78,81,82,85,86,...
+    89,90,93,94,97,98,101,102,105,106,109,110,113,114,117,118,121,122,125,126];
 
+array2_chan = [3,4,7,8,11,12,15,16,19,20,23,24,27,28,31,32,35,36,39,40,...
+    43,44,47,48,51,52,55,56,59,60,63,64,67,68,71,72,75,76,79,80,83,84,...
+    87,88,91,92,95,96,99,100,103,104,107,108,111,112,115,116,119,120,123,124,127,128];
+
+chan_idx_array1 = find(ismember(Chan_num,array1_chan))';
+chan_idx_array2 = find(ismember(Chan_num,array2_chan))';
+
+%Select channels
+if strcmp(channel_flag,'TEO')
+    channels = chan_idx_array1;
+elseif strcmp(channel_flag,'vlPFC')
+    channels = chan_idx_array2;
+elseif strcmp(channel_flag,'all')
+    channels = 1:length(fields(SpikeData)); %all channels
+end
+
+%Create spike matrix structure
 unit=1;
-for i = 1:length(fields(SpikeData)) %For all channels
+for i = channels %For all channels
     
     if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
         for j = 1:length(SpikeData.(Chan_name{i})) %For all units
@@ -78,7 +78,7 @@ end
 
 length_recording = size(Spike_rasters,2);
 
-%% Get behavior label vector for each second
+%% Get behavior label vector for each time bin at specified resolution
 
 %Create event intervals:
 start_times = behavior_log{:,'start_time_round'};
@@ -123,7 +123,4 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
-%length(find(strfind(labels{:,4},'co-occur')))
-
-    % %% Save variables
-    save([filePath '/Data_' num2str(1000/temp_resolution) 'msec_res.mat'],'labels','behav_categ','Spike_rasters');
+end
