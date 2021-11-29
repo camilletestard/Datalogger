@@ -6,6 +6,7 @@
 %Created by SDT 10/20
 
 %% Initialize data
+cd('D:\Deuteron Data\Sorted output')
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 neural_dir = dir('*.nex*'); % Identify the files that correspond to each sorted channel. Note that this ordering is not linear using dir. This should be corrected. Its annoying, but functional.

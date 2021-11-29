@@ -21,7 +21,7 @@ savePath = uigetdir('', 'Please select the result directory');
 
 %Set temporal resolution
 temp = 1; 
-for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
+for temp_resolution = [1/5, 1/2, 1, 5, 10, 100] %5sec, 1sec, 100msec
     %temp_resolution = 1/5; %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -57,7 +57,7 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = [5,6];%[4:8,11,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
-        behav_categ(behav);
+        behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
@@ -71,14 +71,14 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
 
 
         %% Run SVM over multiple iterations
-        num_iter = 50;
+        num_iter = 500;
         
         disp('Start running SVM...')
         for iter = 1:num_iter
 
             clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
                 Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
-                channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table
+                channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval
 
             %Balance number of trials per class
             Labels = behavior_labels_final;
@@ -97,7 +97,7 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = min(num_trials); %find the minimum one
+            minNumTrials = 200; %min(num_trials); %find the minimum one %CT change to have 200 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -135,12 +135,15 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
 
         chan = chan +1;
 
-        clearvars -except savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp
+        clearvars -except savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval
     end
     temp = temp+1;
     
-    save([savePath '\SVM_results.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table')
 end
 
-rowNames = ['5sec', '1sec', '100msec']; colNames = ['vlPFC','TEO','all'];
-result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames);
+rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
+result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
+
+save([savePath '\SVM_results.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+writetable(result_hitrate,[savePath '\SVM_results.csv'],'WriteRowNames',true,'WriteVariableNames',true); 

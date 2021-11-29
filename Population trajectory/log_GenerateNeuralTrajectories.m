@@ -22,11 +22,14 @@ behavior_log{:,'start_time_round'}=round(behavior_log{:,'start_time'});
 behavior_log{:,'end_time_round'}=round(behavior_log{:,'end_time'});
 behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:,'start_time_round'};
 
-%Load labels
-load('Labels_per_sec.mat')
+% %Load labels
+% load('Labels_per_sec.mat')
+% %Load neural data
+% load(['Neural_data_' session '.mat']) % Neural data
 
-%Load neural data
-load(['Neural_data_' session '.mat']) % Neural data
+%Get data with specified temporal resolution and channels
+temp_resolution = 1/2; channel_flag = "all";
+[Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
 
 %% Color code behaviors
 
@@ -34,8 +37,8 @@ load(['Neural_data_' session '.mat']) % Neural data
 behav_categ_color = {[1,0,0]; [0.6350, 0.0780, 0.1840]; [0.3010, 0.7450, 0.9330];... %Aggression; Approach; Drinking
     [0, 0.5, 0]; [0, 0.75, 0.75]; [0, 0, 1];...%Foraging; Groom Give; Groom Receive
     [0.75, 0, 0.75]; [0.4940, 0.1840, 0.5560]; [1, 1, 0];...%HIP; HIS; Leave
-    [0, 1, 0]; [0.25, 0.25, 0.25]; [1, 1, 1];... %Other monkeys vocalize; Travel; Proximity %%%Set proximity to white for now
-    %[0, 1, 0]; [0.25, 0.25, 0.25]; [0.75, 0.75, 0];... %Other monkeys vocalize; Travel; Proximity
+    %[0, 1, 0]; [0.25, 0.25, 0.25]; [1, 1, 1];... %Other monkeys vocalize; Travel; Proximity %%%Set proximity to white for now
+    [0, 1, 0]; [0.25, 0.25, 0.25]; [0.75, 0.75, 0];... %Other monkeys vocalize; Travel; Proximity
     [0.6831, 0.3651, 0.3651]; [0.7746, 0.6583, 0.5164]; [0.8563, 0.8563, 0.6325];...%RR; SP; SS
     [0.9290, 0.6940, 0.1250]; [0.8500, 0.3250, 0.0980]; [0, 0.2, 0]; %Scratch; Self-groom; Vocalization
     [1.00, 0.54, 0.00]; [1, 1, 1]};% Yawning; Rest
@@ -63,11 +66,12 @@ label_colors = cell2mat({behav_categ_color{[labels{:,3}]'}}');% Get a color for 
 % Unit_rasters = Unit_rasters(included_units,:);
 
 %% Only condiser a chunk of the session
-interval = 1:900;
-neural_data = Unit_rasters(:,interval);
+interval = 42:575;
+neural_data = Spike_rasters(:,interval);
+% neural_data_std = scale(neural_data);
 label_data = labels(interval,:);
 color_data = label_colors(interval,:);
-hist([label_data{:,3}]')
+%hist([label_data{:,3}]')
 
 
 %% Neural trajectory color-coded by behavior
@@ -75,10 +79,10 @@ hist([label_data{:,3}]')
 %Create input structure for Data High:
 D =struct();
 D(1).type = 'traj';
-D(1).data = Unit_rasters;
+D(1).data = neural_data;
 D(1).epochStarts = [find(abs(diff([label_data{:,3}]'))>0)+1]';%1:length(labels)-1;%[1, 1000];
 D(1).epochColors= color_data(D(1).epochStarts',:); %[1,0,0;0,1,0];% 
-[D(1).epochStarts', D(1).epochColors]
+%[D(1).epochStarts', D(1).epochColors]
 
 DataHigh(D,'DimReduce')
 
