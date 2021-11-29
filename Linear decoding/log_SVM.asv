@@ -4,13 +4,14 @@
 %% Load data
 
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
     cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 end
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+savePath = uigetdir('', 'Please select the result directory');
 
 %Set temporal resolution
 temp = 1; 
@@ -69,7 +70,7 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
         disp('Start running SVM...')
         for iter = 1:num_iter
 
-            clearvars -except behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
+            clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
                 Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
                 channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table
 
@@ -128,9 +129,11 @@ for temp_resolution = [1/5, 1, 10] %5sec, 1sec, 100msec
 
         chan = chan +1;
 
-        clearvars -except mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp
+        clearvars -except savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp
     end
     temp = temp+1;
+    
+    save([savePath '\SVM_results.mat'], mean_hitrate, sd_hitrate, C_table)
 end
 
 rowNames = ['5sec', '1sec', '100msec']; colNames = ['vlPFC','TEO','all'];
