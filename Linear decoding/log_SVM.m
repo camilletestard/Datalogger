@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -143,35 +143,54 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
 end
 
 %rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
-rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 
-save([savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
+% save([savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+% writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
 figure; hold on
-cmap = cool(size(mean_hitrate,1));
-cmap_sd = cool(size(mean_hitrate,1));
-x = 1:3; x2 = [x, fliplr(x)];
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
-    curve1 = y + std_dev;
-    curve2 = y - std_dev;
-    inBetween = [curve1, fliplr(curve2)];
-    h = fill(x2, inBetween,cmap(b,:));
-    h.FaceAlpha = 0.5; 
-    plot(x,y,'Color','k')
+    errorbar(y,std_dev,'s','MarkerSize',10,...
+    'MarkerEdgeColor','red','MarkerFaceColor','red')
+    %plot(x,y,'Color','k')
 end
 chance_level = 1/length(behavs_eval);
 yline(chance_level,'--','Chance level')
 xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
 xticklabels({'','vlPFC','TEO','all',''})
-ylabel('Deconding accuracy'); xlabel('Brain area')
-title('Decoding accuracy by window size and brain area')
-leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
-title(leg,'Window size')
+ax = gca;
+ax.FontSize = 14; 
+ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy by brain area (window size = 1sec)','FontSize', 18)
+
+
+
+% x = 1:3; x2 = [x, fliplr(x)];
+% cmap = cool(size(mean_hitrate,1));
+% cmap_sd = cool(size(mean_hitrate,1));
+% for b = 1:size(mean_hitrate,1)
+%     y = mean_hitrate(b,:);
+%     std_dev = sd_hitrate(b,:);
+%     curve1 = y + std_dev;
+%     curve2 = y - std_dev;
+%     inBetween = [curve1, fliplr(curve2)];
+%     h = fill(x2, inBetween,cmap(b,:));
+%     h.FaceAlpha = 0.5; 
+%     plot(x,y,'Color','k')
+% end
+% chance_level = 1/length(behavs_eval);
+% yline(chance_level,'--','Chance level')
+% xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
+% xticklabels({'','vlPFC','TEO','all',''})
+% ylabel('Deconding accuracy'); xlabel('Brain area')
+% title('Decoding accuracy by window size and brain area')
+%leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
+%title(leg,'Window size')
 
 cd(savePath)
 saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])

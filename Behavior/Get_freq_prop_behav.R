@@ -27,9 +27,10 @@ all_logs$Behavior[all_logs$Behavior=="SP"]= "Squeeze Partner"
 
 #Get frequency table per behavior
 behavs = unique(all_logs$Behavior);
-behav_categ = c("asocial","social","social","social","social", "asocial",
-                "social","asocial","asocial","asocial","asocial","social",
-                "social","social","asocial","social","social","social","social","social","asocial")
+behav_categ = c("social","social","asocial","social","asocial", "social",
+                "social","social","asocial","asocial","social","asocial",
+                "asocial","social","social","asocial","social","social","social","social","asocial")
+cbind(behavs, behav_categ)
 behav_freq_table = data.frame(); b=1; s=1
 behav_freq_table_full = data.frame()
 for (s in 1:length(sessions)){
@@ -40,17 +41,23 @@ for (s in 1:length(sessions)){
     behav_freq_table[b,'obs.time'] = session_length[s]
     idx = which(all_logs$Behavior == behavs[b] & all_logs$session_num == s)
     behav_freq_table[b,'duration'] = sum(all_logs$duration.s[idx])
+    behav_freq_table[b,'proportion'] = behav_freq_table[b,'duration']/behav_freq_table[b,'obs.time']
     behav_freq_table[b,'num.events'] = length(idx)
-    
   }
+ 
   setwd(paste('~/Dropbox (Penn)/Datalogger/Results/', sessions[s],"/",sep=""))
   
-  p.prop<- ggplot(data=behav_freq_table, aes(x=reorder(Behavior, duration), y=duration, fill=categ)) +
+  p.dur<- ggplot(data=behav_freq_table, aes(x=reorder(Behavior, duration), y=duration, fill=categ)) +
     geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Duration (in s)')+ 
     labs(fill='Category')+ 
     coord_flip()+ theme_classic(base_size = 18) + ggtitle(sessions[s])
-  ggsave(paste("Behavior_proportion_", sessions[s],".png",sep=""))
+  ggsave(paste("Behavior_duration_", sessions[s],".png",sep=""))
   
+  p.prop<- ggplot(data=behav_freq_table, aes(x=reorder(Behavior, proportion), y=proportion, fill=categ)) +
+    geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Proportion')+ 
+    labs(fill='Category')+ 
+    coord_flip()+ theme_classic(base_size = 18) + ggtitle(sessions[s])
+  ggsave(paste("Behavior_proportion_", sessions[s],".png",sep=""))
   
   p.frq<- ggplot(data=behav_freq_table, aes(x=reorder(Behavior, num.events), y=num.events, fill=categ)) +
     geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('# Occurences')+
