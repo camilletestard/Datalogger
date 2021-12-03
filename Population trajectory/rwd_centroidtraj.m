@@ -3,7 +3,8 @@
 %average (centroid) for each behavior and using this to predict moment to
 %moment behavioral state.
 
-%% Load in data
+%% Load in data and preprocess
+
 
 is_ron = 1;
 
@@ -29,29 +30,8 @@ Data_struct = load([load_folder session '\Neural_data.mat']);
 Labels = cell2mat(Label_struct.labels(:,3)); %Get numerical labels based on prioritization
 Data = Data_struct.Unit_rasters; %Get neural data
 
-
-
-%% Linear embedding dim and dim reduction
-% Only doing this to check linear embedding dimension and to aid visualization. 
-
-
-[coeff, score,~,~,explained,mu] = pca(Data', 'Centered', true); %center data in algorithm
-
-num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
-
-if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
-    
-    disp(['number of components = ' num2str(num_component)])
-    warning('Using more than 20 components in dim reduced space.  Changing from L2 to L1 measure')
-    
-end
-
-
-DR_data = mu + score*coeff;
-DR_data = DR_data(:,1:num_component)'; %back to our normal form of neurons
-
-
-%% Sort and summarize data, calculation centriod
+Z_data = zscore(Data,[],2)';
+%% Sort and summarize data
 
 %Quick histogram of behaviors
 
@@ -61,26 +41,163 @@ histogram(C,Label_struct.behav_categ(1:end-1)) %removing rest since it dominates
 
 
 %Take advantage of numeric labels to get neural activity associated with
-%each time a behavior was present
+%each time a behavior was present.  %Not sure the sorting really helps but
+%makes it easier to check things.
 
-[sorted,s_inds] = sort(Labels);
 
-Data_group = DR_data(:,s_inds);
+LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
-LD_tog = [sorted'; Data_group];
+boi = [4:8 17]; %manually set behaviors of interest
 
-centroids = cell(length(Label_struct.behav_categ),1); %Will be same size in principle but making cell in case this gets violated later on
+index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
+index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
 
-%pausing for now as not seeing clustering that Camille saw
-figure()
-for i = [6 17] %1:length(centroids) %starting with just groom give and receive and self groom since they happen the most
+LD_tog = LD_holding(index_use,:);
+
+[~, s_inds] = sort(LD_tog(:,1));
+
+LD_tog = LD_tog(s_inds,:);
+
+%% Dim reduction, calculate centriod
+% Only doing this to check linear embedding dimension and to aid visualization. 
+%2021-12-3 copying Camille's method to select behaviors to analyze instead
+%of using whole data set at once
+%Just set boi to different values if you want different numbers of
+%behaviors
+
+% use_boi = 1;
+% 
+% if use_boi <1
+% 
+% [coeff, score,~,~,explained] = pca(Z_data, 'Centered', false); %center data in algorithm
+% 
+% num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
+% 
+%     if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
+% 
+%         disp(['number of components = ' num2str(num_component)])
+%         warning('Using more than 20 components in dim reduced space.  Changing from L2 to L1 measure')
+% 
+%     end
+% 
+% 
+% DR_data = score(:,1:num_component); 
+% 
+% figure; plot(cumsum(explained)); xlabel('PCs used'); ylabel('var explained');
+%         figure; 
+%         scatter3(DR_data(:,1), DR_data(:,2),DR_data(:,3),12); title('Data in PCA space');
+%         figure; hold on
+%         color = hsv(length(1:19));
+%         for b = 1:19 %plot everything but rest.
+%             scatter3(DR_data(LD_holding(:,1)==b,1), DR_data(LD_holding(:,1)==b,2),DR_data(LD_holding(:,1)==b,3),...
+%                 12,color(b,:),'filled');
+%         end
+% 
+% 
+% else %only consider behaviors of interest
     
-    %plot clusters and their centroid on first 3 pcs
+[coeff, score,latent,~,explained] = pca(LD_tog(:,2:end), 'Centered', false);
+
+num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
+
+    if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
+
+        disp(['number of components = ' num2str(num_component)])
+        warning('Using more than 20 components in dim reduced space.  Changing from L2 to L1 measure')
+
+    end
+
+
+%note, don't need to do reconstruction to see things in pca space, just use
+%score variable
+
+DR_data = score(:,1:num_component); 
+
+
+
+centriods = cell(length(Label_struct.behav_categ),1);
+%radii = zeros(length(Label_struct.behav_categ),1); %drawing spheres at some point?
+
+
+        figure; plot(cumsum(explained)); xlabel('PCs used'); ylabel('var explained');
+        figure; 
+        scatter3(DR_data(:,1), DR_data(:,2),DR_data(:,3),12); title('Data in PCA space');
+        figure; hold on
+        color = hsv(length(boi));
+        
+        for b = 1:length(boi)
+            
+            scatter3(DR_data(LD_tog(:,1)==boi(b),1), DR_data(LD_tog(:,1)==boi(b),2),DR_data(LD_tog(:,1)==boi(b),3),...
+                12,color(b,:),'filled');
+            
+            centriods{boi(b)} = mean(DR_data(LD_tog(:,1)==boi(b),:),1);
+            
+           
+            
+        end
+       
+%         figure;hold on
+%         for b = 1:length(boi)
+%             
+%             scatter3(centriods{boi(b)}(1),centriods{boi(b)}(2),centriods{boi(b)}(3),12,color(b,:),'filled')
+%             
+%         end
+
+
+%end
+
+
+%% Predict state from closest centriod
+
+
+dis_mat = nan(length(DR_data),length(boi)); %initialize distance matrix for distance between 
+
+%As a check add noise which should tank performance
+%Check passed...still surprised at how well this works.
+
+
+use_noise = 0; %Note: check average distance and make sure to change noise parameters accordingly
+
+%Trying other noise implementation too where use it on DR_data directly;
+%DR_data=DR_data_hold;
+
+noise_dr = 0;
+
+DR_data_hold = DR_data;
+DR_data = DR_data+noise_dr*normrnd(3,1,size(DR_data));
+
+for b=1:length(boi) 
     
-    plot3(LD_tog(2,LD_tog(1,:) == i),LD_tog(3,LD_tog(1,:) == i),LD_tog(4,LD_tog(1,:) == i),'.') %recal row 1 is the label
-    hold on
-    centroids{i} = mean(LD_tog(2:end,LD_tog(1,:) == i),2); %get average population response for each behavior (i.e. centroid of the cluster)
+    if num_component > 20 %use L1 norm
+    
+    dis_mat(:,b) = vecnorm(DR_data'-centriods{boi(b)}',1)+use_noise*normrnd(200,100,1,length(dis_mat)); %works more easily if everything is column vector
+    
+    else %use L2 norm
+        
+    dis_mat(:,b) = vecnorm(DR_data'-centriods{boi(b)}',2)+use_noise*normrnd(200,100,1,length(dis_mat));
+        
+    end
     
     
-    
+
 end
+
+[rs,cs]= find(dis_mat == min(dis_mat,[],2)); %Find which centriod the activity was closer to
+
+preds = boi(cs); %Predict behavior that was that centriod
+
+%plot step function
+figure
+plot(LD_tog(s_inds,1))
+hold on
+plot(preds(s_inds))
+ylim([0 max(boi)+2])
+legend('Real','Predicted State')
+ylabel('state #')
+xlabel('index')
+
+
+
+per_cor = sum(LD_tog(:,1)==preds')/length(preds)*100
+
+
