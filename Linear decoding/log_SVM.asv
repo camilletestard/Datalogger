@@ -166,13 +166,9 @@ for b = 1:size(mean_hitrate,1)
 end
 chance_level = 1/length(behavs_eval);
 yline(chance_level,'--','Chance level')
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2])
 xticklabels({'','vlPFC','TEO','all',''})
 ylabel('Deconding accuracy'); xlabel('Brain area')
 title('Decoding accuracy by window size and brain area')
-leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
-title(leg,'Window size')
-
-cd(savePath)
-saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
-close all
+leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec")
+title(leg,'Win
