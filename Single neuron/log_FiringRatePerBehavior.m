@@ -26,7 +26,7 @@ group = cell(1,n_behav);
 for unit = 1:n_neurons
     for b = 1:n_behav
         idx = find(behavior_labels == unqLabels(b+1));
-        response_matrix{unit, b} = Unit_rasters(unit, idx);
+        response_matrix{unit, b} = Unit_rasters_zscore(unit, idx);
         med_response_matrix(unit,b) = median(response_matrix{unit, b});
         sd_response_matrix(unit,b) = std(response_matrix{unit, b});
         group{1,b} = b* ones(1,length(idx));
@@ -46,15 +46,15 @@ for unit = 1:n_neurons
     [~,idx]=sort(median_resp,'descend');
     preferred_behav(unit) = sub_behav_categ{idx(1)};
     group_label = categorical({behav_categ{[subgroup{1,:}]'}});
-%     figure(unit)
+    figure(unit)
     groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
     randgroupDescend = randsample(groupDescend, length(groupDescend));
-    p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend)%, 'off');
-% % %     if p(unit)<0.0001
-% % %         figure
-% % %         boxplot([resp_mat{1,:}]',groupDescend,'Notch','on')
-% % %         ylabel('Z-scored firing rate') 
-% % %     end
+    p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend,'off');
+    if p(unit)<0.0001
+        figure
+        boxplot([resp_mat{1,:}]',groupDescend,'Notch','off')
+        ylabel('Z-scored firing rate') 
+    end
 
    %figure; hold on; histogram([resp_mat{1,1}]'); histogram([resp_mat{1,2}]')
 

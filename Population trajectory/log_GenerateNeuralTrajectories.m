@@ -28,20 +28,29 @@ behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:
 % load(['Neural_data_' session '.mat']) % Neural data
 
 %Get data with specified temporal resolution and channels
-temp_resolution = 1/2; channel_flag = "all";
+temp_resolution = 1; channel_flag = "all";
 [Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
 
 %% Color code behaviors
 
+% %Set color code
+% behav_categ_color = {[1,0,0]; [0.6350, 0.0780, 0.1840]; [0.3010, 0.7450, 0.9330];... %Aggression; Approach; Drinking
+%     [0, 0.5, 0]; [0, 0.75, 0.75]; [0, 0, 1];...%Foraging; Groom Give; Groom Receive
+%     [0.75, 0, 0.75]; [0.4940, 0.1840, 0.5560]; [1, 1, 0];...%HIP; HIS; Leave
+%     %[0, 1, 0]; [0.25, 0.25, 0.25]; [1, 1, 1];... %Other monkeys vocalize; Travel; Proximity %%%Set proximity to white for now
+%     [0, 1, 0]; [0.25, 0.25, 0.25]; [0.75, 0.75, 0];... %Other monkeys vocalize; Travel; Proximity
+%     [0.6831, 0.3651, 0.3651]; [0.7746, 0.6583, 0.5164]; [0.8563, 0.8563, 0.6325];...%RR; SP; SS
+%     [0.9290, 0.6940, 0.1250]; [0.8500, 0.3250, 0.0980]; [0, 0.2, 0]; %Scratch; Self-groom; Vocalization
+%     [1.00, 0.54, 0.00]; [0.3 0.3 0.3]};% Yawning; Rest
+
 %Set color code
-behav_categ_color = {[1,0,0]; [0.6350, 0.0780, 0.1840]; [0.3010, 0.7450, 0.9330];... %Aggression; Approach; Drinking
-    [0, 0.5, 0]; [0, 0.75, 0.75]; [0, 0, 1];...%Foraging; Groom Give; Groom Receive
-    [0.75, 0, 0.75]; [0.4940, 0.1840, 0.5560]; [1, 1, 0];...%HIP; HIS; Leave
-    %[0, 1, 0]; [0.25, 0.25, 0.25]; [1, 1, 1];... %Other monkeys vocalize; Travel; Proximity %%%Set proximity to white for now
-    [0, 1, 0]; [0.25, 0.25, 0.25]; [0.75, 0.75, 0];... %Other monkeys vocalize; Travel; Proximity
-    [0.6831, 0.3651, 0.3651]; [0.7746, 0.6583, 0.5164]; [0.8563, 0.8563, 0.6325];...%RR; SP; SS
-    [0.9290, 0.6940, 0.1250]; [0.8500, 0.3250, 0.0980]; [0, 0.2, 0]; %Scratch; Self-groom; Vocalization
-    [1.00, 0.54, 0.00]; [1, 1, 1]};% Yawning; Rest
+behav_categ_color = {[0.7 0.7 0.7]; [0.7 0.7 0.7]; [0.7 0.7 0.7];... %Aggression; Approach; Drinking
+    [0.7 0.7 0.7]; [0, 0.75, 0.75]; [0, 0, 1];...%Foraging; Groom Give; Groom Receive
+    [0.7 0.7 0.7]; [0.7 0.7 0.7]; [0.7 0.7 0.7];...%HIP; HIS; Leave
+    [0.7 0.7 0.7]; [0.7 0.7 0.7]; [0.7 0.7 0.7];... %Other monkeys vocalize; Travel; Proximity
+    [0.7 0.7 0.7]; [0.7 0.7 0.7]; [0.7 0.7 0.7];...%RR; SP; SS
+    [0.7 0.7 0.7]; [0.7 0.7 0.7]; [0.7 0.7 0.7]; %Scratch; Self-groom; Vocalization
+    [0.7 0.7 0.7]; [0.7 0.7 0.7]};% Yawning; Rest
 
 behav_categ_color_label = {'Red','Dark Red','Light Blue','Dark Green','Turquoise','Dark Blue',...
     'Magenta','Dark Purple','Yellow','Green','Dark grey','Light Green','Dark Beige','Beige','Pink yellow',...
@@ -66,7 +75,7 @@ label_colors = cell2mat({behav_categ_color{[labels{:,3}]'}}');% Get a color for 
 % Unit_rasters = Unit_rasters(included_units,:);
 
 %% Only condiser a chunk of the session
-interval = 42:575;
+interval = 45:900;
 neural_data = Spike_rasters(:,interval);
 % neural_data_std = scale(neural_data);
 label_data = labels(interval,:);

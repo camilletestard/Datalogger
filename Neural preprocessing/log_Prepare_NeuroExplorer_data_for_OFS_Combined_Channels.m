@@ -22,18 +22,18 @@ end
 
 %% Load and save .nex5
 %hWaitbar = waitbar(0, 'Processing each channel');
-num=0
-for i = 1:10:120
-    num = num+1
-    channel_num{num}= i:i+9
-end
-channel_num{13}=121:128;
-% channel_num{1} = 1:30;
-% channel_num{2} = 31:60;
-% channel_num{3} = 61:90;
-% channel_num{4} = 91:128;
+% num=0
+% for i = 1:10:120
+%     num = num+1
+%     channel_num{num}= i:i+9
+% end
+% channel_num{13}=121:128;
+channel_num{1} = 1:30;
+channel_num{2} = 31:60;
+channel_num{3} = 61:90;
+channel_num{4} = 91:128;
 
-for part = 1:length(channel_num)
+for part = 2:length(channel_num)
     
     for neural_file = channel_num{part} %1:length(neural_dir)
         
