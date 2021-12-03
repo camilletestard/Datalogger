@@ -58,6 +58,10 @@ new_log$Behavior=as.character(new_log$Behavior)
 new_log = new_log[order(new_log$start.time),]
 new_log$duration.s = new_log$end.time - new_log$start.time
 
+#Find block limits
+block_limits = new_log$start.time[c(which(new_log$Behavior=="Unpair"), grep('neighbor',new_log$Behavior))]
+block_limits = block_limits[order(block_limits)];
+
 #Order behaviors
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
@@ -70,12 +74,6 @@ new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 
 if (length(which(new_log_final$duration.s<0))>0){stop("NEGATIVE DURATION")}
 
-#Save to .csv
-#output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
-# dir <- dirname(output_file)
-setwd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
-write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_',monkey,as.character(substr(file, 103, 113)),'.csv',sep=""),row.names = F)
-
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
@@ -87,4 +85,26 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
 
 #Save plot
 ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,as.character(substr(file, 103, 113)),".png", sep=""))
+
+#Add block limits
+blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
+blocklim$Behavior[1]='Pair1'; 
+blocklim$start.time[1]=1; 
+blocklim$end.time[1]=round(block_limits[1]); 
+
+blocklim$Behavior[2]='Pair2'; 
+blocklim$start.time[2]=round(block_limits[1]); 
+blocklim$end.time[2]=round(block_limits[2]); 
+
+blocklim$Behavior[3]='Alone'; 
+blocklim$start.time[3]=round(block_limits[2]); 
+blocklim$end.time[3]=round(log$Time[nrow(log)]/1000); 
+
+new_log_final = rbind(new_log_final, blocklim)
+
+#Save to .csv
+#output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
+# dir <- dirname(output_file)
+setwd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_',monkey,as.character(substr(file, 98, 108)),'.csv',sep=""),row.names = F)
 

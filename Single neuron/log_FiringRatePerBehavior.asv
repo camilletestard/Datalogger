@@ -51,9 +51,9 @@ end
 
 preferred_behav = strings(1,n_neurons);
 p = zeros(1,n_neurons);
-for unit = randsample(1:n_neurons, n_neurons)
+for unit = 55:n_neurons
 
-    behav = [4:6,11,17];
+    behav = [4:8,11,17];
     colors = cool(length(behav));
     median_resp = med_response_matrix(unit,behav);
     resp_mat = {response_matrix{unit,behav}};
@@ -68,16 +68,13 @@ for unit = randsample(1:n_neurons, n_neurons)
     randgroupDescend = randsample(groupDescend, length(groupDescend));
     p(unit)= kruskalwallis([resp_mat{1,:}]',groupDescend,'off');
     if p(unit)<0.0001
-        figure(unit)
+        figure
         boxplot([resp_mat{1,:}]',groupDescend,'Notch','off')
         h = findobj(gca,'Tag','Box');
         for j=1:length(h)
             patch(get(h(j),'XData'),get(h(j),'YData'),colors(j,:),'FaceAlpha',.5);
         end
         ylabel('Z-scored firing rate')
-        leg = legend(behav_categ(behav));
-        ylim([-1.5,3])
-        title(leg,'Behavior')
     end
 
    %figure; hold on; histogram([resp_mat{1,1}]'); histogram([resp_mat{1,2}]')
@@ -89,7 +86,7 @@ for unit = randsample(1:n_neurons, n_neurons)
 %     groupDescend = reordercats(group_label,{behav_categ{idx}});
 %     boxplot([response_matrix{unit,:}]',groupDescend, 'PlotStyle','compact')
 
-    pause(2)
+    %pause(2)
     close all
 
       disp([num2str(unit) '/' num2str(n_neurons)])
