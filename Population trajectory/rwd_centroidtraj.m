@@ -47,7 +47,7 @@ histogram(C,Label_struct.behav_categ(1:end-1)) %removing rest since it dominates
 
 LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
-boi = [4:8 17]; %manually set behaviors of interest
+boi = [1:17 20]; %manually set behaviors of interest
 
 index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
 index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -118,8 +118,8 @@ DR_data = score(:,1:num_component);
 centriods = cell(length(Label_struct.behav_categ),1);
 %radii = zeros(length(Label_struct.behav_categ),1); %drawing spheres at some point?
 
-
-        figure; plot(cumsum(explained)); xlabel('PCs used'); ylabel('var explained');
+var_sum = cumsum(explained);
+        figure; plot(1:10:length(var_sum),var_sum(1:10:end),'.k'); xlabel('PCs used'); ylabel('var explained');
         figure; 
         scatter3(DR_data(:,1), DR_data(:,2),DR_data(:,3),12); title('Data in PCA space');
         figure; hold on
@@ -149,6 +149,8 @@ centriods = cell(length(Label_struct.behav_categ),1);
 
 %% Predict state from closest centriod
 
+%Try training and testing
+%Try moving centriod closer
 
 dis_mat = nan(length(DR_data),length(boi)); %initialize distance matrix for distance between 
 
