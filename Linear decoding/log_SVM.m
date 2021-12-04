@@ -149,18 +149,21 @@ rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 
-% save([savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-% writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
+save([savePath '\SVM_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
 figure; hold on
+cmap = cool(size(mean_hitrate,1));
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
     errorbar(y,std_dev,'s','MarkerSize',10,...
-    'MarkerEdgeColor','red','MarkerFaceColor','red')
+    'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-chance_level = 1/length(behavs_eval);
+leg = legend("5sec","2sec","1sec","500msec","100msec");
+title(leg,'Window size')
+chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level')
 xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
 xticklabels({'','vlPFC','TEO','all',''})
