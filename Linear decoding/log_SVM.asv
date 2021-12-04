@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -31,7 +31,7 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
+        [Spike_rasters, labels, behav_categ, block_times]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -48,7 +48,8 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
 
         %% Select behaviors to decode
         %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,3}}');
+        %behavior_labels = cell2mat({labels{:,3}}');
+        behavior_labels = string({labels{:,5}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -57,10 +58,10 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
-        behavs_eval = behav_categ(behav);
+        %behav = [3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        %behavs_eval = behav_categ(behav);
 
-        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        idx = 1:size(Spike_count_raster,1);%find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
         tabulate(behavior_labels_final);
@@ -93,7 +94,7 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
             for i=1:NumOfClasses
                 idx = Labels == uniqueLabels(i);
                 labels_temp(idx) = numericLabels(i);
-                labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
+                %labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
             end
             Labels = labels_temp;
 
@@ -131,8 +132,8 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
 
         C_concat=cat(3,C{:});
         confusion_mat_avg=round(mean(C_concat,3)*100);
-        rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-        C_table{temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
+        %rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
+        %C_table{temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
 
         chan = chan +1;
 
@@ -143,32 +144,55 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
 end
 
 %rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
-rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 
-save([savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
+% save([savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+% writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behavs_eval)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
 figure; hold on
-cmap = cool(size(mean_hitrate,1));
-cmap_sd = cool(size(mean_hitrate,1));
-x = 1:3; x2 = [x, fliplr(x)];
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
-    curve1 = y + std_dev;
-    curve2 = y - std_dev;
-    inBetween = [curve1, fliplr(curve2)];
-    h = fill(x2, inBetween,cmap(b,:));
-    h.FaceAlpha = 0.5; 
-    plot(x,y,'Color','k')
+    errorbar(y,std_dev,'s','MarkerSize',10,...
+    'MarkerEdgeColor','red','MarkerFaceColor','red')
+    %plot(x,y,'Color','k')
 end
 chance_level = 1/length(behavs_eval);
 yline(chance_level,'--','Chance level')
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2])
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
 xticklabels({'','vlPFC','TEO','all',''})
-ylabel('Deconding accuracy'); xlabel('Brain area')
-title('Decoding accuracy by window size and brain area')
-leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec")
-title(leg,'Win
+ax = gca;
+ax.FontSize = 14; 
+ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy by brain area (window size = 1sec)','FontSize', 18)
+
+
+
+% x = 1:3; x2 = [x, fliplr(x)];
+% cmap = cool(size(mean_hitrate,1));
+% cmap_sd = cool(size(mean_hitrate,1));
+% for b = 1:size(mean_hitrate,1)
+%     y = mean_hitrate(b,:);
+%     std_dev = sd_hitrate(b,:);
+%     curve1 = y + std_dev;
+%     curve2 = y - std_dev;
+%     inBetween = [curve1, fliplr(curve2)];
+%     h = fill(x2, inBetween,cmap(b,:));
+%     h.FaceAlpha = 0.5; 
+%     plot(x,y,'Color','k')
+% end
+% chance_level = 1/length(behavs_eval);
+% yline(chance_level,'--','Chance level')
+% xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
+% xticklabels({'','vlPFC','TEO','all',''})
+% ylabel('Deconding accuracy'); xlabel('Brain area')
+% title('Decoding accuracy by window size and brain area')
+%leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
+%title(leg,'Window size')
+
+cd(savePath)
+saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
+close all

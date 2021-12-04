@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, behav_categ] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
+function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
         %Log GenerateDataToRes_function
         % This function formats the raw data to have two elements:
         % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
@@ -9,13 +9,15 @@ function [Spike_rasters, labels, behav_categ] = log_GenerateDataToRes_function(f
             %simultaneously, we chose one, see below for details)
             %4th column whether behavior happens in isolation or co-occurs
             %with another.
+            %5th column indicates the block in which we are
+            %(Paired,monkey1; Paired monkey2 or Alone)
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
         %Channel_flag specifies with channels to include: only TEO array, only
         %vlPFC array or all channels
 
-% Camille Testard - Sept. 2021
+% Camille Testard - Nov. 2021
 
 %% Load data
 cd(filePath)
@@ -23,7 +25,7 @@ cd(filePath)
 session = filePath(end-9:end);
 monkey = filePath(end-14:end-10);
 
-behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,'.csv']);% Load behavioral data
+behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,' copy.csv']);% Load behavioral data
 load(['Neural_data_' session '.mat']) % Load neural data; array1 is in TEO and array2 is in vlPFC
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
@@ -39,6 +41,10 @@ behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:
 min_length = 1/temp_resolution;
 idx = find(behavior_log{:,'duration_s'}<min_length);
 behavior_log{idx,'start_time_round'} = 0; behavior_log{idx,'end_time_round'} = 0;
+
+%Get block times (at the end of the EventLog_Restructured)
+block_times = behavior_log(end-2:end,:);
+behavior_log(end-2:end,:) = [];
 
 %Neural data
 Chan_name = fieldnames(SpikeData); %Identify channel names
@@ -97,6 +103,8 @@ Intervals = [start_times end_times];
 
 %Create behavior key
 behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+
+
 behav_categ{20}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
 double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];%, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))]; %For behaviors that often co-occur with other behaviors
 omv = find(matches(behav_categ,'Other monkeys vocalize'));
@@ -131,6 +139,17 @@ for s = 1:length_recording %for all secs in a session
     else %if not
         labels{s,1} = NaN; labels{s,2} = 20; labels{s,3} = 20; %Set behavior category to "NaN" and 
     end
+    if s<=block_times{1,'end_time_round'}
+        labels{s,5} = string(block_times{1,'Behavior'});
+        labels{s,6} = 1;
+    elseif s>block_times{1,'end_time_round'} && s<=block_times{2,'end_time_round'}
+        labels{s,5} = string(block_times{2,'Behavior'});
+        labels{s,6} = 2;
+    elseif s>block_times{2,'end_time_round'}
+        labels{s,5} = string(block_times{3,'Behavior'});
+        labels{s,6} = 3;
+    end
 end
+
 
 end

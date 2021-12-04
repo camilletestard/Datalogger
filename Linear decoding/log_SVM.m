@@ -21,8 +21,8 @@ savePath = uigetdir('', 'Please select the result directory');
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
-    %temp_resolution = [1/5, 1/2, 1, 5, 10, 100] %5sec, 1sec, 100msec
+for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
+    %temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -31,7 +31,7 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
+        [Spike_rasters, labels, behav_categ, block_times]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -48,7 +48,8 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
 
         %% Select behaviors to decode
         %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,3}}');
+        behavior_labels = cell2mat({labels{:,6}}');
+        %behavior_labels = string({labels{:,5}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -57,8 +58,8 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
-        behavs_eval = behav_categ(behav);
+        behav = [1:3];%[3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        %behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
@@ -142,9 +143,9 @@ for temp_resolution = [1, 5, 10, 100] %5sec, 1sec, 100msec
     
 end
 
-%rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
-rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 
