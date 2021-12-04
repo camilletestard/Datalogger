@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -21,8 +21,8 @@ savePath = uigetdir('', 'Please select the result directory');
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
-    %temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
+for temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
+    %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -48,8 +48,7 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
         %% Select behaviors to decode
         %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,6}}');
-        %behavior_labels = string({labels{:,5}}');
+        behavior_labels = cell2mat({labels{:,3}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -58,8 +57,8 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [1:3];%[3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
-        %behavs_eval = behav_categ(behav);
+        behav = [3:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
@@ -80,7 +79,7 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
             clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
                 Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
-                channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval
+                channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval behav
 
             %Balance number of trials per class
             Labels = behavior_labels_final;
@@ -137,7 +136,7 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
         chan = chan +1;
 
-        clearvars -except savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval
+        clearvars -except savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval behav
     end
     temp = temp+1;
     
@@ -161,16 +160,16 @@ for b = 1:size(mean_hitrate,1)
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend("5sec","2sec","1sec","500msec","100msec");
+leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
 title(leg,'Window size')
 chance_level = 1/length(behav);
-yline(chance_level,'--','Chance level')
+yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
 xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy by brain area (window size = 1sec)','FontSize', 18)
+title('Decoding accuracy for social context','FontSize', 20)
 
 
 
@@ -197,5 +196,6 @@ title('Decoding accuracy by brain area (window size = 1sec)','FontSize', 18)
 %title(leg,'Window size')
 
 cd(savePath)
-saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
+saveas(gcf,['SVM_results_social_context.png'])
+%saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
 close all
