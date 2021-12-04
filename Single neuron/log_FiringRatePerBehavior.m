@@ -55,16 +55,16 @@ for unit = 1:n_neurons
 end
 
 preferred_behav = strings(1,n_neurons);
-p = zeros(1,n_neurons); unit = 1; subsample = 0;
-for unit = randsample(1:n_neurons, n_neurons)
+p = zeros(1,n_neurons); unit = 1; subsample = 1;
+for unit = 236%randsample(1:n_neurons, n_neurons)
 
-    behav = [4:6,11,17];
+    behav = 1:17;%[4:6,11,17];
     colors = cool(length(behav));
     median_resp = med_response_matrix(unit,behav);
     resp_mat = {response_matrix{unit,behav}};
 
     if subsample
-        num_occurrence = 100; %set the number of observation per behavior
+        num_occurrence = 200; %set the number of observation per behavior
         group_label =[];
         for b = 1:length(behav) %balance observations for all behaviors
             n_obs = length(resp_mat{b});
@@ -84,7 +84,7 @@ for unit = randsample(1:n_neurons, n_neurons)
     %sort according to median response
     [~,idx]=sort(median_resp,'descend');
     preferred_behav(unit) = sub_behav_categ{idx(1)};
-    group_label = categorical({behav_categ{[subgroup{1,:}]'}}); 
+    %group_label = categorical({behav_categ{[subgroup{1,:}]'}}); 
     groupDescend = reordercats(group_label,{sub_behav_categ{idx}});
     randgroupDescend = randsample(groupDescend, length(groupDescend)); %randomize for "chance level"
 
@@ -101,15 +101,16 @@ for unit = randsample(1:n_neurons, n_neurons)
             patch(get(h(j),'XData'),get(h(j),'YData'),colors(j,:),'FaceAlpha',.5);
         end
         ylabel('Z-scored firing rate')
-        leg = legend(behav_categ(behav));
+        %leg = legend(behav_categ(behav));
         %ylim([-1.5,3])
-        title(leg,'Behavior')
+        %title(leg,'Behavior')
+        title(['Firing rate per behavior, unit# ' num2str(unit)], 'Fontsize',18)
     end
 
     %Get overlapping histogram plots
    %figure; hold on; histogram([resp_mat{1,1}]'); histogram([resp_mat{1,2}]')
 
-   %Plotting all behaviors
+%    %Plotting all behaviors
 %     [~,idx]=sort(med_response_matrix(unit,:),'descend');
 %     preferred_behav(unit) = behav_categ{idx(1)};
 %     group_label = categorical({behav_categ{[group{1,:}]'}});
