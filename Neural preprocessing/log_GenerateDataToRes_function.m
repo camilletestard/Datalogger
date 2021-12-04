@@ -25,7 +25,7 @@ cd(filePath)
 session = filePath(end-9:end);
 monkey = filePath(end-14:end-10);
 
-behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,' copy.csv']);% Load behavioral data
+behavior_log = readtable(['EVENTLOG_restructured_',monkey,session,'.csv']);% Load behavioral data
 load(['Neural_data_' session '.mat']) % Load neural data; array1 is in TEO and array2 is in vlPFC
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
