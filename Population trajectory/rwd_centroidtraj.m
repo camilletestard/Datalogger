@@ -6,17 +6,12 @@
 %% Load in data and preprocess
 
 
-is_ron = 1;
+is_ron = 0;
 
 if is_ron >0
-    
     load_folder = 'C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_data\';
-    
-    
 else
-    
-    'Put your data folder path here'
-    
+    load_folder = '~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/';
 end
 
 session = 'Amos_2021-07-29';
@@ -24,8 +19,8 @@ session = 'Amos_2021-07-29';
 %Pull need variables, push struct into separate variables in case need info
 %later
 
-Label_struct = load([load_folder session '\Labels_per_sec.mat']);
-Data_struct = load([load_folder session '\Neural_data.mat']);
+Label_struct = load([load_folder session '/Labels_per_sec.mat']);
+Data_struct = load([load_folder session '/Neural_data.mat']);
 
 Labels = cell2mat(Label_struct.labels(:,3)); %Get numerical labels based on prioritization
 Data = Data_struct.Unit_rasters; %Get neural data
@@ -47,7 +42,7 @@ histogram(C,Label_struct.behav_categ(1:end-1)) %removing rest since it dominates
 
 LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
-boi = [1:17 20]; %manually set behaviors of interest
+boi = [1:17]; %manually set behaviors of interest
 
 index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
 index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -190,14 +185,20 @@ preds = boi(cs); %Predict behavior that was that centriod
 
 %plot step function
 figure
-plot(LD_tog(s_inds,1))
+plot(LD_tog(s_inds,1), 'LineWidth',2)
 hold on
-plot(preds(s_inds))
+plot(preds(s_inds), 'LineWidth',2)
+yticks([0:18]);
+ticklabs = Label_struct.behav_categ;
+yticklabels({'',ticklabs{boi},''})
 ylim([0 max(boi)+2])
-legend('Real','Predicted State')
-ylabel('state #')
-xlabel('index')
-
+legend('Real','Predicted State', 'FontSize',16)
+ylabel('Behavior', 'FontSize',18)
+xlabel('Time', 'FontSize',18)
+%xlabel('index')
+ax = gca;
+ax.FontSize = 14; 
+title('Predicted behavioral state based on neural data vs. Real behavioral state')
 
 
 per_cor = sum(LD_tog(:,1)==preds')/length(preds)*100

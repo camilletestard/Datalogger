@@ -120,8 +120,9 @@ for temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
             disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
         end
 
+        channel = char(channel_flag);
         disp('****************************************************************************')
-        disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel_flag '. DONE'])
+        disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])
         disp('****************************************************************************')
 
         mean_hitrate(temp, chan) = mean(hitrate)
