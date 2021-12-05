@@ -151,5 +151,11 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
+behav_categ{7}='Threat to partner';
+behav_categ{8}='Threat to subject';
+behav_categ{11}='Travel';
+behav_categ{13}='Rowdy Room';
+behav_categ{14}='Squeeze partner';
+behav_categ{15}='Squeeze Subject';
 
 end
