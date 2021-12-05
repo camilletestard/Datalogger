@@ -142,8 +142,8 @@ for temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
     
 end
 
-rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
-%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
@@ -156,11 +156,12 @@ cmap = cool(size(mean_hitrate,1));
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
-    errorbar(y,std_dev,'s','MarkerSize',10,...
+    errorbar(y,std_dev,'s','MarkerSize',15,...
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
+%leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
+leg = legend("1sec","500msec","100msec","10msec","chance");
 title(leg,'Window size')
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -169,31 +170,7 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for social context','FontSize', 20)
-
-
-
-% x = 1:3; x2 = [x, fliplr(x)];
-% cmap = cool(size(mean_hitrate,1));
-% cmap_sd = cool(size(mean_hitrate,1));
-% for b = 1:size(mean_hitrate,1)
-%     y = mean_hitrate(b,:);
-%     std_dev = sd_hitrate(b,:);
-%     curve1 = y + std_dev;
-%     curve2 = y - std_dev;
-%     inBetween = [curve1, fliplr(curve2)];
-%     h = fill(x2, inBetween,cmap(b,:));
-%     h.FaceAlpha = 0.5; 
-%     plot(x,y,'Color','k')
-% end
-% chance_level = 1/length(behavs_eval);
-% yline(chance_level,'--','Chance level')
-% xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-% xticklabels({'','vlPFC','TEO','all',''})
-% ylabel('Deconding accuracy'); xlabel('Brain area')
-% title('Decoding accuracy by window size and brain area')
-%leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
-%title(leg,'Window size')
+title('Decoding accuracy for behavioral states','FontSize', 20)
 
 cd(savePath)
 saveas(gcf,['SVM_results_social_context.png'])
