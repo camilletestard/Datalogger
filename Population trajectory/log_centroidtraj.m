@@ -258,7 +258,7 @@ for b = 1:size(per_cor,1)
     %plot(x,y,'Color','k')
 end
 chance_level = 1/length(boi)*100; yline(chance_level,'--','Chance level', 'FontSize',16)
-leg = legend("1sec","500msec","100msec","10msec","chance", 'Location','southwest');
+leg = legend("1sec","500msec","200msec","100msec","chance", 'Location','southwest');
 title(leg,'Window size')
 xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 100])
 xticklabels({'','vlPFC','TEO','all',''})
@@ -268,4 +268,4 @@ ylabel('%Accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Accuracy of behavioral states prediction based on neural data','FontSize', 20)
 
 cd(savePath)
-saveas(gcf,['SVM_results_social_context.png'])
+saveas(gcf,['Centroid_results_allBehav.png'])
