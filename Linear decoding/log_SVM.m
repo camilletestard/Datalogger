@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -22,8 +22,8 @@ savePath = uigetdir('', 'Please select the result directory');
 clearvars -except savePath filePath
 
 %Set temporal resolution
-temp = 1; temp_resolution = 1/15;
-for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
+temp = 1; temp_resolution = 1/40;
+for temp_resolution = [1/40 1/35 1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
@@ -100,7 +100,7 @@ for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10, 100] %1sec, 500msec, 1
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 50; %min(num_trials); %find the minimum one %CT change to have 200 of each class
+            minNumTrials = 20; %min(num_trials); %find the minimum one %CT change to have 200 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -145,8 +145,8 @@ for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10, 100] %1sec, 500msec, 1
     
 end
 
-%rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
-rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["15sec","10sec","5sec", "2sec", "1sec", "500msec","200msec", "100msec","10msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
@@ -154,17 +154,17 @@ result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',co
 save([savePath '\SVM_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
 writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
-figure; hold on
-cmap = cool(size(mean_hitrate,1));
+figure; hold on; set(gcf,'Position',[150 250 1000 500])
+cmap = hsv(size(mean_hitrate,1));
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
-    errorbar(y,std_dev,'s','MarkerSize',15,...
+    errorbar(y,std_dev,'s','MarkerSize',10,...
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
 %leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
-leg = legend("1sec","500msec","100msec","10msec","chance");
+leg = legend(rowNames);
 title(leg,'Window size')
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -176,6 +176,25 @@ ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Decoding accuracy for behavioral states','FontSize', 20)
 
 cd(savePath)
-saveas(gcf,['SVM_results_social_context.png'])
+saveas(gcf,['SVM_results_grooming.png'])
 %saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
 close all
+
+%Plotting for all channels across many time windows
+figure; hold on; set(gcf,'Position',[150 250 1500 700])
+cmap = hsv(size(mean_hitrate,1)-2);
+y = mean_hitrate(3:end,3); y = y(end:-1:1);
+x = 1:size(mean_hitrate,1)-2;
+std_dev = sd_hitrate(3:end,3);
+errorbar(x,y,std_dev,'-s','MarkerSize',10)
+chance_level = 1/length(behav);
+yline(chance_level,'--','Chance level', 'FontSize',16)
+xticks([0 1:length(x) length(x)+1]);ylim([0 1]); xlim([0 12])
+xticklabels({'','100msec','200msec','500msec','1sec','2sec','5sec','10sec','15sec','20sec','25sec','30sec',''})
+ax = gca;
+ax.FontSize = 14; 
+ylabel('Deconding accuracy','FontSize', 18); xlabel('Window size','FontSize', 18)
+title('Decoding accuracy for grooming by window size','FontSize', 20)
+
+cd(savePath)
+saveas(gcf,['SVM_results_grooming_allChannels.png'])
