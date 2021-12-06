@@ -1,5 +1,5 @@
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -18,7 +18,7 @@ clearvars -except savePath filePath
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-for temp_resolution = [1, 2, 10] %1sec, 500msec, 100msec
+for temp_resolution = [2, 5, 10] %1sec, 500msec, 100msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
@@ -71,7 +71,7 @@ for temp_resolution = [1, 2, 10] %1sec, 500msec, 100msec
         disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])
         disp('****************************************************************************')
 
-        pause(2)
+        %pause(2)
         close all
 
         clearvars -except temp chan savePath filePath temp_resolution
