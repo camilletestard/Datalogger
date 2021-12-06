@@ -105,6 +105,8 @@ for unit = 236%randsample(1:n_neurons, n_neurons)
         %ylim([-1.5,3])
         %title(leg,'Behavior')
         title(['Firing rate per behavior, unit# ' num2str(unit)], 'Fontsize',18)
+        ax = gca;
+        ax.FontSize = 14;
     end
 
     %Get overlapping histogram plots
