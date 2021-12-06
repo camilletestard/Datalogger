@@ -32,7 +32,7 @@ clearvars -except savePath filePath temp_resolution channel_flag
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
+for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
@@ -241,14 +241,14 @@ for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100mse
     temp = temp+1;
 end
 
-rowNames = ["15sec","10sec","5sec","2sec","1sec", "500msec", "200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec", "500msec", "200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(per_cor,'RowNames',rowNames,'VariableNames',colNames)
 
 save([savePath '\Centroid_results_allBehav.mat'], 'per_cor', 'boi')
 writetable(result_hitrate,[savePath '\Centroid_results_allBehav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
-figure; hold on
+figure; hold on; set(gcf,'Position',[150 250 1000 500])
 cmap = cool(size(per_cor,1));
 for b = 1:size(per_cor,1)
     y = per_cor(b,:);
@@ -257,13 +257,15 @@ for b = 1:size(per_cor,1)
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-chance_level = 1/length(boi);
-leg = legend("1sec","500msec","100msec","10msec","chance");
+chance_level = 1/length(boi)*100; yline(chance_level,'--','Chance level', 'FontSize',16)
+leg = legend("1sec","500msec","100msec","10msec","chance", 'Location','southwest');
 title(leg,'Window size')
-yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 100])
 xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
-ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for behavioral states','FontSize', 20)
+ylabel('%Accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Accuracy of behavioral states prediction based on neural data','FontSize', 20)
+
+cd(savePath)
+saveas(gcf,['SVM_results_social_context.png'])
