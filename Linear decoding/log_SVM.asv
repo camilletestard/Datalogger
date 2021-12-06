@@ -19,10 +19,12 @@ else
 end
 savePath = uigetdir('', 'Please select the result directory');
 
+clearvars -except savePath filePath
+
 %Set temporal resolution
-temp = 1; temp_resolution = 1;
-for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
-    %temp_resolution = [1, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
+temp = 1; temp_resolution = 1/15;
+for temp_resolution = [1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10, 100] %1sec, 500msec, 100msec, 10msec
+    %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -48,8 +50,7 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
         %% Select behaviors to decode
         %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,6}}');
-        %behavior_labels = string({labels{:,5}}');
+        behavior_labels = cell2mat({labels{:,3}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -58,7 +59,7 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [1:3];%[3,4,5,6,7,8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [5:6]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -121,8 +122,9 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
             disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
         end
 
+        channel = char(channel_flag);
         disp('****************************************************************************')
-        disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel_flag '. DONE'])
+        disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])
         disp('****************************************************************************')
 
         mean_hitrate(temp, chan) = mean(hitrate)
@@ -143,8 +145,8 @@ for temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     
 end
 
-rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
-%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["5sec", "2sec", "1sec", "500msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
@@ -157,11 +159,12 @@ cmap = cool(size(mean_hitrate,1));
 for b = 1:size(mean_hitrate,1)
     y = mean_hitrate(b,:);
     std_dev = sd_hitrate(b,:);
-    errorbar(y,std_dev,'s','MarkerSize',10,...
+    errorbar(y,std_dev,'s','MarkerSize',15,...
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
+%leg = legend("5sec","2sec","1sec","500msec","100msec","chance");
+leg = legend("1sec","500msec","100msec","10msec","chance");
 title(leg,'Window size')
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -170,32 +173,9 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for ','FontSize', 18)
-
-
-
-% x = 1:3; x2 = [x, fliplr(x)];
-% cmap = cool(size(mean_hitrate,1));
-% cmap_sd = cool(size(mean_hitrate,1));
-% for b = 1:size(mean_hitrate,1)
-%     y = mean_hitrate(b,:);
-%     std_dev = sd_hitrate(b,:);
-%     curve1 = y + std_dev;
-%     curve2 = y - std_dev;
-%     inBetween = [curve1, fliplr(curve2)];
-%     h = fill(x2, inBetween,cmap(b,:));
-%     h.FaceAlpha = 0.5; 
-%     plot(x,y,'Color','k')
-% end
-% chance_level = 1/length(behavs_eval);
-% yline(chance_level,'--','Chance level')
-% xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-% xticklabels({'','vlPFC','TEO','all',''})
-% ylabel('Deconding accuracy'); xlabel('Brain area')
-% title('Decoding accuracy by window size and brain area')
-%leg = legend("1sec",'',"500msec",'',"100msec",'',"10msec");
-%title(leg,'Window size')
+title('Decoding accuracy for behavioral states','FontSize', 20)
 
 cd(savePath)
-saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
+saveas(gcf,['SVM_results_social_context.png'])
+%saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
 close all
