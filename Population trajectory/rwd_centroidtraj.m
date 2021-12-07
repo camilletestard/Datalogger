@@ -6,7 +6,7 @@
 %% Load in data and preprocess
 
 
-is_ron = 0;
+is_ron = 1;
 
 if is_ron >0
     load_folder = 'C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_data\';
@@ -25,7 +25,10 @@ Data_struct = load([load_folder session '/Neural_data.mat']);
 Labels = cell2mat(Label_struct.labels(:,3)); %Get numerical labels based on prioritization
 Data = Data_struct.Unit_rasters; %Get neural data
 
-Z_data = zscore(Data,[],2)';
+Z_data = zscore(Data,[],2)';%Data';
+%note: Z-score increases dim relative to not z-scoring as neurons that fire
+%more can't dominate the overall signal.  Not an issue but may be worth
+%keeping in mind
 %% Sort and summarize data
 
 %Quick histogram of behaviors
@@ -42,7 +45,7 @@ histogram(C,Label_struct.behav_categ(1:end-1)) %removing rest since it dominates
 
 LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
-boi = [1:17]; %manually set behaviors of interest
+boi = [5 6]; %manually set behaviors of interest
 
 index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
 index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -60,38 +63,8 @@ LD_tog = LD_tog(s_inds,:);
 %Just set boi to different values if you want different numbers of
 %behaviors
 
-% use_boi = 1;
-% 
-% if use_boi <1
-% 
-% [coeff, score,~,~,explained] = pca(Z_data, 'Centered', false); %center data in algorithm
-% 
-% num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
-% 
-%     if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
-% 
-%         disp(['number of components = ' num2str(num_component)])
-%         warning('Using more than 20 components in dim reduced space.  Changing from L2 to L1 measure')
-% 
-%     end
-% 
-% 
-% DR_data = score(:,1:num_component); 
-% 
-% figure; plot(cumsum(explained)); xlabel('PCs used'); ylabel('var explained');
-%         figure; 
-%         scatter3(DR_data(:,1), DR_data(:,2),DR_data(:,3),12); title('Data in PCA space');
-%         figure; hold on
-%         color = hsv(length(1:19));
-%         for b = 1:19 %plot everything but rest.
-%             scatter3(DR_data(LD_holding(:,1)==b,1), DR_data(LD_holding(:,1)==b,2),DR_data(LD_holding(:,1)==b,3),...
-%                 12,color(b,:),'filled');
-%         end
-% 
-% 
-% else %only consider behaviors of interest
     
-[coeff, score,latent,~,explained] = pca(LD_tog(:,2:end), 'Centered', false);
+[coeff, score,latent,~,explained] = pca(LD_tog(:,2:end), 'Centered', true);
 
 num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
 
@@ -202,5 +175,13 @@ title('Predicted behavioral state based on neural data vs. Real behavioral state
 
 
 per_cor = sum(LD_tog(:,1)==preds')/length(preds)*100
+
+
+%%  Trying DBSCAN for unsupervised clustering
+%2021-12-06 update need to mess with paramters for this to work
+
+[idxs, corepts] = dbscan(DR_data,500,5);
+unique(idxs)
+%gscatter(DR_data(:,1),DR_data(:,2),idx)
 
 

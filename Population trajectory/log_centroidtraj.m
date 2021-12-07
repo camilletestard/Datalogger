@@ -6,7 +6,7 @@
 %% Load in data and preprocess
 
 %Set path
-is_mac = 1; is_camille = 1;
+is_mac = 1; is_camille = 0;
 
 if is_camille
     if is_mac
@@ -25,13 +25,30 @@ if is_camille
 
 else
 
-    "[RON ADD PATHS]"
+    %"[RON ADD PATHS]"    
+    
+     addpath('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Behavior')
+     addpath('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Neural preprocessing')
+     cd('C:\Users\ronwd\Dropbox\Ready to analyze output'); 
+   
+     filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+     
+     cd('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_results')
+     
+     savePath = uigetdir('', 'Please select the results directory');
+     
+     
+     
+     
 end
 
 clearvars -except savePath filePath temp_resolution channel_flag
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
+
+%pre-choose number of features to use or use 85% variance threshold for PCA
+choose_numcom = 0; man_num = 21; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
 for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
@@ -90,41 +107,20 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         %Just set boi to different values if you want different numbers of
         %behaviors
 
-        % use_boi = 1;
-        %
-        % if use_boi <1
-        %
-        % [coeff, score,~,~,explained] = pca(Z_data, 'Centered', false); %center data in algorithm
-        %
-        % num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
-        %
-        %     if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
-        %
-        %         disp(['number of components = ' num2str(num_component)])
-        %         warning('Using more than 20 components in dim reduced space.  Changing from L2 to L1 measure')
-        %
-        %     end
-        %
-        %
-        % DR_data = score(:,1:num_component);
-        %
-        % figure; plot(cumsum(explained)); xlabel('PCs used'); ylabel('var explained');
-        %         figure;
-        %         scatter3(DR_data(:,1), DR_data(:,2),DR_data(:,3),12); title('Data in PCA space');
-        %         figure; hold on
-        %         color = hsv(length(1:19));
-        %         for b = 1:19 %plot everything but rest.
-        %             scatter3(DR_data(LD_holding(:,1)==b,1), DR_data(LD_holding(:,1)==b,2),DR_data(LD_holding(:,1)==b,3),...
-        %                 12,color(b,:),'filled');
-        %         end
-        %
-        %
-        % else %only consider behaviors of interest
+
 
         [coeff, score,latent,~,explained] = pca(LD_tog(:,2:end), 'Centered', false);
+        
+        if choose_numcom
+            
+            num_component = man_num;% set desired number of components to use instead of using what explains 85% of the variance
+            
+        else
 
         num_component = find(cumsum(explained)>85,1,'first'); %use number of components that explains more than 85% of the variance
 
+        end
+        
         if num_component > 20 %want to use 10 or less, 20 is limit where nearest neighbor falls apart for high dim data
 
             disp(['number of components = ' num2str(num_component)])
@@ -135,10 +131,14 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         %note, don't need to do reconstruction to see things in pca space, just use
         %score variable
+        
+        
+            
+        
 
         DR_data = score(:,1:num_component);
-
-
+        
+        
 
         centriods = cell(length(behav_categ),1);
         %radii = zeros(length(behav_categ),1); %drawing spheres at some point?
@@ -235,7 +235,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         close all
 
-        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi
+        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num
         chan = chan +1;
     end
     temp = temp+1;
@@ -269,3 +269,11 @@ title('Accuracy of behavioral states prediction based on neural data','FontSize'
 
 cd(savePath)
 saveas(gcf,['Centroid_results_allBehav.png'])
+
+is_still_ron = 1;
+
+if is_still_ron
+    
+    cd('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Population trajectory')
+    
+end
