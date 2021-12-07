@@ -229,7 +229,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         per_cor(temp, chan) = sum(LD_tog(:,1)==preds')/length(preds)*100
         title(['Predicted based on neural data vs. Real behavioral state. Resolution: ' num2str(1000/temp_resolution) 'msec. Area: ' channel '. Accuracy: ' num2str(round(per_cor(temp, chan))) '%'])
         
-        behavs = categorical(LD_tog(:,1),boi,{behav_categ{boi}}); %create categorical array for use with mnrfit
+        behavs = categorical(LD_tog(:,1),boi,{Label_struct.behav_categ{boi}}); %create categorical array for use with mnrfit
 
         %Matlab has a built in k-fold function but it isn't clear if it interfaces
         %with mnrfit, so just going to code my own.  Going with 10 portions instead
@@ -284,7 +284,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         cv_preds = cell(folds,1);
         cv_behavs = cell(folds,1);
 
-        
+        clear i %just incase messed up index somewhere
 
         for k = 1:folds
 
@@ -331,10 +331,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
 
         end
-        
-        per_cor_cvmnr(temp,channel) = mean(cv_per_cor)
-        
-        %Think about how to make plot of CV tomorrow
+
         
         %saveas(gcf,[savePath '/Centroid_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
 
