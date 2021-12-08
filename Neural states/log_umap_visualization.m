@@ -18,13 +18,13 @@ clearvars -except savePath filePath
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-for temp_resolution = [2, 5, 10] %1sec, 500msec, 100msec
+for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
-    chan = 1; channel_flag = "vlPFC";
+    chan = 1; channel_flag = "TEO";
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
@@ -45,7 +45,7 @@ for temp_resolution = [2, 5, 10] %1sec, 500msec, 100msec
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors
-        behav = [4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [5,7:10]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -58,7 +58,8 @@ for temp_resolution = [2, 5, 10] %1sec, 500msec, 100msec
         channel = char(channel_flag);
         saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
         labels = categorical(behav_categ(behavior_labels_final));
-        labels_order = reordercats(labels,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
+        %labels_order = reordercats(labels,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
+        labels_order = reordercats(labels,{'Foraging','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
 
         %Plot results
         figure

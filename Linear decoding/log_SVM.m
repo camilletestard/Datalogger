@@ -22,9 +22,9 @@ savePath = uigetdir('', 'Please select the result directory');
 clearvars -except savePath filePath
 
 %Set temporal resolution
-temp = 1; temp_resolution = 1/40;
-for temp_resolution = [1/40 1/35 1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
-    %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
+temp = 1; temp_resolution = 1;
+for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
+    %temp_resolution = [1/40 1/35 1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -59,7 +59,7 @@ for temp_resolution = [1/40 1/35 1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 1
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [5:6]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [4,5,7:10,14]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -100,7 +100,7 @@ for temp_resolution = [1/40 1/35 1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 1
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 20; %min(num_trials); %find the minimum one %CT change to have 200 of each class
+            minNumTrials = 40; %min(num_trials); %find the minimum one %CT change to have 200 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
