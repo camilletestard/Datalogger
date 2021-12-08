@@ -1,5 +1,5 @@
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -14,7 +14,7 @@ else
 end
 savePath = uigetdir('', 'Please select the result directory');
 
-clearvars -except savePath filePath
+clearvars -except savePath filePath temp_resolution channel_flag
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
