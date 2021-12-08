@@ -145,7 +145,7 @@ for temp_resolution = [1/30 1/25 1/20 1/15, 1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 
     
 end
 
-rowNames = ["30sec","25sec","20sec","15sec","10sec","5sec","2sec","1sec","500msec","200msec","100ms"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ['100msec','200msec','500msec','1sec','2sec','5sec','10sec','15sec','20sec','25sec','30sec']; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec", "500msec","200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
