@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
