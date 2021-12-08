@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, monkey)
+function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
         %Log GenerateDataToRes_function
         % This function formats the raw data to have two elements:
         % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
@@ -22,10 +22,12 @@ function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToR
 %% Load data
 cd(filePath)
 
-session = filePath(end-9:end);
-monkey = filePath(end-14:end-10);
+split_file_name = strsplit(filePath,'/'); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
+session = session_name_split{2};
+monkey = session_name_split{1};
 
 behavior_log = readtable(['EVENTLOG_restructured.csv']);% Load behavioral data
+array_mapping = readtable("array_mapping.xlsx");
 load(['Neural_data_' session '.mat']) % Load neural data; array1 is in TEO and array2 is in vlPFC
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
@@ -46,33 +48,45 @@ behavior_log{idx,'start_time_round'} = 0; behavior_log{idx,'end_time_round'} = 0
 block_times = behavior_log(end-2:end,:);
 behavior_log(end-2:end,:) = [];
 
-%Neural data
+%% Neural data
+
 Chan_name = fieldnames(SpikeData); %Identify channel names
 C = regexp(Chan_name,'\d*','Match');
 C_char = cellfun(@char, C{:}, 'UniformOutput', false);
 Chan_num = str2num(C_char{1, 1});
 
 %Separate channels by array
-if monkey == "Hooke"
-array1_chan = [1,2,5,6,9,10,13,14,17,18,21,22,25,26,29,30,33,34,37,38,41,...
-    42,45,46,49,50,53,54,57,58,61,62,65,66,69,70,73,74,77,78,81,82,85,86,...
-    89,90,93,94,97,98,101,102,105,106,109,110,113,114,117,118,121,122,125,126];
+%IMPORTANT NOTE: the channel mapping is reversed for each monkey
+if strcmp(monkey,'Hooke')
 
-array2_chan = [3,4,7,8,11,12,15,16,19,20,23,24,27,28,31,32,35,36,39,40,...
-    43,44,47,48,51,52,55,56,59,60,63,64,67,68,71,72,75,76,79,80,83,84,...
-    87,88,91,92,95,96,99,100,103,104,107,108,111,112,115,116,119,120,123,124,127,128];
-else
+    TEO_chan = [1,2,5,6,9,10,13,14,17,18,21,22,25,26,29,30,33,34,37,38,41,...
+        42,45,46,49,50,53,54,57,58,61,62,65,66,69,70,73,74,77,78,81,82,85,86,...
+        89,90,93,94,97,98,101,102,105,106,109,110,113,114,117,118,121,122,125,126];
+
+    vlPFC_chan = [3,4,7,8,11,12,15,16,19,20,23,24,27,28,31,32,35,36,39,40,...
+        43,44,47,48,51,52,55,56,59,60,63,64,67,68,71,72,75,76,79,80,83,84,...
+        87,88,91,92,95,96,99,100,103,104,107,108,111,112,115,116,119,120,123,124,127,128];
+
+elseif strcmp(monkey,'Amos')
+
+    vlPFC_chan = [1,2,5,6,9,10,13,14,17,18,21,22,25,26,29,30,33,34,37,38,41,...
+        42,45,46,49,50,53,54,57,58,61,62,65,66,69,70,73,74,77,78,81,82,85,86,...
+        89,90,93,94,97,98,101,102,105,106,109,110,113,114,117,118,121,122,125,126];
+
+    TEO_chan = [3,4,7,8,11,12,15,16,19,20,23,24,27,28,31,32,35,36,39,40,...
+        43,44,47,48,51,52,55,56,59,60,63,64,67,68,71,72,75,76,79,80,83,84,...
+        87,88,91,92,95,96,99,100,103,104,107,108,111,112,115,116,119,120,123,124,127,128];
 
 end
 
-chan_idx_array1 = find(ismember(Chan_num,array1_chan))';
-chan_idx_array2 = find(ismember(Chan_num,array2_chan))';
+chan_idx_TEO = find(ismember(Chan_num,TEO_chan))';
+chan_idx_vlPFC = find(ismember(Chan_num,vlPFC_chan))';
 
 %Select channels
 if strcmp(channel_flag,'TEO')
-    channels = chan_idx_array1;
+    channels = chan_idx_TEO;
 elseif strcmp(channel_flag,'vlPFC')
-    channels = chan_idx_array2;
+    channels = chan_idx_vlPFC;
 elseif strcmp(channel_flag,'all')
     channels = 1:length(fields(SpikeData)); %all channels
 end
@@ -80,10 +94,10 @@ end
 %Create spike matrix structure
 unit=1;
 for i = channels %For all channels
-    
+
     if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
         for j = 1:length(SpikeData.(Chan_name{i})) %For all units
-            
+
             Spike_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)+1); %Fill the line with zeros to initiate raster for that trial
             ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
             Spike_counts = hist(ticks, round(length_recording*temp_resolution)+1);
@@ -141,7 +155,7 @@ for s = 1:length_recording %for all secs in a session
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = 20; labels{s,3} = 20; %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = length(behav_categ)+1; labels{s,3} = length(behav_categ)+1; %Set behavior category to "NaN" and 
     end
     if s<=block_times{1,'end_time_round'}
         labels{s,5} = string(block_times{1,'Behavior'});
