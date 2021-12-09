@@ -92,6 +92,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
         boi = [4:8 17]; %manually set behaviors of interest
+        not_boi = setdiff(1:length(behav_categ), boi);
 
         index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
         index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -194,14 +195,14 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         preds = boi(cs); %Predict behavior that was that centriod
 
         %plot centroid results
-        close all; figure; set(gcf,'Position',[150 250 1300 500])
+        close all; figure; set(gcf,'Position',[150 250 1700 800])
         plot(LD_tog(:,1), 'LineWidth',2)
         hold on
         plot(preds, 'LineWidth',2)
-        yticks([0:18]);
-        ticklabs = behav_categ;
-        yticklabels({'',ticklabs{boi},''})
-        ylim([0 max(boi)+2])
+        yticks([0:length(behav_categ)+1]);
+        ticklabs = behav_categ; ticklabs(not_boi)={' '};
+        yticklabels({'',ticklabs{:},''})
+        ylim([0 length(behav_categ)+1])
         legend('Real','Predicted State', 'FontSize',16)
         ylabel('Behavior', 'FontSize',18)
         xlabel('Time', 'FontSize',18)
@@ -366,6 +367,7 @@ saveas(gcf,['Centroid_results_allBehav.png'])
 close all
 
 %Plot multinomial regression results
+%load([savePath '\MNRegression_results_allBehav.mat'])
 figure; hold on; set(gcf,'Position',[150 250 1000 500])
 cmap = cool(size(per_cor,1));
 for b = 1:size(per_cor,1)

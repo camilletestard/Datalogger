@@ -49,7 +49,7 @@ temp = 1; temp_resolution = 1;
 
 %pre-choose number of features to use or use 85% variance threshold for PCA
 choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
-randomize
+randomize = 1;
 for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
@@ -92,6 +92,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
         boi = [4:8 17]; %manually set behaviors of interest
+        not_boi = setdiff(1:length(behav_categ), boi);
 
         index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
         index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -198,10 +199,10 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         plot(LD_tog(:,1), 'LineWidth',2)
         hold on
         plot(preds, 'LineWidth',2)
-        yticks([0:18]);
-        ticklabs = behav_categ;
-        yticklabels({'',ticklabs{boi},''})
-        ylim([0 max(boi)+2])
+        yticks([0:length(behav_categ)]);
+        ticklabs = behav_categ; ticklabs(not_boi)=' ';
+        yticklabels({'',ticklabs{:},''})
+        ylim([0 length(behav_categ)+1])
         legend('Real','Predicted State', 'FontSize',16)
         ylabel('Behavior', 'FontSize',18)
         xlabel('Time', 'FontSize',18)
@@ -329,7 +330,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
 
         close all
 
-        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
+        clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
         chan = chan +1;
     end
     temp = temp+1;
@@ -366,6 +367,7 @@ saveas(gcf,['Centroid_results_allBehav.png'])
 close all
 
 %Plot multinomial regression results
+%load([savePath '\MNRegression_results_allBehav.mat'])
 figure; hold on; set(gcf,'Position',[150 250 1000 500])
 cmap = cool(size(per_cor,1));
 for b = 1:size(per_cor,1)
