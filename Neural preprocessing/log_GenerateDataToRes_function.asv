@@ -22,12 +22,12 @@ function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToR
 %% Load data
 cd(filePath)
 
-split_file_name = strsplit(filePath,'/'); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
+if ismac split = '/'
+split_file_name = strsplit(filePath,split); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
 session = session_name_split{2};
 monkey = session_name_split{1};
 
 behavior_log = readtable(['EVENTLOG_restructured.csv']);% Load behavioral data
-array_mapping = readtable("array_mapping.xlsx");
 load(['Neural_data_' session '.mat']) % Load neural data; array1 is in TEO and array2 is in vlPFC
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
@@ -155,7 +155,7 @@ for s = 1:length_recording %for all secs in a session
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = 20; labels{s,3} = 20; %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = length(behav_categ)+1; labels{s,3} = length(behav_categ)+1; %Set behavior category to "NaN" and 
     end
     if s<=block_times{1,'end_time_round'}
         labels{s,5} = string(block_times{1,'Behavior'});

@@ -49,7 +49,7 @@ temp = 1; temp_resolution = 1;
 
 %pre-choose number of features to use or use 85% variance threshold for PCA
 choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
-randomize = 1;
+randomize
 for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
@@ -329,7 +329,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
 
         close all
 
-        clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
+        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
         chan = chan +1;
     end
     temp = temp+1;
