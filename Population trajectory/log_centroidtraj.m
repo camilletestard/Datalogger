@@ -6,7 +6,7 @@
 %% Load in data and preprocess
 
 %Set path
-is_mac = 0; is_camille = 1;
+is_mac = 0; is_camille = 0;
 
 if is_camille
     if is_mac
@@ -46,7 +46,7 @@ clearvars -except savePath filePath temp_resolution channel_flag is_mac
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
-run_cvmnr = 0; %toggle running the cross validated multinomial regression
+run_cvmnr = 1; %toggle running the cross validated multinomial regression
 
 %pre-choose number of features to use or use 85% variance threshold for PCA
 choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
@@ -225,8 +225,9 @@ if run_cvmnr
        
 
  behavs = categorical(LD_tog(:,1),boi,{behav_categ{boi}}); %create categorical array for use with mnrfit
-    if randomize
-        behavs = behavs(randperm(length(behavs),length(behavs)));
+    if randomize %As it should be, get same result shuffling either way.
+        behavs = behavs(randperm(length(behavs))); %trying shuffling the data instead
+       % DR_data = DR_data(randperm(length(DR_data)),:);
     end
         
         % Set up k-fold cross-validation
@@ -339,7 +340,7 @@ end
         close all
 
 
-        clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
+        clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr run_cvmnr
 
         chan = chan +1;
     end
