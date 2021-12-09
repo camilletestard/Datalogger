@@ -46,6 +46,7 @@ clearvars -except savePath filePath temp_resolution channel_flag is_mac
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
+run_cvmnr = 0; %toggle running the cross validated multinomial regression
 
 %pre-choose number of features to use or use 85% variance threshold for PCA
 choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
@@ -212,12 +213,17 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         per_cor(temp, chan) = sum(LD_tog(:,1)==preds')/length(preds)*100
         title(['Predicted based on neural data vs. Real behavioral state. Resolution: ' num2str(1000/temp_resolution) 'msec. Area: ' channel '. Accuracy: ' num2str(round(per_cor(temp, chan))) '%'])
         
+<<<<<<< Updated upstream
 %         cd(savePath)
 %         saveas(gcf,[savePath '/Centroid_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
          pause(1); close all
         
         %% Predict behavioral state from neural data using multinomial regression
         
+=======
+if run_cvmnr        
+       
+>>>>>>> Stashed changes
         behavs = categorical(LD_tog(:,1),boi,{behav_categ{boi}}); %create categorical array for use with mnrfit
         if randomize
             behavs = behavs(randperm(length(behavs),length(behavs)));
@@ -324,13 +330,19 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
         
         per_cor_cvmnr(temp,chan) = mean(cv_per_cor)
         
+end        
+        
         %Think about how to make plot of CV tomorrow
         
         
 
         close all
 
+<<<<<<< Updated upstream
         clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr
+=======
+        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num per_cor_cvmnr run_cvmnr
+>>>>>>> Stashed changes
         chan = chan +1;
     end
     temp = temp+1;
