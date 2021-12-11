@@ -6,7 +6,7 @@
 %% Load in data and preprocess
 
 %Set path
-is_mac = 1; is_camille = 0;
+is_mac = 0; is_camille = 0;
 
 if is_camille
     if is_mac
@@ -42,14 +42,16 @@ else
      
 end
 
-clearvars -except savePath filePath temp_resolution channel_flag
+clearvars -except savePath filePath temp_resolution channel_flag is_mac
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
+run_cvmnr = 1; %toggle running the cross validated multinomial regression
 
 %pre-choose number of features to use or use 85% variance threshold for PCA
 choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
-for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
+randomize = 1;
+for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
     %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
@@ -61,7 +63,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         channel = char(channel_flag);%for later saving
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
+        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -79,7 +81,8 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         C = categorical(Labels,1:20,behav_categ);
         figure()
-        histogram(C,behav_categ(1:end-1)) %removing rest since it dominates data
+        histogram(C,behav_categ(1:end-1)) %removing "rest" since it dominates data
+        pause(1); close all
 
 
         %Take advantage of numeric labels to get neural activity associated with
@@ -90,6 +93,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
         boi = [4:8 17]; %manually set behaviors of interest
+        not_boi = setdiff(1:length(behav_categ), boi);
 
         index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point
         index_use = sum(index_use,2)>0; %has ones know where one of the behaviors of interest happened
@@ -102,9 +106,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         %of using whole data set at once
         %Just set boi to different values if you want different numbers of
         %behaviors
-
-
-
+        
         [coeff, score,latent,~,explained] = pca(LD_tog(:,2:end), 'Centered', false);
         
         if choose_numcom
@@ -127,14 +129,10 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         %note, don't need to do reconstruction to see things in pca space, just use
         %score variable
-        
-        
-            
-        
 
+        
         DR_data = score(:,1:num_component);
-        
-        
+
 
         centriods = cell(length(behav_categ),1);
         %radii = zeros(length(behav_categ),1); %drawing spheres at some point?
@@ -153,19 +151,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
             centriods{boi(b)} = mean(DR_data(LD_tog(:,1)==boi(b),:),1);
 
-
-
         end
-
-        %         figure;hold on
-        %         for b = 1:length(boi)
-        %
-        %             scatter3(centriods{boi(b)}(1),centriods{boi(b)}(2),centriods{boi(b)}(3),12,color(b,:),'filled')
-        %
-        %         end
-
-
-        %end
 
 
         %% Predict state from closest centriod
@@ -208,18 +194,16 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         [~,cs] = min(dis_mat,[],2); %Find which centriod the activity was closer to
 
         preds = boi(cs); %Predict behavior that was that centriod
-        
-        
 
-        %plot step function
-        close all; figure; set(gcf,'Position',[150 250 1300 500])
+        %plot centroid results
+        close all; figure; set(gcf,'Position',[150 250 1700 800])
         plot(LD_tog(:,1), 'LineWidth',2)
         hold on
         plot(preds, 'LineWidth',2)
-        yticks([0:18]);
-        ticklabs = behav_categ;
-        yticklabels({'',ticklabs{boi},''})
-        ylim([0 max(boi)+2])
+        yticks([0:length(behav_categ)+1]);
+        ticklabs = behav_categ; ticklabs(not_boi)={' '};
+        yticklabels({'',ticklabs{:},''})
+        ylim([0 length(behav_categ)+1])
         legend('Real','Predicted State', 'FontSize',16)
         ylabel('Behavior', 'FontSize',18)
         xlabel('Time', 'FontSize',18)
@@ -229,14 +213,30 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
         per_cor(temp, chan) = sum(LD_tog(:,1)==preds')/length(preds)*100
         title(['Predicted based on neural data vs. Real behavioral state. Resolution: ' num2str(1000/temp_resolution) 'msec. Area: ' channel '. Accuracy: ' num2str(round(per_cor(temp, chan))) '%'])
         
-        behavs = categorical(LD_tog(:,1),boi,{behav_categ{boi}}); %create categorical array for use with mnrfit
 
+%         cd(savePath)
+%         saveas(gcf,[savePath '/Centroid_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
+         pause(1); close all
+        
+        %% Predict behavioral state from neural data using multinomial regression
+        
+
+if run_cvmnr        
+       
+
+ behavs = categorical(LD_tog(:,1),boi,{behav_categ{boi}}); %create categorical array for use with mnrfit
+    if randomize %As it should be, get same result shuffling either way.
+        behavs = behavs(randperm(length(behavs))); %trying shuffling the data instead
+       % DR_data = DR_data(randperm(length(DR_data)),:);
+    end
+        
+        % Set up k-fold cross-validation
         %Matlab has a built in k-fold function but it isn't clear if it interfaces
         %with mnrfit, so just going to code my own.  Going with 10 portions instead
         %of 10 grabs
-
+        
         folds = 10;
-
+        
         sample_size = floor(length(LD_tog(:,1))/folds);
 
         sam_if = ones(folds,1)*sample_size; %samples in each fold
@@ -262,7 +262,6 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         groups = cumsum(sam_if);
 
-
         if sum(sam_if)~=length(LD_tog(:,1))
 
             error('Missing inds from shuffle')
@@ -274,17 +273,15 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
             ind_if{i} = shuffledind(groups(i-1)+1:groups(i));
 
-
         end
 
+        %Run multinomial regression
         %2021-12-07 update: non-trival to increase the number of iterations mnrfit
         %does...so will need to work around this or take the time to make something more custom...or switch to python.
 
         cv_per_cor = nan(folds,1);
         cv_preds = cell(folds,1);
         cv_behavs = cell(folds,1);
-
-        
 
         for k = 1:folds
 
@@ -332,15 +329,19 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
 
         end
         
-        per_cor_cvmnr(temp,channel) = mean(cv_per_cor)
+        per_cor_cvmnr(temp,chan) = mean(cv_per_cor)
+        
+end        
         
         %Think about how to make plot of CV tomorrow
         
-        %saveas(gcf,[savePath '/Centroid_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
+        
 
         close all
 
-        clearvars -except temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num
+
+        clearvars -except randomize temp chan channel_flag temp_resolution per_cor savePath filePath boi choose_numcom man_num is_mac per_cor_cvmnr run_cvmnr
+
         chan = chan +1;
     end
     temp = temp+1;
@@ -348,11 +349,12 @@ end
 
 rowNames = ["1sec", "500msec", "200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
-result_hitrate = array2table(per_cor,'RowNames',rowNames,'VariableNames',colNames)
+result_hitrate = array2table(per_cor_cvmnr,'RowNames',rowNames,'VariableNames',colNames)
 
-save([savePath '\Centroid_results_allBehav.mat'], 'per_cor', 'boi')
-writetable(result_hitrate,[savePath '\Centroid_results_allBehav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
+save([savePath '\MNRegression_results_allBehav.mat'], 'per_cor', 'per_cor_cvmnr', 'boi')
+writetable(result_hitrate,[savePath '\MNRegression_results_allBehav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
+%Plot centroid result
 figure; hold on; set(gcf,'Position',[150 250 1000 500])
 cmap = cool(size(per_cor,1));
 for b = 1:size(per_cor,1)
@@ -371,14 +373,38 @@ ax = gca;
 ax.FontSize = 14; 
 ylabel('%Accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Accuracy of behavioral states prediction based on neural data','FontSize', 20)
-
 cd(savePath)
 saveas(gcf,['Centroid_results_allBehav.png'])
+close all
 
-is_still_ron = 1;
-
-if is_still_ron
-    
-    cd('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Population trajectory')
-    
+%Plot multinomial regression results
+%load([savePath '\MNRegression_results_allBehav.mat'])
+figure; hold on; set(gcf,'Position',[150 250 1000 500])
+cmap = cool(size(per_cor,1));
+for b = 1:size(per_cor,1)
+    y = per_cor_cvmnr(b,:);
+    x = 1:size(per_cor,2);
+    plot(x,y,'s','MarkerSize',15,...
+    'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
+    %plot(x,y,'Color','k')
 end
+chance_level = 1/length(boi)*100; yline(chance_level,'--','Chance level', 'FontSize',16)
+leg = legend("1sec","500msec","200msec","100msec","chance", 'Location','southwest');
+title(leg,'Window size')
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 100])
+xticklabels({'','vlPFC','TEO','all',''})
+ax = gca;
+ax.FontSize = 14; 
+ylabel('%Accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Accuracy of behavioral states prediction based on neural data','FontSize', 20)
+cd(savePath)
+saveas(gcf,['MNRegression_results_allBehav.png'])
+
+% 
+% is_still_ron = 1;
+% 
+% if is_still_ron
+%     
+%     cd('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Population trajectory')
+%     
+% end

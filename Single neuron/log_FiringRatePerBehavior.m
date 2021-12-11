@@ -4,7 +4,7 @@
 
 % Load data
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -23,7 +23,7 @@ savePath = uigetdir('', 'Please select the result directory');
 temp_resolution = 1;
 channel_flag = "all";
 %Get data with specified temporal resolution and channels
-[Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
+[Spike_rasters, labels, behav_categ]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
 
 session_length = size(Spike_rasters,2); % get session length
 
@@ -56,9 +56,9 @@ end
 
 preferred_behav = strings(1,n_neurons);
 p = zeros(1,n_neurons); unit = 1; subsample = 1;
-for unit = 236%randsample(1:n_neurons, n_neurons)
+for unit = 175;%randsample(1:n_neurons, n_neurons)
 
-    behav = 1:17;%[4:6,11,17];
+    behav = [1:2,4:21];%[4:6,11,17];
     colors = cool(length(behav));
     median_resp = med_response_matrix(unit,behav);
     resp_mat = {response_matrix{unit,behav}};
@@ -70,11 +70,12 @@ for unit = 236%randsample(1:n_neurons, n_neurons)
             n_obs = length(resp_mat{b});
             if n_obs>=num_occurrence
                 resp_mat{b} = resp_mat{b}(randsample(1:n_obs,num_occurrence));
-            else
+            elseif n_obs>0
                 resp_mat{b} = resp_mat{b}(randsample(1:n_obs,num_occurrence, true));
             end
             median_resp(b) = median(resp_mat{b});
         end
+        
         group_label = categorical(repelem({behav_categ{behav}}, [num_occurrence*ones(1,length(behav))]));
     end
 
@@ -94,7 +95,7 @@ for unit = 236%randsample(1:n_neurons, n_neurons)
     %Plot if unit is selective:
     %Note: as the test is run now, all units are selective...
     if p(unit)<0.0001
-        figure(unit)
+        figure(unit); set(gcf,'Position',[150 250 1000 500])
         boxplot([resp_mat{1,:}]',groupDescend,'Notch','off')
         h = findobj(gca,'Tag','Box');
         for j=1:length(h)
@@ -107,6 +108,7 @@ for unit = 236%randsample(1:n_neurons, n_neurons)
         title(['Firing rate per behavior, unit# ' num2str(unit)], 'Fontsize',18)
         ax = gca;
         ax.FontSize = 14;
+        xtickangle(45)
     end
 
     %Get overlapping histogram plots

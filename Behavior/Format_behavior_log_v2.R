@@ -87,6 +87,7 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
 ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,as.character(substr(file, 99, 109)),".png", sep=""))
 
 #Add block limits
+#IMPORTANT NOTE: hard coded for now. This will need to become flexible with block randomization
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
 blocklim$Behavior[1]='Pair1'; 
 blocklim$start.time[1]=1; 

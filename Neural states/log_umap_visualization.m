@@ -1,5 +1,5 @@
 %Set path
-is_mac = 1;
+is_mac = 0;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -14,7 +14,7 @@ else
 end
 savePath = uigetdir('', 'Please select the result directory');
 
-clearvars -except savePath filePath temp_resolution channel_flag
+clearvars -except savePath filePath temp_resolution channel_flag is_mac
 
 %Set temporal resolution
 temp = 1; temp_resolution = 1;
@@ -28,7 +28,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag);
+        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -45,7 +45,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors
-        behav = [5,7:10]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [4:8,17];%[5,7:10]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -58,9 +58,12 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         channel = char(channel_flag);
         saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
         labels = categorical(behav_categ(behavior_labels_final));
-        %labels_order = reordercats(labels,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
-        labels_order = reordercats(labels,{'Foraging','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
-
+        if strcmp(monkey, 'Amos')
+            labels_order = reordercats(labels,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
+        else
+            labels_order = reordercats(labels,{'Foraging','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
+        end
+        
         %Plot results
         figure
         gscatter(umap_result(:,1), umap_result(:,2), labels_order,[],[],10)
@@ -75,6 +78,6 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         %pause(2)
         close all
 
-        clearvars -except temp chan savePath filePath temp_resolution
+        clearvars -except temp chan savePath filePath temp_resolution is_mac
     end
 end

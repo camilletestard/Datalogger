@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
+function [Spike_rasters, labels, behav_categ, block_times, monkey] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac)
         %Log GenerateDataToRes_function
         % This function formats the raw data to have two elements:
         % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
@@ -22,12 +22,16 @@ function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToR
 %% Load data
 cd(filePath)
 
-split_file_name = strsplit(filePath,'/'); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
+if is_mac 
+    split = '/';
+else
+    split = '\';
+end
+split_file_name = strsplit(filePath,split); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
 session = session_name_split{2};
 monkey = session_name_split{1};
 
 behavior_log = readtable(['EVENTLOG_restructured.csv']);% Load behavioral data
-array_mapping = readtable("array_mapping.xlsx");
 load(['Neural_data_' session '.mat']) % Load neural data; array1 is in TEO and array2 is in vlPFC
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
