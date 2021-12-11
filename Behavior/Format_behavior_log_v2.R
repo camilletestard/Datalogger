@@ -77,7 +77,7 @@ if (length(which(new_log_final$duration.s<0))>0){stop("NEGATIVE DURATION")}
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
-  theme_classic(base_size = 20)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
+  theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
   xlab('Time since start of recording (in s)')+
   theme(axis.text.y= element_blank(),
         axis.ticks.y = element_blank())#+
