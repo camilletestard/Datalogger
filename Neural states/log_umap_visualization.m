@@ -24,7 +24,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
-    chan = 1; channel_flag = "TEO";
+    chan = 1; channel_flag = "all";
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
@@ -45,7 +45,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors
-        behav = [4:8,17];%[5,7:10]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [5,7:10,13]; %[4:8,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -61,7 +61,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         if strcmp(monkey, 'Amos')
             labels_order = reordercats(labels,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
         else
-            labels_order = reordercats(labels,{'Foraging','Threat to partner', 'Threat to subject','Groom Give','Groom Receive'});
+            labels_order = reordercats(labels,{'Foraging','Threat to partner', 'Threat to subject','Groom Give','Groom Receive','Other monkeys vocalize'});
         end
         
         %Plot results

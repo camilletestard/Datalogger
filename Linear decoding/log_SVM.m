@@ -22,9 +22,9 @@ savePath = uigetdir('', 'Please select the result directory');
 clearvars -except savePath filePath is_mac
 
 %Set temporal resolution
-temp = 1; temp_resolution = 1/30;
-for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
-    %temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
+temp = 1; temp_resolution = 1;
+for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
+    %temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -33,7 +33,7 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
+        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -50,7 +50,7 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
 
         %% Select behaviors to decode
         %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,6}}');
+        behavior_labels = cell2mat({labels{:,3}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -59,7 +59,7 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [1:3];%[4,5,7:10,14]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -74,7 +74,7 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
 
 
         %% Run SVM over multiple iterations
-        num_iter = 1000;
+        num_iter = 5000;
         
         disp('Start running SVM...')
         for iter = 1:num_iter
@@ -100,7 +100,7 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = min(num_trials); %find the minimum one %CT change to have 200 of each class
+            minNumTrials = 25;%min(num_trials); %find the minimum one %CT change to have 200 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -145,13 +145,15 @@ for temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1
     
 end
 
-rowNames = ["30sec","25sec","20sec","15sec","10sec","5sec","2sec","1sec","500msec","200msec","100ms"]; colNames = ["vlPFC","TEO","all"];
-%rowNames = ["1sec", "500msec","200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["100sec","50sec","30sec","20sec","10sec","5sec","2sec","1sec","500msec","200msec","100ms"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["1sec", "500msec","200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 
+% save([savePath '\SVM_results_social_context.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+% writetable(result_hitrate,[savePath '\SVM_results_social_context.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 save([savePath '\SVM_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
 writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
 
@@ -165,7 +167,7 @@ for b = 1:size(mean_hitrate,1)
     'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend(rowNames);
+leg = legend([rowNames, 'Chance']);
 title(leg,'Window size')
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -174,12 +176,12 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for behavioral context','FontSize', 20)
+title('Decoding accuracy for behavioral states','FontSize', 20)
 
 cd(savePath)
-saveas(gcf,['SVM_results_SocialContext.png'])
+%saveas(gcf,['SVM_results_SocialContext.png'])
 %saveas(gcf,['SVM_results_grooming.png'])
-%saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
+saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav.png'])
 close all
 
 %Plotting for all channels across many time windows - including long one.

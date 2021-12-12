@@ -159,7 +159,7 @@ for s = 1:length_recording %for all secs in a session
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = length(behav_categ)+1; labels{s,3} = length(behav_categ)+1; %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ)+1; %Set behavior category to "NaN" and 
     end
     if s<=block_times{1,'end_time_round'}
         labels{s,5} = string(block_times{1,'Behavior'});
