@@ -11,10 +11,12 @@ library(utils)
 library(xlsx)
 
 #Load data:
+setwd('~/Users/camilletestard/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output')
 file = file.choose() # chose the formatted behavior file
-monkey = "Hooke"
+if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
+date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
+          
 log = read.xlsx(file, sheetIndex = 1)
-#log = read.csv(file)
 
 #Get all unique behaviors
 behavs = as.character(unique(log$Behavior))
@@ -58,15 +60,16 @@ new_log$Behavior=as.character(new_log$Behavior)
 new_log = new_log[order(new_log$start.time),]
 new_log$duration.s = new_log$end.time - new_log$start.time
 
-#Find block limits
-block_limits = new_log$start.time[c(which(new_log$Behavior=="Pair2"), grep('Alone',new_log$Behavior))]
-block_limits = block_limits[order(block_limits)]
+#Get block limits
+block_order = new_log$Behavior[grep('block',new_log$Behavior)]
+block_start = new_log$start.time[grep('block',new_log$Behavior)]
+block_end = new_log$end.time[grep('block',new_log$Behavior)]
 
 #Order behaviors
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
                               levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
-                                       "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize",
+                                       "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt"))
 
 #Remove NAs (for behavior categories we do not consider here)
@@ -77,6 +80,8 @@ if (length(which(new_log_final$duration.s<0))>0){stop("NEGATIVE DURATION")}
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
+  geom_vline(xintercept = block_end[1])+
+  geom_vline(xintercept = block_end[2])+
   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
   xlab('Time since start of recording (in s)')+
   theme(axis.text.y= element_blank(),
@@ -84,28 +89,19 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
 #scale_x_continuous(breaks=c(0,600,2000,4000,6000))
 
 #Save plot
-ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,as.character(substr(file, 99, 109)),".png", sep=""))
+setwd(paste('~/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
+ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))
 
 #Add block limits
-#IMPORTANT NOTE: hard coded for now. This will need to become flexible with block randomization
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
-blocklim$Behavior[1]='Pair1'; 
-blocklim$start.time[1]=1; 
-blocklim$end.time[1]=round(block_limits[1]); 
-
-blocklim$Behavior[2]='Pair2'; 
-blocklim$start.time[2]=round(block_limits[1]); 
-blocklim$end.time[2]=round(block_limits[2]); 
-
-blocklim$Behavior[3]='Alone'; 
-blocklim$start.time[3]=round(block_limits[2]); 
-blocklim$end.time[3]=round(log$Time[nrow(log)]/1000); 
-
+blocklim$Behavior = block_order
+blocklim$start.time = block_start
+blocklim$end.time = block_end
 new_log_final = rbind(new_log_final, blocklim)
 
 #Save to .csv
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 # dir <- dirname(output_file)
-setwd(paste('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,as.character(substr(file, 99, 109)),sep=""))
+setwd(paste('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
 write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured.csv',sep=""),row.names = F)
 
