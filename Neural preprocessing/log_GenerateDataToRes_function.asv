@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag)
+function [Spike_rasters, labels, behav_categ, block_times, monkey] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac)
         %Log GenerateDataToRes_function
         % This function formats the raw data to have two elements:
         % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
@@ -22,7 +22,11 @@ function [Spike_rasters, labels, behav_categ, block_times] = log_GenerateDataToR
 %% Load data
 cd(filePath)
 
-if ismac split = '/'
+if is_mac 
+    split = '/';
+else
+    split = '\';
+end
 split_file_name = strsplit(filePath,split); full_session_name = split_file_name{end}; session_name_split = strsplit(full_session_name,'_');
 session = session_name_split{2};
 monkey = session_name_split{1};
@@ -120,7 +124,17 @@ end_times = behavior_log{:,'end_time_round'};
 Intervals = [start_times end_times];
 
 %Create behavior key
-behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+%behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+behav_categ = ["Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",...
+    "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",...
+    "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt"];
+behav_categ = sort(behav_categ);
+behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
+behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
+behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
+behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
+behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
+behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
@@ -169,13 +183,5 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
-behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
-behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
-behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
-behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
-if any(matches(behav_categ,'SP'))
-    behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
-end
-behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 end

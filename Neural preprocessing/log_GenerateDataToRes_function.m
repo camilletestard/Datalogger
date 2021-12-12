@@ -124,16 +124,33 @@ end_times = behavior_log{:,'end_time_round'};
 Intervals = [start_times end_times];
 
 %Create behavior key
-behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+%behav_categ = unique(behavior_log{:,'Behavior'}); %Get all the unique behaviors
+%Set it constant across sessions. This makes coding consistent across
+%sessions.
+behav_categ = ["Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",...
+    "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",...
+    "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt"];
+behav_categ = sort(behav_categ);
 
+%Rename beahvior category to not have acronyms
+behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
+behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
+behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
+behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
+behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
+behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
-double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];%, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))]; %For behaviors that often co-occur with other behaviors
-omv = find(matches(behav_categ,'Other monkeys vocalize'));
+
 
 %% Create behavior label vector (label every second of the session)
 % This cell matrix will have three columns. The first column is the full
 % name of the behavior label
+
+%For behaviors that often co-occur with other behaviors
+double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];%, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))]; 
+omv = find(matches(behav_categ,'Other monkeys vocalize'));
+
 labels = cell(length_recording,3); %initialize dataframe
 for s = 1:length_recording %for all secs in a session
     % this finds the index of he rows(2) that have x in between
@@ -173,13 +190,5 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
-behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
-behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
-behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
-behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
-if any(matches(behav_categ,'SP'))
-    behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
-end
-behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 end
