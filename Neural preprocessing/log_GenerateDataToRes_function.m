@@ -132,14 +132,6 @@ behav_categ = ["Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocaliz
     "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt"];
 behav_categ = sort(behav_categ);
 
-%Rename beahvior category to not have acronyms
-behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
-behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
-behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
-behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
-behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
-behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
-
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
 
 
@@ -176,7 +168,7 @@ for s = 1:length_recording %for all secs in a session
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ)+1; %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); %Set behavior category to "NaN" and 
     end
     if s<=block_times{1,'end_time_round'}
         labels{s,5} = string(block_times{1,'Behavior'});
@@ -190,5 +182,12 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
+%Rename behavior category to not have acronyms
+behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
+behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
+behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
+behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
+behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
+behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 end
