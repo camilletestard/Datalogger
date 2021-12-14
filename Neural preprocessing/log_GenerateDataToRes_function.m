@@ -150,10 +150,14 @@ for s = 1:length_recording %for all secs in a session
     %IMPORTANT note: interval exclude boundaries as is.
     if ~isempty(idx) %if yes
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior id (in plain english)
-        labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior number 
+        labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior number
         if length(labels{s,2})>1 %If one behavior co-occurs with proximity or RR
-            labels{s,4} = 'co-occur';
-            labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it that takes precedence over proximity and RR)
+            if ~isempty(setdiff(labels{s,2}, double_behav_set))
+                labels{s,4} = 'co-occur';
+                labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it that takes precedence over proximity and RR)
+            else
+                labels{s,3}=17;
+            end
         else %If only one behavior happens in that sec
             labels{s,3} = labels{s,2};
             labels{s,4} = 'single';
@@ -162,13 +166,13 @@ for s = 1:length_recording %for all secs in a session
             if any(labels{s,3}==omv) % if one of the behavior includes other monkey vocalize
                 labels{s,3}=omv; %Keep OMV
             else %Otherwise choose the second behavior
-%                 error('More than one behavior simultansouly')
-%                 return
+                %                 error('More than one behavior simultansouly')
+                %                 return
                 labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
             end
         end
     else %if not
-        labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); %Set behavior category to "NaN" and 
+        labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); %Set behavior category to "NaN" and
     end
     if s<=block_times{1,'end_time_round'}
         labels{s,5} = string(block_times{1,'Behavior'});

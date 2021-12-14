@@ -6,7 +6,7 @@
 %% Load in data and preprocess
 
 %Set path
-is_mac = 0; is_camille = 0;
+is_mac = 0; is_camille = 1;
 
 if is_camille
     if is_mac
@@ -93,7 +93,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
 
         LD_holding = [Labels Z_data];%[Labels Data_group];% %This keeps matrix for all behaviors, now first column is labels
 
-        boi = [5,7:10]; %[4:8, 17] %manually set behaviors of interest
+        boi = [5,7:10,21]; %manually set behaviors of interest
         not_boi = setdiff(1:length(behav_categ), boi);
 
         index_use = LD_holding(:,1)==boi; %creates numel(boi) vectors of logical indecies for every time point

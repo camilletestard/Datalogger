@@ -22,9 +22,10 @@ savePath = uigetdir('', 'Please select the result directory');
 clearvars -except savePath filePath is_mac
 
 %Set temporal resolution
-temp = 1; temp_resolution = 1;
-for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
-    %temp_resolution = [1/100, 1/50 ,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10] %1sec, 500msec, 100msec, 10msec
+temp = 1; temp_resolution = 1/30;
+for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
+    %temp_resolution = [1/100,1/50,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
+    %temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
     %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
     %0.1 for 10sec resolution, 1/5 for 5sec resolution
 
@@ -51,6 +52,7 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
         %% Select behaviors to decode
         %Compute freq of behavior for the session
         behavior_labels = cell2mat({labels{:,3}}');
+        %behavior_labels = cell2mat({labels{:,6}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
 
@@ -59,7 +61,7 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
         % behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%[3,4,5,6,7,8,13,14,15,16];
         % behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         % behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = [4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
@@ -74,7 +76,7 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
 
         %% Run SVM over multiple iterations
-        num_iter = 5000;
+        num_iter = 1000;
         
         disp('Start running SVM...')
         for iter = 1:num_iter
@@ -100,7 +102,7 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 25;%min(num_trials); %find the minimum one %CT change to have 200 of each class
+            minNumTrials = 30;%min(num_trials); %find the minimum one %CT change to have 200 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -117,7 +119,7 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
             % Run svm
             [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
-%             [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
+            [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
             
             disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
         end
@@ -129,8 +131,8 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 
         mean_hitrate(temp, chan) = mean(hitrate)
         sd_hitrate(temp, chan) = std(hitrate);
-%         mean_hitrate_shuffled(temp, chan) = mean(hitrate_shuffled)
-%         sd_hitrate_shuffled = std(hitrate_shuffled);
+        mean_hitrate_shuffled(temp, chan) = mean(hitrate_shuffled)
+        sd_hitrate_shuffled = std(hitrate_shuffled);
 
         C_concat=cat(3,C{:});
         confusion_mat_avg=round(mean(C_concat,3)*100);
@@ -146,8 +148,8 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
 end
 
 %rowNames = ["100sec","50sec","30sec","20sec","10sec","5sec","2sec","1sec","500msec","200msec","100ms"]; colNames = ["vlPFC","TEO","all"];
-rowNames = ["1sec", "500msec","200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
-%rowNames = ["1sec", "500msec", "100msec", "10msec"]; colNames = ["vlPFC","TEO","all"];
+rowNames = ["30sec","20sec","10sec","5sec","2sec","1sec","500msec","200msec","100ms"]; colNames = ["vlPFC","TEO","all"];
+%rowNames = ["1sec", "500msec","200msec", "100msec"]; colNames = ["vlPFC","TEO","all"];
 %rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
 result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames)
@@ -176,7 +178,8 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for behavioral states','FontSize', 20)
+%title('Decoding accuracy for behavioral states','FontSize', 20)
+title('Decoding accuracy for social context','FontSize', 20)
 
 cd(savePath)
 %saveas(gcf,['SVM_results_SocialContext.png'])
@@ -187,15 +190,15 @@ close all
 %Plotting for all channels across many time windows - including long one.
 %For grooming in vs. out.
 figure; hold on; set(gcf,'Position',[150 250 1500 700])
-cmap = hsv(size(mean_hitrate,1)-2);
+cmap = hsv(size(mean_hitrate,1));
 y = mean_hitrate(:,3); y = y(end:-1:1);
 x = 1:size(mean_hitrate,1);
 std_dev = sd_hitrate(:,3);
 errorbar(x,y,std_dev,'-s','MarkerSize',10)
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0 1:length(x) length(x)+1]);ylim([0 1]); xlim([0 12])
-xticklabels({'','100msec','200msec','500msec','1sec','2sec','5sec','10sec','15sec','20sec','25sec','30sec',''})
+xticks([0 1:length(x) length(x)+1]);ylim([0 1]); xlim([0 10])
+xticklabels({'','100msec','200msec','500msec','1sec','2sec','5sec','10sec','20sec','30sec',''})
 ax = gca;
 ax.FontSize = 14; 
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Window size','FontSize', 18)
