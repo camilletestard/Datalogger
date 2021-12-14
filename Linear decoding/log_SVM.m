@@ -4,7 +4,7 @@
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -68,9 +68,9 @@ for temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
         tabulate(behavior_labels_final);
 
         %% Time shift behaviors
-        % % % shift_length = 5;%in sec
-        % % % behavior_labels_shifted = behavior_labels_final(shift_length:end);
-        % % % Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
+% %         shift_length = 5;%in sec
+% %         behavior_labels_shifted = behavior_labels_final(shift_length:end);
+% %         Spike_count_raster_shifted = Spike_count_raster_final(1:end-shift_length+1,:);
 
 
         %% Run SVM over multiple iterations
