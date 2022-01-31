@@ -3,7 +3,9 @@
 %neurons.  Later on we can try to spruce things up as we have more
 %information.
 
-%% Set duration and other global parameters
+%% Set duration and other importnat parameters
+
+%Timing parameters
 
 t_res = .001; % Start with milisecond resolution
 
@@ -14,6 +16,30 @@ t = 0:t_res:T;
 num_samples = length(t);
 
 
+%Behavior simulation parameters
+
+n_behaviors = 7;
+
+unidis = 1; %For now simulate as if each behavior occurs with equal frequency to avoid having to subsample
+
+%Neuronal simulation parameters
+
+n_neurons = 100;
+
+as_process = 1; %Toggle whether to just simulate poisson neurons with a single lambda
+%Or to stimulate a poission process where lambdas are drawn for each frame
+%(think GLM).  Process will take longer to simulate I think
+
+fullrand = 1; %Toggle whether have neurons that are tuned to different catagories or not.
+
+%Binning parameters
+
+%100ms, 500ms, 1s, 2s, 5s
+
+binning = [.1 .5 1 2 5]*1/t_res; %convert time to indices
+
+
+
 %% "Simulate" behaviors
 %For convenience just setting up categorical data on the same time scale as
 %neural activity
@@ -22,9 +48,7 @@ num_samples = length(t);
 %block mat of ones with zeros for other behaviors...probably going to need
 %to do this one we do an uneven distribution of behaviors.
 
-n_behaviors = 7;
 
-unidis = 1; %For now simulate as if each behavior occurs with equal frequency to avoid having to subsample
 
 if unidis
     
@@ -48,16 +72,12 @@ end
 %Need to build in changes in lambda associated with different behavioral
 %categories
 
-n_neurons = 100;
+
 
 
 spike_counts = nan(num_samples, n_neurons); %Note going again with convention of linear algebra of obs x var instead of var x obs
 
-as_process = 1; %Toggle whether to just simulate poisson neurons with a single lambda
-%Or to stimulate a poission process where lambdas are drawn for each frame
-%(think GLM).  Process will take longer to simulate I think
 
-fullrand = 1; %Toggle whether have neurons that are tuned to different catagories or not.
 
 if fullrand
 
@@ -109,14 +129,7 @@ end
 
 %% Create vars for each of the time bins.
 
-%100ms, 500ms, 1s, 2s, 5s
 
-%For some reason can't remember exactly how to do binning like this with
-%histcounts or similar function so just going to use the reshape
-%trick...going to keep implementing the reshaping trick but just realized
-%could just use movsum...oh well
-
-binning = [.1 .5 1 2 5]*1/tres; %convert time to indices
 
 sc_bins = cell(length(binning)+1,1); %cell array to store different resolution spiking
 
@@ -126,7 +139,7 @@ bh_bins {1} = behaviors;
 
 sc_bins{1} = spike_counts;
 
-for bin = 1%:length(binning)
+for bin = 1:length(binning)
     
     holding = nan(num_samples + binning(bin) - mod(num_samples,binning(bin)),1);
     
@@ -160,15 +173,23 @@ for bin = 1%:length(binning)
     %I'm sure there is a more efficient way to do this but for now just
     %need something that works.
     
-    temp = cell(size(holding,1),1);
+    temp = cell(size(holding,2),1);
     
-    for row=1:size(holding,1)
+    for col=1:size(holding,2)
         
-        temp{row} = unique(holding(:,1));
+        temp{col} = unique(holding(:,col));
         
+        temp{col}(isnan(temp{col})) = []; %remove nans
+        
+        %Decide another time on how want to handle duplicates for now just
+        %going to give it to greatest element
+        
+        temp{col} = temp{col}(end);
         
         
     end
+    
+    bh_bins{bin+1} = vertcat(temp{:});
    
 
 end
@@ -177,13 +198,42 @@ end
 % how easy it is to copy her solution exactly...currently thinking of way
 % to jury rig something in above implementation
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Checks for time window
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Linear Separability
+%% 1) Linear Separability
 
-% Multinomial Regression
+Results.LinSepAcc = cell(length(sc_bins),1); %Make a structure that holds all of the results and parameters at the end
 
+svm_params = templateSVM('Standardize',true, 'KernelFunction','linear'); %Don't think you need to set kernel to linear but doing it for clarity
+
+for bin = 1:length(binning)
+    
+    bin
+    
+    if unidis
+        
+        mdl = fitcecoc(sc_bins{bin},bh_bins{bin}, 'Learners', svm_params);
+        
+        CVmdl = crossval(mdl);
+        
+        Results.LinSepAcc = 1-kfoldLoss(CVmdl);
+        
+    else %set up code for subsampling if non-uniform distribution of behaviors based on Camille's sub-sampling procedure
+        
+    end
+    
+end
+
+
+%% 2) Multinomial Regression
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Checks for dimensionality
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Already did this for Gaussians but haven't tried for poisson neurons
 
 %%
