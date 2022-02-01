@@ -22,7 +22,7 @@ savePath = uigetdir('', 'Please select the result directory');
 clearvars -except savePath filePath is_mac
 
 %Set temporal resolution
-temp = 1; temp_resolution = 1; partner =1;
+temp = 1; temp_resolution = 1; 
 for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
     %temp_resolution = [1/100,1/50,1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
     %temp_resolution = [1, 2, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
@@ -34,15 +34,12 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, partner);
+        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the data
         %Channel_flag specifies with channels to include: only TEO array, only
         %vlPFC array or all channels
-        %is_mac is whether a mac or a pc is being used
-        %partner is whether you are relating neural activity to the partner
-        %(partner = 1) or not (partner = 0)
         disp('Data Loaded') 
 
         Spike_count_raster_init = Spike_rasters';
@@ -50,7 +47,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         %behavior_labels = cell2mat({labels{:,6}}');
         
         %% Time shift behaviors
-        lag_length = 0; predict=1;
+        lag_length = 10; predict=1;
         
         if predict
             behavior_labels = behavior_labels_init(1+lag_length:end);
@@ -76,14 +73,12 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-        behav = [4,5,17,19,23,25];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+%         behav = [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-        %check the amount of labels that differ in the lag vs non-lagged
-        %versions after seleting th e behaviors of interest.
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
@@ -95,7 +90,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         fprintf('Percent difference between-time lagged and regular labels AFTER selecting behaviors: %s \n', num2str(perc_diff_after));
 
         %% Run SVM over multiple iterations
-        num_iter = 50;
+        num_iter = 100;
         
         disp('Start running SVM...')
         for iter = 1:num_iter

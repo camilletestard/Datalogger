@@ -9,14 +9,24 @@ library(timeline)
 library(ggplot2) 
 library(utils)
 library(xlsx)
+library(tidyverse)
 
 #Load data:
-setwd('~/Users/camilletestard/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output')
+mac =0
+if (mac == 1) { home = '~'} else
+{home = 'C:/Users/GENERAL'}
+
+setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output', sep=""))
 file = file.choose() # chose the formatted behavior file
-if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
-date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
-          
-log = read.xlsx(file, sheetIndex = 1)
+if (length(grep('partner',file))>0) {
+  if (length(grep('Amos',file))>0) {monkey = "Lovelace" } else {monkey = "Sally"} 
+  date = as.character(substr(file, nchar(file)-33, nchar(file)-23))
+  } else 
+    { if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"} 
+      date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
+  }
+
+log <- xlsx::read.xlsx(file, 1) 
 
 #Get all unique behaviors
 behavs = as.character(unique(log$Behavior))
@@ -70,7 +80,8 @@ new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior, 
                               levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
-                                       "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt"))
+                                       "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
+                                       "Swinging", "Head Bobbing", "Object Manipulation"))
 
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
@@ -83,14 +94,18 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
   geom_vline(xintercept = block_end[1])+
   geom_vline(xintercept = block_end[2])+
   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
-  xlab('Time since start of recording (in s)')+
+  xlab('Time since start of recording (in s)')+ 
   theme(axis.text.y= element_blank(),
         axis.ticks.y = element_blank())#+
 #scale_x_continuous(breaks=c(0,600,2000,4000,6000))
 
 #Save plot
-setwd(paste('~/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
-ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))
+if (length(grep('partner',file))>0) {
+setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/','Amos',date,'/Behavior_results/',sep=""))
+ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep="")) }else
+
+  {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
+  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))}
 
 #Add block limits
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
@@ -102,6 +117,9 @@ new_log_final = rbind(new_log_final, blocklim)
 #Save to .csv
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 # dir <- dirname(output_file)
-setwd(paste('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
-write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured.csv',sep=""),row.names = F)
+if (length(grep('partner',file))>0) {
+  setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/','Amos',date,sep=""))
+  write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_partner.csv',sep=""),row.names = F)} else
+  {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
+    write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured.csv',sep=""),row.names = F)}
 

@@ -11,7 +11,7 @@ function [Spike_rasters, labels, behav_categ, block_times, monkey] = log_Generat
             %with another.
             %5th column indicates the block in which we are
             %(Paired,monkey1; Paired monkey2 or Alone)
-            %6th column gives a corresponding numerical value to the block
+            %6th column indicates 
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
