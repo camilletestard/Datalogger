@@ -6,7 +6,7 @@
 %Created by SDT 10/20
 
 %% Initialize data
-cd('D:\Deuteron Data\Sorted output')
+cd('C:\Users\GENERAL\Dropbox (Penn)\Datalogger\Deuteron_Data_Backup\Sorted output')
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
 cd(filePath)
 neural_dir = dir('*.nex*'); % Identify the files that correspond to each sorted channel. Note that this ordering is not linear using dir. This should be corrected. Its annoying, but functional.
@@ -76,9 +76,9 @@ for i = 1:length(fields(SpikeData)) %For all channels
     if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
         for j = 1:length(SpikeData.(Chan_name{i})) %For all units
             
-            Unit_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)+1); %Fill the line with zeros to initiate raster for that trial
+            Unit_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)); %Fill the line with zeros to initiate raster for that trial
             ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
-            Spike_counts = hist(ticks, round(length_recording*temp_resolution)+1);
+            Spike_counts = hist(ticks, round(length_recording*temp_resolution));
             Unit_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
             clear ticks Spike_counts
             

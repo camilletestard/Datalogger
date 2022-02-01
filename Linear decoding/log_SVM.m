@@ -34,7 +34,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, partner);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the data
@@ -46,8 +46,21 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         disp('Data Loaded') 
 
         Spike_count_raster_init = Spike_rasters';
-        behavior_labels_init = cell2mat({labels{:,3}}');
-        %behavior_labels = cell2mat({labels{:,6}}');
+        behavior_labels_init = cell2mat({labels{:,3}}'); %Extract unique behavior info
+        %behavior_labels = cell2mat({labels{:,10}}'); %Extract block info
+        behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info
+        
+        %Compute overlap between partner behavior and subject behavior
+        length(find(behavior_labels_init == behavior_labels_partner_init))/length(behavior_labels_init)
+        overlap = tabulate(behavior_labels_init(find(behavior_labels_init == behavior_labels_partner_init)));
+        subject_behav = tabulate(behavior_labels_init);
+        perc_behav_cooccurring = [behav_categ', overlap(:,2), overlap(:,2)./subject_behav(:,2)*100];
+        %Important notes: 
+        %1. There are some discrepancies when comparing the partner and
+        %subject labels. Most notably in proximity, but also RR, HIP, HIS,
+        %SP, SS which should be the same.
+        %2 it is often the case that self-groom events co-occur. I expect
+        %this to be the case for foraging in Hooke-pair as well.
         
         %% Time shift behaviors
         lag_length = 0; predict=1;
@@ -55,6 +68,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         if predict
             behavior_labels = behavior_labels_init(1+lag_length:end);
             Spike_count_raster = Spike_count_raster_init(1:end-lag_length,:);
+            
             %check the amount of labels that differ in the lag vs non-lagged versions
             behavior_labels_nonlagged = behavior_labels_init(1:end-lag_length);
             diff_behav_vectors = behavior_labels - behavior_labels_nonlagged; 
@@ -72,23 +86,26 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
 
         % Select behaviors with a minimum # of occurrences
         min_occurrences = 50;
-        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);
+        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
         behav = [4,5,17,19,23,25];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        
+        %Print behaviors selected
         behavs_eval = behav_categ(behav);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-        %check the amount of labels that differ in the lag vs non-lagged
-        %versions after seleting th e behaviors of interest.
+        %Only keep the behaviors of interest
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
         tabulate(behavior_labels_final);
-
+        
+        %check the amount of labels that differ in the lag vs non-lagged
+        %versions after seleting the behaviors of interest.
         behavior_labels_final_nonlagged = behavior_labels_nonlagged(idx,:);
         diff_behav_vectors = behavior_labels_final - behavior_labels_final_nonlagged; 
         perc_diff_after = round(length(find(diff_behav_vectors~=0))/length(diff_behav_vectors)*100);
