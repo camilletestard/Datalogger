@@ -34,7 +34,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
     for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the data
@@ -60,7 +60,7 @@ for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
         %subject labels. Most notably in proximity, but also RR, HIP, HIS,
         %SP, SS which should be the same.
         %2 it is often the case that self-groom events co-occur. I expect
-        %this to be the case for foraging in Hooke-pair as well.
+        %this to be the case for foraging in hooke as well.
         
         %% Time shift behaviors
         lag_length = 0; predict=1;

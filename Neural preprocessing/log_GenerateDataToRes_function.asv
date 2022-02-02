@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac)
 %Log GenerateDataToRes_function
 % This function formats the raw data to have two elements:
 % 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
@@ -63,7 +63,6 @@ expected_ME_length =round(length_recording*temp_resolution);
 abs_diff = abs(expected_ME_length-length(ME_final_left));
 ME_final_left(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
 ME_final_right(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
-ME_final = [ME_final_left; ME_final_right];
 
 %% Preprocessing: behavioral log and neural data at specified resolution
 
