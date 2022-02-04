@@ -40,7 +40,7 @@ time_before_cameraSync = log[2,"Time"]/1000
 time_after_cameraSync = log[nrow(log),"Time"]/1000 - log[nrow(log)-1,"Time"]/1000
 
 #Estimate frame rate
-length_video = (log[nrow(log)-1,"Time"] - log[2,"Time"])/1000
+length_video = (log[n row(log)-1,"Time"] - log[2,"Time"])/1000
 frame_rate = 29.971
 expected_num_frames = frame_rate*length_video
 diff_frames = abs(expected_num_frames-length(ME_right))

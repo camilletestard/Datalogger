@@ -42,8 +42,8 @@ ME = readtable('ME.csv');% Load motion energy
 
 %% Preprocessing: get motion energy at the right resolution
 frame_rate = 29.971; %NOTE: frame rate changes slightly from video to video.
-if size(Unit_rasters,2)*frame_rate - size(ME,1) >60
-    error('ME number of frames is >60 frames different than expected')
+if abs(size(Unit_rasters,2)*frame_rate - size(ME,1)) >30
+    error(['ME number of frames is ' size(Unit_rasters,2)*frame_rate - size(ME,1) ' frames different than expected'])
 end
 
 raw_ME_left= table2array(ME(:,"ME_left")); 
@@ -52,18 +52,18 @@ resolution = 1:frame_rate*temp_resolution:length(raw_ME_left);
 ME_final_left = interp1(raw_ME_left,resolution);
 ME_final_right = interp1(raw_ME_right,resolution);
 
-%Check interpolation visually
-figure
-p=plot(1:3000,raw_ME_left(1:3000),resolution(1:100),ME_final_left(1:100));
-p(2).LineWidth = 2;
-title('(Default) Linear Interpolation');
+% %Check interpolation visually
+% figure
+% p=plot(1:3000,raw_ME_left(1:3000),resolution(1:100),ME_final_left(1:100));
+% p(2).LineWidth = 2;
+% title('(Default) Linear Interpolation');
 
 %Adjust frame difference remaining
 expected_ME_length =round(length_recording*temp_resolution);
 abs_diff = abs(expected_ME_length-length(ME_final_left));
 ME_final_left(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
 ME_final_right(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
-ME_final = [ME_final_left; ME_final_right];
+ME_final = [ME_final_left; ME_final_right]';
 
 %% Preprocessing: behavioral log and neural data at specified resolution
 
@@ -197,8 +197,8 @@ Intervals_partner = [start_times_partner end_times_partner];
 labels = cell(length_recording,10); %initialize dataframe
 for s = 1:length_recording %for all secs in a session
     % this finds the index of the rows(2) that have x in between
-    idx = find(s > Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
-    %IMPORTANT note: interval exclude boundaries as is.
+    idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
+    %IMPORTANT note: interval includes lower bound but excludes upper boundary as is.
     if ~isempty(idx) %if yes
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior label in [plain english]
         labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior label in [number]
