@@ -145,7 +145,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
             sam_if = ones(folds,1)*sample_size; %samples in each fold
             
             
-            if mod(length(LD_tog(:,1)),folds)>0 %check if not divisible by 10
+            if mod(length(LD_tog(:,1)),folds)>0 %check if not divisible by folds
                 disp('Samples do not divide evenly accross folds')
                 %if it does not divide evenly, add remainder randomly to one of the
                 %folds
@@ -184,7 +184,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
                 states = behavs(ind_if{k},1);
                 cv_behavs{k} = states;
                 foldsidx = 1:folds;
-                trainingidx = horzcat(ind_if{foldsidx~=k})'; %train on all indecies that aren't in the current fold
+                trainingidx = horzcat(ind_if{foldsidx~=k})'; %train on all indices that aren't in the current fold
                 
                 [Betas,~,stats] = mnrfit(DR_data(trainingidx,:),behavs(trainingidx,1)); %note always get B is dim predictors+1 for the intercept term x length(boi)-1  as one behavior is selected as reference
                 
@@ -208,7 +208,7 @@ for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
             
             per_cor_cvmnr(iter) = mean(cv_per_cor);
             
-            %Think about how to make plot of CV tomorrow
+        
             
             disp(['MNReg run' num2str(iter) '/' num2str(num_iter)])
         end
