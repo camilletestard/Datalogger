@@ -40,23 +40,21 @@ temp = 1; temp_resolution = 1; chan = 1; channel_flag = "all";
 %vlPFC array or all channels
 %is_mac is whether a mac or a pc is being used
 disp('Data Loaded')
+
+%Format data
 Spike_count_raster = Spike_rasters';
 
 %% Set options
 
-%set up sampling rate (not sure this is useful).
- opts.downsample_factor = 30; %factor to downsample by to reduce data size,
-    %recall o.g data is sample as miliseconds, i.e. FS = 1000;
-    opts.Fs = 1000/opts.downsample_factor; %resolution in ms; new FS = 1000/downsampling factor or 33.3 Hz in this case. Meaning each index is 30ms
-    opts.oldFs = 1000;
-    opts.Fs_ratio = opts.Fs/opts.oldFs; %essentially converts samples into seconds by dividing by oldFs and then puts in new sampling rate by times by new Fs
+%set up sampling rate (not sure this is useful, but it's used in code further down so i'll keep it for now).
+opts.Fs = 1;
 
- %Set up windows for time varying kernels. Multiplying factor is in seconds
-    %(recall FS is samples/second ),so can adjust window accordingly
-    opts.mPreTime = round(1 * opts.Fs); %motor pre time
-    opts.mPostTime = round(2 * opts.Fs); %motor post time
-    
-    opts.folds = 10; %number of folds for cross-validation
+%Set up windows for time varying kernels. Multiplying factor is in seconds
+%(recall FS is samples/second ),so can adjust window accordingly
+opts.mPreTime = round(1 * opts.Fs); %motor pre time
+opts.mPostTime = round(2 * opts.Fs); %motor post time
+
+opts.folds = 10; %number of folds for cross-validation
 
 
 %% Preprocessing, extract and format behavioral events
@@ -123,7 +121,7 @@ disp('Preprocessing - Assigning event types done')
 %% Preprocessing - Selecting Analog Tracking
 %For now we don't need to do anything here...
 
-moveR = 
+moveR = ME_final;
 
 %% Setup Design Matrix - Regressor labels
 
@@ -146,7 +144,93 @@ disp('Preprocessing - Grouping regressors for later cross-validation done')
 %% Setup Design Matrix - Behavioral Events
 
 
-  %Creates task regressors with the time varying kernels as described in Churchland
-    [behavR, behavIdx] = log_makeDesignMatrix(temptaskEvents, behavkEventType, opts);
+%Creates task regressors with the time varying kernels as described in Churchland
+[behavR, behavIdx] = log_makeDesignMatrix(temptaskEvents, behavkEventType, opts);
+
+%% Setup Design Matrix - Movement
+% Create movement events from analog traces
+
+[dMat, traceOut, moveIdx] = log_analogToDesign(std_movR, nanstd(std_movR)*2, opts, opts.Fs , opts.Fs , motorIdx, 0, taskEventName);
+% dMat = "digitized" (or binarized) movement regressors. One cell per movement variable, per trial
+% traceOut = original analog traces
+% moveIdx = indices of regressors to keep track of what movement variable a regressor belongs to.
+
+%moveR contains the movement events (movements above a certain
+%threshold), the original movement variables and ME.
+moveR = [cat(1,temp_moveR{:}), traceOut, video_var_hold]; %moveR structure: Time X num mvmt regressors
+
+disp('Setup Design Matrix - Movements done')
+
+%% Deal with Nans in the behavior data
+%I.e. moments with undefined behaviors.
+% Question: should i remove timepoints where both the partner and the
+% subject have undefined behaviors? only one of the two?
+
+all_nan_inds = [];
+percent_lost_to_nans = size(all_nan_inds,1)/size(Spike_count_raster,1)
+
+%remove from predictors and neural data
+moveR(all_nan_inds,:) = []; %blank these indices out
+behavR(all_nan_inds,:) = []; %blank these indices out
+zero_regressors_move = find(all(moveR == 0,1));
+zero_regressors_behav = find(all(behavR == 0,1));
+
+%remove empty regressors
+if ~isempty(zero_regressors_behav)
+    taskR(:,zero_regressors_behav) = [];
+    taskIdx(zero_regressors_behav) = []; %CT: Make sure you remove regIdx every time regressors are removed from fullR
+end
+if ~isempty(zero_regressors_move)
+    moveR(:,zero_regressors_move) = [];
+    moveIdx(zero_regressors_move) = [];
+end
+
+%Remove the nan time points in regressors from the neuronal data
+Vc(all_nan_inds,:) = [];
+
+
+disp('Nans removed')
+
+%2020-12-19 CT: Remove regressors with less than 10 events (as in
+%Musall et. al. 2019)
+low_events_idx= find(sum(behavR,1)<10);
+behavkR(:,low_events_idx)=[];
+behavIdx(low_events_idx)=[];
+
+ %% Combine Design Matrix
     
+    %Combine Design Matrix
+    fullR=[taskR, moveR];
+    
+    %Collect all indecies together.
+    regIdx =[taskIdx; moveIdx'];
+        
+    disp('Design Matrix Setup Done')
+    
+
+ %% Center and Standardize Continuous Data
+    %Center both analog (i.e. movement/tracking data) and neural data.
+    
+    
+    % New approach: Find columns that don't just contain non-zero or one values:
+    [~, columns]=find(fullR~=0 & fullR~=1);
+    analoginds = unique(columns); clear columns
+    
+    %standarize analog regressors
+    fullR(:,analoginds) = (fullR(:,analoginds)- mean(fullR(:,analoginds),1))./std(fullR(:,analoginds));
+    
+    
+    %Churchland median centered the neuronal data, so we will do the same.
+    Vc = (Vc - median(Vc,1));
+    
+    disp('Center and standardize continuous data Done')
+
+
+
+
+
+
+
+
+
 %end
