@@ -42,6 +42,23 @@ temp = 1; temp_resolution = 1; chan = 1; channel_flag = "all";
 disp('Data Loaded')
 Spike_count_raster = Spike_rasters';
 
+%% Set options
+
+%set up sampling rate (not sure this is useful).
+ opts.downsample_factor = 30; %factor to downsample by to reduce data size,
+    %recall o.g data is sample as miliseconds, i.e. FS = 1000;
+    opts.Fs = 1000/opts.downsample_factor; %resolution in ms; new FS = 1000/downsampling factor or 33.3 Hz in this case. Meaning each index is 30ms
+    opts.oldFs = 1000;
+    opts.Fs_ratio = opts.Fs/opts.oldFs; %essentially converts samples into seconds by dividing by oldFs and then puts in new sampling rate by times by new Fs
+
+ %Set up windows for time varying kernels. Multiplying factor is in seconds
+    %(recall FS is samples/second ),so can adjust window accordingly
+    opts.mPreTime = round(1 * opts.Fs); %motor pre time
+    opts.mPostTime = round(2 * opts.Fs); %motor post time
+    
+    opts.folds = 10; %number of folds for cross-validation
+
+
 %% Preprocessing, extract and format behavioral events
 
 %Extract behavior info:
@@ -91,26 +108,45 @@ disp('Preprocessing - adding events done')
 %% Set up event types
 
 %Get variable names
-allNames = [behav_categ(1:end-1), append('partner.',behav_categ(1:end-1)),string(block_times{:,"Behavior"})'];
+BehaviorEventNames = [behav_categ(1:end-1), append('partner.',behav_categ(1:end-1)),string(block_times{:,"Behavior"})'];
 
 %Set up event type here.
-allEventTypes=ones(size(allNames))*3; 
+allEventTypes=ones(size(BehaviorEventNames))*3;
 % For now I will assign all behavioral events as event type 3
 %Event Type 1 = Whole trial
 %Event Type 2 = from stimulus onset to the rest of the trial
 %Event Type 3 = from before movement onset to after movement onset (pre & post time)
-allEventsInfo = [allNames; allEventTypes]';
+allEventsInfo = [BehaviorEventNames; allEventTypes]';
 
 disp('Preprocessing - Assigning event types done')
 
 %% Preprocessing - Selecting Analog Tracking
 %For now we don't need to do anything here...
 
+moveR = 
 
-    %% Setup Design Matrix - Regressor labels
+%% Setup Design Matrix - Regressor labels
 
-    regLabels
+regLabels = BehaviorEventNames';
+regLabels(length(allEventsInfo)+1) = {'Motion Energy L'};
+regLabels(length(allEventsInfo)+2) = {'Motion Energy R'};
+
+
+disp('Setup Design Matrix - Regressor labels done')
+
+%% Preprocessing - Grouping regressors for later cross-validation
+%For now only include behavior and motion energy
+
+regGroups = {'BehavioralEvents' 'Movements'};
+regGroups{2,1} = BehaviorEventNames';
+regGroups{2,2} = {'Motion Energy L' 'Motion Energy R'} ;
+
+disp('Preprocessing - Grouping regressors for later cross-validation done')
+
+%% Setup Design Matrix - Behavioral Events
+
+
+  %Creates task regressors with the time varying kernels as described in Churchland
+    [behavR, behavIdx] = log_makeDesignMatrix(temptaskEvents, behavkEventType, opts);
     
-    disp('Setup Design Matrix - Regressor labels done')
-%end
 %end

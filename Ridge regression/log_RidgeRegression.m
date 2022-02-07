@@ -42,6 +42,23 @@ temp = 1; temp_resolution = 1; chan = 1; channel_flag = "all";
 disp('Data Loaded')
 Spike_count_raster = Spike_rasters';
 
+%% Set options
+
+%set up sampling rate (not sure this is useful).
+ opts.downsample_factor = 30; %factor to downsample by to reduce data size,
+    %recall o.g data is sample as miliseconds, i.e. FS = 1000;
+    opts.Fs = 1000/opts.downsample_factor; %resolution in ms; new FS = 1000/downsampling factor or 33.3 Hz in this case. Meaning each index is 30ms
+    opts.oldFs = 1000;
+    opts.Fs_ratio = opts.Fs/opts.oldFs; %essentially converts samples into seconds by dividing by oldFs and then puts in new sampling rate by times by new Fs
+
+ %Set up windows for time varying kernels. Multiplying factor is in seconds
+    %(recall FS is samples/second ),so can adjust window accordingly
+    opts.mPreTime = round(1 * opts.Fs); %motor pre time
+    opts.mPostTime = round(2 * opts.Fs); %motor post time
+    
+    opts.folds = 10; %number of folds for cross-validation
+
+
 %% Preprocessing, extract and format behavioral events
 
 %Extract behavior info:
@@ -106,6 +123,7 @@ disp('Preprocessing - Assigning event types done')
 %% Preprocessing - Selecting Analog Tracking
 %For now we don't need to do anything here...
 
+moveR = ME_final;
 
 %% Setup Design Matrix - Regressor labels
 
@@ -129,6 +147,10 @@ disp('Preprocessing - Grouping regressors for later cross-validation done')
 
 
   %Creates task regressors with the time varying kernels as described in Churchland
-    [behavR, behavIdx] = makeDesignMatrix_ST_CT_RWD(temptaskEvents, taskEventType, opts);
+    [behavR, behavIdx] = log_makeDesignMatrix(temptaskEvents, behavkEventType, opts);
     
+%% Setup Design Matrix - Movement
+
+    [dMat, traceOut, moveIdx] = log_analogToDesign(std_movR, nanstd(std_movR)*2, opts, opts.Fs , opts.Fs , motorIdx, 0, taskEventName);
+
 %end

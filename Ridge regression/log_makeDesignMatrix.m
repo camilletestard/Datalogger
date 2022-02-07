@@ -1,4 +1,4 @@
-function [fullMat, eventIdx] = makeDesignMatrix_ST_CT_RWD(events, eventType, opts)
+function [fullMat, eventIdx] = log_makeDesignMatrix(events, eventType, opts)
 % function to generate design matrix from a column matrix with binary
 % events. eventType defines the type of design matrix that is generated.
 % (1 = fullTrial, 2 = post-event, 3 = peri-event)
