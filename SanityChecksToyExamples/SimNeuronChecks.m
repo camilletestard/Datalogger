@@ -162,7 +162,14 @@ for run = 1:length(sweep)
 
             end
 
-        else %Can think about adding stuff for different expected firing rates rather than as process
+        else 
+            
+            %To match with emperical data, consider setting a single p for
+            %each neuron and then adding tunning.  I.e one p per neuron and
+            %then add tunning.  See below point.
+            
+            %Also try varying level of tunning within a sweep.  This may be
+            %implemented later
 
         end
 
