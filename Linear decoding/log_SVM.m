@@ -44,7 +44,7 @@ temp = 1; temp_resolution = 1;
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
     chan = 1; channel_flag = "all"; 
-    %for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO", "all"]
 
         %Get data with specified temporal resolution and channels
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
@@ -156,7 +156,7 @@ temp = 1; temp_resolution = 1;
         %behav = setdiff(behav, reciprocal_set);
         
         % OR select behaviors manually
-        %behav = [1 2];%[4:10,16,23];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [4:10,16,23];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
         
 %         %Print behaviors selected
 %         behavs_eval = behav_categ(behav);
@@ -204,12 +204,12 @@ temp = 1; temp_resolution = 1;
             behavior_labels_final = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
             tabulate(behavior_labels_final);
             
-            %Only consider behaviors during the alone block
-            block_after_selection_overlap_out = block_after_selection(diff_idx);
-            alone_idx = find(block_after_selection_overlap_out==3);
-            Spike_count_raster_final = Spike_count_raster_final(alone_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-            behavior_labels_final = behavior_labels_final(alone_idx,:);%Same as above but in behavior labels
-            tabulate(behavior_labels_final);
+%             %Only consider behaviors during the alone block
+%             block_after_selection_overlap_out = block_after_selection(diff_idx);
+%             alone_idx = find(block_after_selection_overlap_out==3);
+%             Spike_count_raster_final = Spike_count_raster_final(alone_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+%             behavior_labels_final = behavior_labels_final(alone_idx,:);%Same as above but in behavior labels
+%             tabulate(behavior_labels_final);
         end
         
 
@@ -280,7 +280,7 @@ temp = 1; temp_resolution = 1;
         chan = chan +1;
 
         clearvars -except is_mac savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval behav
-%     end
+     end
     temp = temp+1;
     
 % end
