@@ -61,7 +61,7 @@ row_non_zeros = find(any(P_temp ~= 0,2));
 P_final = P_temp(row_non_zeros,row_non_zeros);
 
 mc = dtmc(P_final,'StateNames',behav_categ_temp(row_non_zeros));
-4
+
 figure;
 graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
 

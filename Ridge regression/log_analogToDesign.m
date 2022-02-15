@@ -1,4 +1,4 @@
-function [dMat, traceOut, moveIdx, traceIn_temp] = log_analogToDesign(traceIn, stdThresh, opts, sourceRate, targRate, motorIdx, gaussShift, taskEventName)
+function [moveMat, traceOut, moveIdx] = log_analogToDesign(traceIn, stdThresh, motorIdx, behavEventName)
 % code to create a peri-event design matrix based on an analog trace. Trace
 % should be continous and will be reshaped into a trial structure to create
 % a design matrix for every trial individually.
@@ -22,45 +22,35 @@ traceOut = traceIn; %return normalized analog trace
 traceIn = traceIn > stdThresh; %take activity above supplied threshold as indicator for event occurence
 traceIn = diff([zeros(1,size(traceIn,2)); traceIn]) == 1; %find event onsets
 
-%Create trial structure. Note: trial length is different for each trial AND we are only considering
-%non-ignored trials here (we got rid of the other triials + inter-trial interval before running this
-%function)
-trialCnt = length(opts.starting_inds);
-indices = cumsum(opts.durations);
-for ntrial = 1:trialCnt
-    if ntrial == 1
-        traceIn_temp{ntrial} = traceIn(1:indices(ntrial),:);
-    else
-        traceIn_temp{ntrial} = traceIn(indices(ntrial-1)+1:indices(ntrial),:);
-    end
-end
-traceIn = traceIn_temp;
+%find number of frames in session 
+frames = size(traceIn,1);
 
-%find number of frames per trial. Useful when downsampling hasn't happened yet.
-frames = opts.durations / (sourceRate/targRate); %second dimension is trials so first should be frames per trial when taking differences in sampling rate into account
+moveMat = cell(1,size(traceIn,2)); %Initialize event kernels matrix
+moveIdx = cell(1,size(traceIn,2)); %Initialize regressor labels matrix
 
-dMat = cell(trialCnt,size(traceIn{1},2));
-for iMotorReg = 1:size(traceIn{1},2) %for each analog regressor seperately
-    moveIdx(iMotorReg,1:length(motorIdx)) = length(taskEventName)+iMotorReg;
-    for iTrials = 1:trialCnt %for each trial
-        trace = logical(histcounts(find(traceIn{iTrials}(:,iMotorReg)), 0: sourceRate/targRate : (sourceRate/targRate)*frames(iTrials)))'; %resample to imaging frame rate. This is the zero lag regressor.
+for iMotorReg = 1:size(traceIn,2) %for each analog regressor seperately
+    
+    numMotorReg = length(behavEventName)+iMotorReg;
         
+        trace = logical(traceIn(:,iMotorReg)); %This is the zero lag regressor.
+
         % create full design matrix
         cIdx = bsxfun(@plus,find(trace),motorIdx);
-        cIdx(cIdx < 1) = 0;
-        cIdx(cIdx > frames(iTrials)) = frames(iTrials);
-        cIdx = bsxfun(@plus,cIdx,(0:frames(iTrials):frames(iTrials)*length(motorIdx)-1));
-        cIdx(cIdx < 1) = frames(iTrials);
-        cIdx(cIdx > (frames(iTrials) * length(motorIdx))) = frames(iTrials) * length(motorIdx);
+        cIdx(cIdx < 1) = [];
+        cIdx(cIdx > frames) = [];
         
-        dMat{iTrials,iMotorReg} = false(frames(iTrials), length(motorIdx));
-        dMat{iTrials,iMotorReg}(cIdx(:)) = true;
-        dMat{iTrials,iMotorReg}(end,:) = false; %don't use last timepoint of design matrix to avoid confusion with indexing.
-        dMat{iTrials,iMotorReg}(end,2:end) = dMat{iTrials,iMotorReg}(end-1,1:end-1); %replace with shifted version of previous timepoint
-        
-        if gaussShift > 1
-            dMat{iTrials,iMotorReg} = dMat{iTrials,iMotorReg}(:,1:gaussShift:end);
+        moveMat{iMotorReg} = false(frames, length(motorIdx)); %initialize matrix
+        for c = 1:length(motorIdx)
+            moveMat{iMotorReg}(cIdx(:,c),c) = true; %Fill in with time varying kernel; %NOT THE RIGHT INDEXING
         end
-    end
+        
+        cIdx = sum(moveMat{iMotorReg},1) > 0; %don't use empty regressors
+        moveMat{iMotorReg} = moveMat{iMotorReg}(:,cIdx);
+        moveIdx{iMotorReg} = repmat(numMotorReg,sum(cIdx),1); %keep index on how many regressor were created
+        
 end
+
+moveMat = cat(2,moveMat{:});
+moveIdx = cat(1,moveIdx{:});
+
 end
