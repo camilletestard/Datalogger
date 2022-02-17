@@ -27,8 +27,8 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
     chan = 1; channel_flag = "all";
     for channel_flag = ["vlPFC", "TEO", "all"]
 
-        %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, behav_categ, block_times, monkey]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
+       %Get data with specified temporal resolution and channels
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
         %filePath is the experimental data path
         %Temp_resolution is the temporal resolution at which we would like to
         %analyze the dat
@@ -41,19 +41,21 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         %% Select behaviors to decode
         %Compute freq of behavior for the session
         behavior_labels = cell2mat({labels{:,3}}');
-        behavior_labels_context = cell2mat({labels{:,6}}');
+        behavior_labels_context = cell2mat({labels{:,10}}');
+        ME_label = cell2mat({labels{:,11}}');
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
         block_categ = string(block_times{:,1})';
 
         % Select behaviors
-        behav = [5,7:10, 21]; %[4:8,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = [1:6,9:17, 19:27];% [4:10, 23]; %[4:8,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
         behavs_eval = behav_categ(behav);
 
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
         behavior_labels_context_final =  behavior_labels_context(idx);
+        ME_label_final = ME_label(idx);
         tabulate(behavior_labels_final);
 
         %% Run umap
@@ -64,6 +66,7 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
         %Order for later plotting
         labels_plot = categorical(behav_categ(behavior_labels_final));
         labels_plot_context = categorical(block_categ(behavior_labels_context_final));
+        MElabels_plot = categorical(ME_label_final)';
 %         if strcmp(monkey, 'Amos')
 %             %labels_order = reordercats(labels_plot,{'Foraging','Threat to partner', 'Threat to subject','Groom Receive','Groom Give','Self-groom',});
         labels_order = reordercats(labels_plot,{'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Receive','Groom Give'});
@@ -72,12 +75,19 @@ for temp_resolution = [1 2, 5, 10] %1sec, 500msec, 100msec
 %             labels_order = reordercats(labels_plot,{'Foraging','Groom Give','Groom Receive','Threat to partner', 'Threat to subject'});
 %         end
         
-        %Plot results
+        %Plot results color coded by behavior
         figure
-        gscatter(umap_result(:,1), umap_result(:,2), labels_order,[],[],10)
+        gscatter(umap_result(:,1), umap_result(:,2), labels_plot,[],[],10)
         xlabel('UMAP 1'); ylabel('UMAP 2');
         set(gca,'xtick',[]); set(gca,'ytick',[])
         saveas(gcf,[savePath '/umap_ColorCoded_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
+
+        %Color-coded by amount of ME
+        figure
+        gscatter(umap_result(:,1), umap_result(:,2), MElabels_plot,[],[],10)
+        xlabel('UMAP 1'); ylabel('UMAP 2');
+        set(gca,'xtick',[]); set(gca,'ytick',[])
+
 
         disp('****************************************************************************')
         disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])

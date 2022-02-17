@@ -1,32 +1,32 @@
 #Format_behavior_log.R
-#This script re-formats the deuteron behavior log in a way that is easily interpretable for 
-#neural data analysis. It also plots behavior during a session. 
-# Certain red flags to keep in mind: 
+#This script re-formats the deuteron behavior log in a way that is easily interpretable for
+#neural data analysis. It also plots behavior during a session.
+# Certain red flags to keep in mind:
 #Camille Testard - November 2021
 
-#Load libraries: 
+#Load libraries:
 library(timeline)
-library(ggplot2) 
+library(ggplot2)
 library(utils)
 library(xlsx)
 library(tidyverse)
 
 #Load data:
-mac =0
+mac =1
 if (mac == 1) { home = '~'} else
 {home = 'C:/Users/GENERAL'}
 
 setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output', sep=""))
 file = file.choose() # chose the formatted behavior file
 if (length(grep('partner',file))>0) {
-  if (length(grep('Amos',file))>0) {monkey = "Lovelace" } else {monkey = "Sally"} 
+  if (length(grep('Amos',file))>0) {monkey = "Lovelace" } else {monkey = "Sally"}
   date = as.character(substr(file, nchar(file)-33, nchar(file)-23))
-  } else 
-    { if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"} 
+  } else
+    { if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
       date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
   }
 
-log <- xlsx::read.xlsx(file, 1) 
+log <- xlsx::read.xlsx(file, 1)
 
 #Get all unique behaviors
 behavs = as.character(unique(log$Behavior))
@@ -42,23 +42,23 @@ behavs = behavs[-match(to_remove, behavs)] #only keep behaviors
 #Split all behavior events by start and end:
 new_log=data.frame(); b=1
 for (b in 1:length(behavs)){ #For all behaviors
-  
+
   data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior
-  
+
   interim=split(data,data$Start.end) #Split the data by behavior start and behavior end
   names(interim[[2]])[1]="start.time";names(interim[[1]])[1]="end.time" #rename columns
-  
+
   data = cbind(interim[[1]],interim[[2]]); data=data[,-c(3,5,6)]
   data=data[,c("Behavior","start.time","end.time")]
   data[,c("start.time","end.time")]=data[,c("start.time","end.time")]/1000
-  
+
   new_log=rbind(new_log,data)
 }
 
 #Note: The bit of code above will have an error if there aren't the same
 #number of start and end for any one behavior. When an error occurs, check for which behavior it occurs
-# and adjust the excel file accordingly (usually an end is missing, or there are 2 starts, use the videos to check). 
+# and adjust the excel file accordingly (usually an end is missing, or there are 2 starts, use the videos to check).
 # The script stops at the behavior that has an issue, number "b". You can check in the character vector
 # 'behavs' which behavior causes issues.
 
@@ -77,7 +77,7 @@ block_end = new_log$end.time[grep('block',new_log$Behavior)]
 
 #Order behaviors
 new_log_final = new_log; unique(new_log$Behavior)
-new_log_final$Behavior=factor(new_log_final$Behavior, 
+new_log_final$Behavior=factor(new_log_final$Behavior,
                               levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
@@ -94,7 +94,7 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
   geom_vline(xintercept = block_end[1])+
   geom_vline(xintercept = block_end[2])+
   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
-  xlab('Time since start of recording (in s)')+ 
+  xlab('Time since start of recording (in s)')+
   theme(axis.text.y= element_blank(),
         axis.ticks.y = element_blank())#+
 #scale_x_continuous(breaks=c(0,600,2000,4000,6000))

@@ -1,7 +1,6 @@
-%% Log_transition_prob
+%Log_transition_prob
 %This script finds behavioral transtions, computes a transition matrix
-%and plots a transition probability graph.
-%Testard C. Feb 2022
+%and plots a trnasition p
 
 %% Load data
 
