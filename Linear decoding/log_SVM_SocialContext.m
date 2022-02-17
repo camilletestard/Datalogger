@@ -32,7 +32,7 @@ clearvars -except savePath filePath is_mac
 %Set parameters
 temp = 1; temp_resolution = 1;
 chan = 1; channel_flag = "all";
-randomsample=0; onlysingle=0;
+randomsample=0;
 
 for channel_flag = ["vlPFC", "TEO", "all"]
 
@@ -48,44 +48,38 @@ for channel_flag = ["vlPFC", "TEO", "all"]
 
     Spike_count_raster = Spike_rasters';
     behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-    co_occurrence = cell2mat({labels{:,5}}');
+    block_labels = cell2mat({labels{:,11}}');
 
-    if onlysingle==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
-        idx_single = find(co_occurrence==1 | co_occurrence==3);
-        Spike_count_raster = Spike_count_raster(idx_single,:);
-        behavior_labels = behavior_labels(idx_single,:);
-    end
+    %% Check which behaviors occur in different blocks
+
+%     unq_behav = unique(behavior_labels);
+%     behav_in_block = zeros(length(unq_behav), 3);
+%     for b = 1:length(unq_behav)
+%         for bl = 1:3
+%             behav_in_block(b, bl) = length(intersect(find(behavior_labels == unq_behav(b)), find(block_labels==bl)));
+%         end
+%     end
+% 
+%     figure; hold on; set(gcf,'Position',[150 250 1500 500])
+%     bar(behav_in_block, 'stacked')
+%     xticks(1:length(unq_behav))
+%     xticklabels(behav_categ(unq_behav));
+%     xtickangle(45)
+%     leg = legend(block_times.Behavior{:});
+%     title(leg,'Block')
 
     %% Select behaviors to decode
 
-    %Compute freq of behavior for the session
-    behav_freq_table = tabulate(behavior_labels);
-    behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
-
-    % Select behaviors with a minimum # of occurrences
-    min_occurrences = 30;
-    behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-    behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-
-
-    % OR select behaviors manually
-    %behav = [4:10,16,23];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
-
-    %Print behaviors selected
-    behavs_eval = behav_categ(behav);
-    disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    fprintf('Behaviors evaluated are: %s \n', behavs_eval);
-    disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+    % Select behaviors which occur in multiple blocks and the
+    %behav =[find(matches(behav_categ,'Groom Give')), find(matches(behav_categ,'Groom Receive'))]; %manually select behaviors of interest
+    %behav =[find(matches(behav_categ,'Threat to subject')), find(matches(behav_categ,'Threat to partner'))];
+    behav = 28;
 
     %Only keep the behaviors of interest
     idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
     Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-    behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
+    behavior_labels_final = block_labels(idx,:);%Same as above but in behavior labels
     tabulate(behavior_labels_final);
-
 
     %% Run SVM over multiple iterations
     num_iter = 1000;
@@ -93,9 +87,9 @@ for channel_flag = ["vlPFC", "TEO", "all"]
     disp('Start running SVM...')
     for iter = 1:num_iter
 
-%         clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
-%             Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
-%             channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval behav is_mac min_occurrences
+        %         clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
+        %             Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
+        %             channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval behav is_mac min_occurrences
 
         %subsample to match number of neurons across brain areas
         Labels = behavior_labels_final;
@@ -188,8 +182,8 @@ result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',co
 
 % save([savePath '\SVM_results_social_context.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
 % writetable(result_hitrate,[savePath '\SVM_results_social_context.csv'],'WriteRowNames',true,'WriteVariableNames',true);
-save([savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.csv'],'WriteRowNames',true,'WriteVariableNames',true);
+save([savePath '\SVM_results_' num2str(length(behav)) 'behav_subsample_unique.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav_subsample_unique.csv'],'WriteRowNames',true,'WriteVariableNames',true);
 
 %Plotting results decoding accuracy for all behaviors at 1sec and lower resolution
 figure; hold on; set(gcf,'Position',[150 250 700 500])
@@ -210,9 +204,9 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14;
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for subject current behavioral states (unique behaviors, NO subsample neurons)','FontSize', 14)
+title('Decoding accuracy for subject current behavioral states (unique behaviors, subsample neurons)','FontSize', 14)
 
 cd(savePath)
-saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique.png'])
+saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique.png'])
 close all
 

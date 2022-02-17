@@ -89,7 +89,7 @@ temp = 1; temp_resolution = 1;
 
         %Color-coded by block
         figure
-        gscatter(umap_result(:,1), umap_result(:,2), labels_plot_context,[],[],10)
+        gscatter(umap_result(:,1), umap_result(:,2), MElabels_plot,[],[],10)
         xlabel('UMAP 1'); ylabel('UMAP 2');
         set(gca,'xtick',[]); set(gca,'ytick',[])
 

@@ -40,6 +40,11 @@ length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
 ME = readtable('ME.csv');% Load motion energy
 
+cd('~/Dropbox (Penn)/Datalogger/Results/All_sessions')
+num_unit_allsessions = readtable('Session_log_num_units.csv');% Load number of unit data
+session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
+unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
+
 %% Preprocessing: get motion energy at the right resolution
 frame_rate = 29.971; %NOTE: frame rate changes slightly from video to video.
 if abs(size(Unit_rasters,2)*frame_rate - size(ME,1)) >30
@@ -65,8 +70,9 @@ ME_final_left(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
 ME_final_right(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
 ME_final = [ME_final_left; ME_final_right; ME_final_left+ME_final_right]'; %Combine ME vectors
 
-ME_categ = [min(ME_final(:,3)), quantile(ME_final(:,3),10), max(ME_final(:,3))];
-Intervals_ME = [ME_categ(1:end-1)', ME_categ(2:end)'];
+%Define motion energy categories
+ME_categ = [min(ME_final(:,3)), quantile(ME_final(:,3),10), max(ME_final(:,3))]; %Get quantiles
+Intervals_ME = [ME_categ(1:end-1)', ME_categ(2:end)'];%define ME intervals (or categories)
 
 %% Preprocessing: behavioral log and neural data at specified resolution
 
@@ -350,5 +356,8 @@ behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
 behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
 behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
 behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
+
+%Add labelling for grooming
+
 
 end
