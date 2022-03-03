@@ -139,7 +139,7 @@ for channel_flag = ["vlPFC", "TEO", "all"]
 
         % Run svm
         [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
-        %[hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
+        [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
         disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
     end
@@ -151,8 +151,8 @@ for channel_flag = ["vlPFC", "TEO", "all"]
 
     mean_hitrate(temp, chan) = mean(hitrate)
     sd_hitrate(temp, chan) = std(hitrate);
-    %mean_hitrate_shuffled(temp, chan) = mean(hitrate_shuffled)
-    %sd_hitrate_shuffled = std(hitrate_shuffled);
+    mean_hitrate_shuffled(temp, chan) = mean(hitrate_shuffled)
+    sd_hitrate_shuffled = std(hitrate_shuffled);
 
     C_concat=cat(3,C{:});
     confusion_mat_avg=round(mean(C_concat,3)*100);
