@@ -122,9 +122,12 @@
  end
   
   %Wald stat follows Z distribtution - need to check again the validity of
-  %abs...remember that is in the text somewhere
+  %abs...remember that is in the text somewhere...need to think on more but
+  %something something two tailed versus one tailed...removing for now to
+  %only consider excitatory and not surpressive effects.  There has to be
+  %an obvious way to deal with this that I am not thinking of.
   
-  p_values = 1 - normcdf(abs(sqW),0,1);
+  p_values = 1 - normcdf(sqW,0,1);
   
   cutoff = 0.001; %set as desired
   
