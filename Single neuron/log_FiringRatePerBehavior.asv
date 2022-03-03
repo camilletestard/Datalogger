@@ -24,7 +24,7 @@ clearvars -except savePath filePath is_mac
 %Set parameters
 temp_resolution = 1;
 channel_flag = "all";
-with_NC =1; isolatedOnly=0;
+with_NC =0; isolatedOnly=0;
 
 %Get data with specified temporal resolution and channels
 [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
@@ -155,11 +155,11 @@ for unit = randsample(1:n_neurons, n_neurons) %for all units
 
     close all
 
-%       disp([num2str(unit) '/' num2str(n_neurons)])
+      disp([num2str(unit) '/' num2str(n_neurons)])
 end
 
 %Plot histogram of pvalues
-figure; hold on; set(gcf,'Position',[150 250 1300 400])
+figure; hold on; set(gcf,'Position',[150 250 1500 700])
 subplot(1,3,1)
 histogram(p); title("Histogram of p-values")
 xlabel('Kruskall-Wallis p-value')
@@ -171,7 +171,7 @@ prop_selective_units = length(find(p<0.01))/length(p)
 % xlabel('Difference of  means between groups (effect size)')
 
 %Plot the preferred behaviors for all units - any important bias?
-subplot(1,3,2)
+subplot(1,3,1)
 A = preferred_behav; 
 countA = countmember(behav_categ(behav),A); 
 [~, idx] = sort(countA);
@@ -181,7 +181,7 @@ set(gca,'XTickLabel',B{1}); xtickangle(45)
 title("Preferred behavior all units")
 
 %Plot preferred behavior for units that are statistically selective
-subplot(1,3,3)
+subplot(1,3,1)
 A = preferred_behav(p<0.01);
 countA = countmember(behav_categ(behav),A); 
 [~, idx] = sort(countA);
@@ -190,11 +190,12 @@ bar(B{2});
 set(gca,'XTickLabel',B{1}); xtickangle(45)
 title("Preferred behavior selective units")
 
+saveas(gcf,[savePath '/Selectivity_AllUnits.png'])
 if with_NC == 0 
-    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_NoNC_units.png'])
+    saveas(gcf, [savePath '/Responsiveness_per_behavior_NoNC_units.png'])
 elseif isolatedOnly
-    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_isolated_units.png'])
+    saveas(gcf, [savePath '/Responsiveness_per_behavior_isolated_units.png'])
 else
-    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_all_units.png'])
+    saveas(gcf, [savePath '/Responsiveness_per_behavior_all_units.png'])
 end
 

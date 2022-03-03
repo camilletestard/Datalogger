@@ -33,11 +33,12 @@ clearvars -except savePath filePath is_mac
 temp = 1; temp_resolution = 1;
 chan = 1; channel_flag = "all";
 randomsample=0;
+with_NC=1;
 
 for channel_flag = ["vlPFC", "TEO", "all"]
 
     %Get data with specified temporal resolution and channels
-    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
+    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC);
     %filePath is the experimental data path
     %Temp_resolution is the temporal resolution at which we would like to
     %analyze the data
