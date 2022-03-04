@@ -115,7 +115,7 @@
  for n = 1:n_neurons
      for b = 1:n_behaviors
          
-         sqW(b,n) = (lambda_hat_behav(b,n) - lambda_hat_baseline(1,n))./sqrt(lambda_hbeh_se(1,b,n).^2 + lambda_hb_se(1,n).^2);
+         sqW(b,n) = sqrt((lambda_hat_behav(b,n) - lambda_hat_baseline(1,n)).^2)./sqrt(lambda_hbeh_se(1,b,n).^2 + lambda_hb_se(1,n).^2);
          
      end
          
