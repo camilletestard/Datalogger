@@ -24,12 +24,21 @@ clearvars -except savePath filePath is_mac
 %Set parameters
 temp_resolution = 1;
 channel_flag = "all";
-with_NC =0; isolatedOnly=0;
+with_NC =1; isolatedOnly=1;
 
 %Get data with specified temporal resolution and channels
 [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
 
 session_length = size(Spike_rasters,2); % get session length
+
+%Gt behavior label
+behavior_labels = cell2mat({labels{:,3}}');%Get behavior label
+behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (mark as "undefined").
+
+%Get firing rate during a baseline time (when monkey doesn't engage in a
+%particular behavior)
+idx_rest=find(behavior_labels==length(behav_categ));
+baseline_firing = mean(Spike_rasters_final(:,idx_rest),2);
 
 %eliminate units with very low firing rate
 mean_firing_rate = mean(Spike_rasters,2);
@@ -39,10 +48,9 @@ Spike_rasters_final = Spike_rasters(min_firing_units,:) ;
 %Standerdize Unit rasters
 Spike_raster_zscore = zscore(Spike_rasters_final,0, 2); %Z-score
 Spike_raster_meandivided = Spike_rasters_final./mean_firing_rate; %Divide by the mean
+Spike_raster_relative2baseline = Spike_rasters_final./baseline_firing; %Divide by baseline firing
 
 %Set parameters
-behavior_labels = cell2mat({labels{:,3}}');%Get behavior label
-behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (mark as "undefined").
 unqLabels = 1:max(behavior_labels)-1; %Get unique beahvior labels
 n_neurons = size(Spike_rasters_final,1); %Get number of neurons
 n_behav = length(unqLabels); %Get number of unique behavior labels
@@ -56,7 +64,7 @@ group = cell(1,n_behav); %initialize group label matrix
 for unit = 1:n_neurons %for all units
     for b = 1:n_behav %for all behaviors
         idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
-        response_matrix{unit, b} = Spike_raster_meandivided(unit, idx); %Spike_raster_zscore(unit, idx); %get firing rate response during behavior "b"
+        response_matrix{unit, b} = Spike_raster_relative2baseline(unit, idx); %Spike_raster_zscore(unit, idx); %get firing rate response during behavior "b"
         mean_response_matrix(unit,b) = mean(response_matrix{unit, b}); %extract mean response for all epochs where behavior "b" occurred
         med_response_matrix(unit,b) = median(response_matrix{unit, b});%extract median response for all epochs where behavior "b" occurred
         sd_response_matrix(unit,b) = std(response_matrix{unit, b});%extract sd response for all epochs where behavior "b" occurred
@@ -119,6 +127,7 @@ for unit = randsample(1:n_neurons, n_neurons) %for all units
 
     %Run non-parametric anova (issue that samples are not independent...)
     [p(unit), tbl, stats]= kruskalwallis([resp_mat{1,:}]',groupDescend,'off');
+    [p_rand(unit), tbl, stats]= kruskalwallis([resp_mat{1,:}]',randgroupDescend,'off');
 %     effect_size(unit)= max(abs(diff(stats.means)));
 
     %Plot if unit is selective:
@@ -155,15 +164,24 @@ for unit = randsample(1:n_neurons, n_neurons) %for all units
 
     close all
 
-      disp([num2str(unit) '/' num2str(n_neurons)])
+%       disp([num2str(unit) '/' num2str(n_neurons)])
 end
 
 %Plot histogram of pvalues
-figure; hold on; set(gcf,'Position',[150 250 1500 700])
-subplot(1,3,1)
-histogram(p); title("Histogram of p-values")
+figure; hold on; set(gcf,'Position',[150 250 1300 400])
+subplot(2,2,1)
+histogram(p, 30,'Normalization','probability'); title("Histogram of p-values")
 xlabel('Kruskall-Wallis p-value')
-prop_selective_units = length(find(p<0.01))/length(p)
+prop_selective_units = length(find(p<0.001))/length(p)*100;
+text(0.1, 0.5, ['Proportion of selective units (p<0.001): ' num2str(round(prop_selective_units,2)) '%'])
+
+%Plot histogram of pvalues for randomized version
+figure; hold on; set(gcf,'Position',[150 250 1300 400])
+subplot(2,2,2)
+histogram(p_rand, 30,'Normalization','probability'); title("Histogram of p-values")
+xlabel('Kruskall-Wallis p-value')
+prop_selective_units = length(find(p<0.001))/length(p)*100;
+text(0.1, 0.5, ['Proportion of selective units (p<0.001): ' num2str(round(prop_selective_units,2)) '%'])
 
 % %Plot histogram of effect size
 % subplot(2,2,2)
@@ -171,31 +189,33 @@ prop_selective_units = length(find(p<0.01))/length(p)
 % xlabel('Difference of  means between groups (effect size)')
 
 %Plot the preferred behaviors for all units - any important bias?
-subplot(1,3,1)
+subplot(2,2,3)
 A = preferred_behav; 
 countA = countmember(behav_categ(behav),A); 
 [~, idx] = sort(countA);
-B={behav_categ(behav(idx)) countA(idx)};
+B={behav_categ(behav(idx)) countA(idx)/n_neurons};
 bar(B{2});
 set(gca,'XTickLabel',B{1}); xtickangle(45)
 title("Preferred behavior all units")
 
 %Plot preferred behavior for units that are statistically selective
-subplot(1,3,1)
-A = preferred_behav(p<0.01);
+subplot(2,2,4)
+A = preferred_behav(p<0.001);
 countA = countmember(behav_categ(behav),A); 
 [~, idx] = sort(countA);
-B={behav_categ(behav(idx)) countA(idx)};
+B={behav_categ(behav(idx)) countA(idx)/n_neurons};
 bar(B{2});
 set(gca,'XTickLabel',B{1}); xtickangle(45)
-title("Preferred behavior selective units")
+title("Preferred behavior selective units (p<0.001)")
 
-saveas(gcf,[savePath '/Selectivity_AllUnits.png'])
 if with_NC == 0 
-    saveas(gcf, [savePath '/Responsiveness_per_behavior_NoNC_units.png'])
+    sgtitle('Selectivity and preferred behavior for all units except noise cluster (1st channel)')
+    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_NoNC_units.png'])
 elseif isolatedOnly
-    saveas(gcf, [savePath '/Responsiveness_per_behavior_isolated_units.png'])
+    sgtitle('Selectivity and preferred behavior for isolated units')
+    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_isolated_units.png'])
 else
-    saveas(gcf, [savePath '/Responsiveness_per_behavior_all_units.png'])
+    sgtitle('Selectivity and preferred behavior for all units')
+    saveas(gcf, [savePath '/Preferred_behavior/Preferred_activity_all_units.png'])
 end
 

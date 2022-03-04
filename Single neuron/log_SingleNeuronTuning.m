@@ -36,17 +36,28 @@ mean_firing_rate = mean(Spike_rasters,2);
 min_firing_units = find(mean_firing_rate>0);
 Spike_rasters_final = Spike_rasters(min_firing_units,:) ;
 
-%Standerdize Unit rasters
-Spike_raster_zscore = zscore(Spike_rasters_final,0, 2); %Z-score
+%Define "baseline" neural firing.
+behavior_labels = cell2mat({labels{:,3}}');%Get behavior label
+behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+%Plot where baseline firing is taken from. Make sure its well spread out
+%over the session.
+idx_rest=find(behavior_labels==length(behav_categ));
+y=zeros(1, session_length); y(idx_rest)=1;
+figure; plot(1:session_length, y); ylim([-1, 2])
+
+baseline_firing = mean(Spike_rasters(:,idx_rest),2);
+find(abs(mean_firing_rate- baseline_firing)>2)% check difference between means.
+
+%Standardize Unit rasters
+Spike_raster_zscore = zscore(Spike_rasters,0, 2); %Z-score
 Spike_raster_meandivided = Spike_rasters_final./mean_firing_rate; %Divide by the mean
+Spike_raster_relative2baseline = Spike_rasters_final./baseline_firing; %Divide by baseline firing
 
 %Set parameters
-behavior_labels = cell2mat({labels{:,3}}');%Get behavior label
-behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (mark as "undefined").
-unqLabels = 1:max(behavior_labels)-1; %Get unique beahvior labels
+unqLabels = 1:max(behavior_labels)-1; %Get unique behavior labels
 n_neurons = size(Spike_rasters_final,1); %Get number of neurons
 n_behav = length(unqLabels); %Get number of unique behavior labels
-min_occurrences =90; %set the number 
+min_occurrences =90; %set the minimum number of occurrences (i.e. seconds where behavior occurs)
 set_occurrences =90;
 
 %RESPONSIVENESS ANALYSIS: test whether firing rate for each behavior is
@@ -59,19 +70,18 @@ mean_response_matrix = zeros(n_neurons,n_behav); %initialize mean response matri
 sd_response_matrix = zeros(n_neurons,n_behav); %initialize sd response matrix
 h = nan(n_neurons,n_behav); h_shuffle = nan(n_neurons,n_behav);
 group = cell(1,n_behav); %initialize group label matrix
-p_thresh_array = [0.05, 0.01 0.005 0.001 0.0001 0.00001]; p=1; p_thresh=0.001;
+p_thresh_array = [0.01 0.005 0.001 0.0001 0.00001]; p=1; p_thresh=0.001;
 responsiveness_test_perneuron = cell(1,length(p_thresh_array));
 responsiveness_test_perbehav = cell(1,length(p_thresh_array));
 
 for p_thresh = p_thresh_array
     for unit = 1:n_neurons %for all units
-        [h_test(unit) p_test(unit)] = ttest(Spike_raster_meandivided(unit, :),1,'Alpha',p_thresh); %sanity check that mean of distribution is 1
-        %figure; hist(Spike_raster_meandivided(unit, :),40); pause(0.5); close all %check distribution. Is poisson-distributed.
         for b = 1:n_behav %for all behaviors
             idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
             n_per_behav(b)=length(idx);
-            response_matrix{unit, b} = Spike_raster_meandivided(unit, idx); %Spike_raster_zscore(unit, idx); %get firing rate response during behavior "b"
-            response_matrix_shuffle{unit, b} = Spike_raster_meandivided(unit, randsample(1:length(behavior_labels),length(idx)));
+            response_matrix{unit, b} = Spike_raster_relative2baseline(unit, idx); %Spike_raster_zscore(unit, idx); %get firing rate response during behavior "b"
+            %response_matrix_shuffle{unit, b} = Spike_raster_relative2baseline(unit, randsample(1:length(behavior_labels),length(idx)));
+            response_matrix_shuffle{unit, b} = Spike_raster_relative2baseline(unit, randsample(idx_rest,length(idx)));
 
             mean_response_matrix(unit,b) = mean(response_matrix{unit, b}); %extract mean response for all epochs where behavior "b" occurred
             med_response_matrix(unit,b) = median(response_matrix{unit, b});%extract median response for all epochs where behavior "b" occurred
@@ -117,10 +127,9 @@ for p=1:length(p_thresh_array)
     plot(1:length(responsiveness_test_perbehav{p}(2,:)), responsiveness_test_perbehav{p}(2,:)/n_neurons, '-o', 'LineWidth',2)
     plot(1:length(responsiveness_test_perbehav{p}(3,:)), responsiveness_test_perbehav{p}(3,:)/n_neurons, 'LineStyle','--','Color','k')
 end
-lgd=legend(["0.05","","0.01","", "0.005","", "0.001","", "0.0001","", "0.00001","Shuffled"]); lgd.Title.String = 'p-value threshold';
+lgd=legend(["0.01","", "0.005","", "0.001","", "0.0001","", "0.00001","Shuffled"]); lgd.Title.String = 'p-value threshold';
 xticks(1:length(nansum(h,1))); xticklabels(behav_categ(1:end-1)); xtickangle(45); ylim([0 1])
-xlabel("Behaviors"); ylabel('# responsive units'); title(['Number of responsive units per behavior, at multiple thresholds, min-occrruence=' num2str(min_occurrences)])
-saveas(gcf, [savePath '/Responsiveness_per_behavior_NoNC.png'])
+xlabel("Behaviors"); ylabel('Proportion of responsive units'); title(['Number of responsive units per behavior, at multiple thresholds, min-occrruence=' num2str(min_occurrences)])
 if with_NC == 0 
     saveas(gcf, [savePath '/Responsiveness_per_behavior_NoNC_units.png'])
 elseif isolatedOnly

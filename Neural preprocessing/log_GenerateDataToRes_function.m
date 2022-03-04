@@ -149,11 +149,27 @@ end
 
 %Create spike matrix structure
 
-if with_NC==0 && isolatedOnly==0 %If don't include noice cluster
+if with_NC==0 && isolatedOnly==0 %If don't include noise cluster
     unit=1;
     for i = channels %For all channels
         if length(SpikeData.(Chan_name{i}))>1 %If there are sorted units on this channel
             for j = 2:length(SpikeData.(Chan_name{i})) %For all units except Noise cluster
+
+                Spike_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)); %Fill the line with zeros to initiate raster for that trial (IMPORTANT NOTE: removed +1)
+                ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
+                Spike_counts = hist(ticks, round(length_recording*temp_resolution));
+                Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
+                clear ticks Spike_counts
+
+                unit = unit+1;
+            end
+        end
+    end
+elseif with_NC==2 && isolatedOnly==0 %if ONLY include the noise cluster
+    unit=1;
+    for i = channels %For all channels
+        if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
+            for j = 1 %For the first channel only
 
                 Spike_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)); %Fill the line with zeros to initiate raster for that trial (IMPORTANT NOTE: removed +1)
                 ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
