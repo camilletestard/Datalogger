@@ -1,13 +1,12 @@
-%% Log_SVM
-%% Run a linear decoder on a the neural activity over all or a subset of behaviors
-% This script allows to deocde a combination of factors:
-% 1. Subject behavior
-% 2. Partner's behavior
-% 3. Predict future behavior (with specified lag time in terms of windows)
-% 4. Detect past behaviors (with specified lag time in terms of windows)
-% 5. Behavior shifts (irrespective of what the shift is and the TYPE of shift)
-% 6. Window size used fo decoding behaviors can be manipulated
-% 7. Brain area
+%% Log_SVM_grooming
+%% Run a linear decoder on a the neural activity for different grooming contexts
+% This script allows to deocde grooming:
+% 1. Start vs. end
+% 2. Post-threat or not
+% 3. Reciprocated or not
+% 4. Initiated or not
+%Camille Testard, March 2022
+
 
 %% Load data
 
@@ -33,69 +32,78 @@ clearvars -except savePath filePath is_mac
 temp = 1; temp_resolution = 1;
 chan = 1; channel_flag = "all";
 randomsample=0;
+with_NC=1;
+isolatedOnly=0;
 
-for channel_flag = ["vlPFC", "TEO", "all"]
+%for channel_flag = ["vlPFC", "TEO", "all"]
 
-    %Get data with specified temporal resolution and channels
-    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
-    %filePath is the experimental data path
-    %Temp_resolution is the temporal resolution at which we would like to
-    %analyze the data
-    %Channel_flag specifies with channels to include: only TEO array, only
-    %vlPFC array or all channels
-    %is_mac is whether a mac or a pc is being used
-    disp('Data Loaded')
+%Get data with specified temporal resolution and channels
+%[Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+[Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
 
-    Spike_count_raster = Spike_rasters';
-    behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+%filePath is the experimental data path
+%Temp_resolution is the temporal resolution at which we would like to
+%analyze the data
+%Channel_flag specifies with channels to include: only TEO array, only
+%vlPFC array or all channels
+%is_mac is whether a mac or a pc is being used
+disp('Data Loaded')
 
-    %% Add labelling for grooming
-    %Beginning vs. end of grooming bout
-    %Grooming post-threat vs not.
-    %Grooming after reciprocation or not
-    %Groom received after grm Prsnt or not
+Spike_count_raster = Spike_rasters';
+behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
 
-    cd(filePath)
-    groom_labels_all = readtable('Labels_grooming_v2.csv');% Load grooming context labeling
-    groom_startend_label= table2array(groom_labels_all(:,2));
-    groom_postthreat_label= table2array(groom_labels_all(:,3));
-    groom_recip_label= table2array(groom_labels_all(:,4));
-    groom_prsnt_label= table2array(groom_labels_all(:,5));
+%% Add labelling for grooming
+%Beginning vs. end of grooming bout
+%Grooming post-threat vs not.
+%Grooming after reciprocation or not
+%Groom received after grm Prsnt or not
 
-    b = 1;
-    for behav = [7,8]
+groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'};
 
-        for groom_categ = 1:4
-            %Note: after threat, almost always groom RECEIVE, not given by
-            %subject. Also, grooming after groom present is only for groom
-            %RECEIVE.
+b = 1;
+behav = [7,8];
+    groom_behav={'Give','Receive'};
 
-            groom_labels = table2array(groom_labels_all(:,groom_categ+1));
+    for groom_categ = 1:4
+        %Note: after threat, almost always groom RECEIVE, not given by
+        %subject. Also, grooming after groom present is only for groom
+        %RECEIVE.
 
-
-            %% Select behaviors to decode
-
-            % Select behaviors with a minimum # of occurrences
-            %behav =[find(matches(behav_categ,'Groom Give'))]; %find(matches(behav_categ,'Groom Give')),
+        groom_labels = groom_labels_all(:,groom_categ+1);
 
 
-            %Only keep the behaviors of interest
-            idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
-            Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-            behavior_labels_final = groom_labels(idx,:);%Same as above but in behavior labels
-            tabulate(behavior_labels_final);
+        %% Select behaviors to decode
+
+        % Select behaviors with a minimum # of occurrences
+        %behav =[find(matches(behav_categ,'Groom Give'))]; %find(matches(behav_categ,'Groom Give')),
 
 
-            %epochs
-            if groom_categ==1
-                idx_epoch = find(~ismember(behavior_labels_final,3));
-                Spike_count_raster_final = Spike_count_raster_final(idx_epoch,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-                behavior_labels_final = behavior_labels_final(idx_epoch,:);%Same as above but in behavior labels
-                tabulate(behavior_labels_final);
-            end
+        %Only keep the behaviors of interest
+        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final = groom_labels(idx,:);%Same as above but in behavior labels
 
+        %If groom label is start vs. end
+        if groom_categ==1
+            idx_epoch = find(~ismember(behavior_labels_final,3)); %remove middle chunk
+            Spike_count_raster_final = Spike_count_raster_final(idx_epoch,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+            behavior_labels_final = behavior_labels_final(idx_epoch,:);%Same as above but in behavior labels
+        end
+
+        behav_size=tabulate(behavior_labels_final);
+        disp('########################')
+        tabulate(behavior_labels_final)
+        disp('########################')
+
+        channel = char(channel_flag);
+        disp('****************************************************************************')
+        disp(['Groom categ: ' groom_categ_label{groom_categ} ', Channels: ' channel ', Behavior: Groom ' groom_behav{b}])
+        disp('****************************************************************************')
+
+        %pause(5)
+        if all(behav_size(:,2)>=30) && length(behav_size(:,2))>1
             %% Run SVM over multiple iterations
-            num_iter = 500;
+            num_iter = 100;
 
             disp('Start running SVM...')
             for iter = 1:num_iter
@@ -150,30 +158,32 @@ for channel_flag = ["vlPFC", "TEO", "all"]
                 [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
                 [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
-                disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
+                %disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
             end
 
-            channel = char(channel_flag);
-            disp('****************************************************************************')
-            disp(['Groom Categ: ' num2str(groom_categ) ', channels: ' channel ', grooming ' num2str(behav) '. DONE'])
-            disp('****************************************************************************')
-
-            mean_hitrate(chan,b,groom_categ) = mean(hitrate)
+            mean_hitrate(chan,b,groom_categ) = mean(hitrate);
             sd_hitrate(chan,b,groom_categ) = std(hitrate);
-            mean_hitrate_shuffled(chan,b,groom_categ) = mean(hitrate_shuffled)
+            mean_hitrate_shuffled(chan,b,groom_categ) = mean(hitrate_shuffled);
             sd_hitrate_shuffled(chan,b,groom_categ) = std(hitrate_shuffled);
 
-%             C_concat=cat(3,C{:});
-%             confusion_mat_avg=round(mean(C_concat,3)*100);
-%             rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-%             C_table{chan,b,groom_categ} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
-% 
+            %             C_concat=cat(3,C{:});
+            %             confusion_mat_avg=round(mean(C_concat,3)*100);
+            %             rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
+            %             C_table{chan,b,groom_categ} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
+            %
+        else
+            mean_hitrate(chan,b,groom_categ) = nan;
+            sd_hitrate(chan,b,groom_categ) = nan;
         end
-        b = b+1;
     end
-    chan = chan +1;
-    clearvars -except is_mac savePath mean_hitrate sd_hitrate mean_hitrate_shuffled sd_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval behav randomsample onlysingle b groom_labels_all
-end
+    b = b+1;
+chan = chan +1;
+clearvars -except is_mac savePath mean_hitrate sd_hitrate mean_hitrate_shuffled sd_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval behav randomsample onlysingle b groom_labels_all isolatedOnly with_NC groom_categ_label
+%end
+
+squeeze(mean_hitrate)
+squeeze(sd_hitrate)
+(squeeze(mean_hitrate) - squeeze(mean_hitrate_shuffled))./squeeze(mean_hitrate_shuffled)
 
 cd(savePath)
 
@@ -197,9 +207,9 @@ figure; hold on; set(gcf,'Position',[150 250 700 500])
 cmap = hsv(size(groom_give_hitrate,1));
 for b = 1:size(groom_give_hitrate,1)
     y = groom_give_hitrate(b,[1,3]);
-%     std_dev = sd_hitrate(b,:);
-%     errorbar(y,std_dev,'s','MarkerSize',10,...
-%         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
+    %     std_dev = sd_hitrate(b,:);
+    %     errorbar(y,std_dev,'s','MarkerSize',10,...
+    %         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     scatter(1:2,y,40,'filled','Color',cmap(b,:))
 end
 leg = legend(["vlPFC", "TEO","All"]);
@@ -214,7 +224,7 @@ ylabel('Deconding accuracy','FontSize', 18); xlabel('Grooming context','FontSize
 title('Decoding accuracy for the context of grooming give','FontSize', 14)
 
 cd(savePath)
-saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique.png'])
+saveas(gcf,['Decoding grooming given context.png'])
 
 %Plotting results decoding accuracy for grooming receive
 figure; hold on; set(gcf,'Position',[150 250 700 500])
@@ -222,22 +232,25 @@ cmap = hsv(size(groom_receive_hitrate,1));
 for b = 1:size(groom_receive_hitrate,1)
     y = groom_receive_hitrate(b,:);
     y_shuffle = groom_receive_hitrate_shuffled(b,:);
-%     std_dev = sd_hitrate(b,:);
-%     errorbar(y,std_dev,'s','MarkerSize',10,...
-%         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
+    %     std_dev = sd_hitrate(b,:);
+    %     errorbar(y,std_dev,'s','MarkerSize',10,...
+    %         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     scatter(1:4,y,40,'filled','Color',cmap(b,:))
-    scatter(1:4,y,40,'filled','Color','k')
+    %     scatter(1:4,y_shuffle,40,'filled','Color','k')
 end
 leg = legend(["vlPFC", "TEO","All"]);
 title(leg,'Brain Area')
 chance_level = 1/2;
 yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 4 4.2]); xlim([0.8 4.2]); ylim([0 1])
+xticks([0.8 1 2 3 4 4.2]); xlim([0.8 4.2]); ylim([0.4 1])
 xticklabels({'','Start vs. end','Post-threat or not','Reciprocal or not', 'Subject-initiated vs. not',''})
 ax = gca;
 ax.FontSize = 14;
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Grooming context','FontSize', 18)
 title('Decoding accuracy for the context of grooming received','FontSize', 14)
+
+cd(savePath)
+saveas(gcf,['Decoding grooming received context.png'])
 
 close all
 

@@ -17,14 +17,14 @@ if (mac == 1) { home = '~'} else
 {home = 'C:/Users/GENERAL'}
 
 setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output', sep=""))
-file = file.choose() # chose the formatted behavior file
+file = file.choose() # chose the formatted behavior file (xls file)
 if (length(grep('partner',file))>0) {
-  if (length(grep('Amos',file))>0) {monkey = "Lovelace" } else {monkey = "Sally"}
+  if (length(grep('Amos',file))>0) {monkey = "Lovelace"; m.monkey="Amos" } else {monkey = "Sally"; m.monkey="Hooke" }
   date = as.character(substr(file, nchar(file)-33, nchar(file)-23))
-  } else
-    { if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
-      date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
-  }
+} else
+{ if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
+  date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
+}
 
 log <- xlsx::read.xlsx(file, 1)
 
@@ -42,19 +42,21 @@ behavs = behavs[-match(to_remove, behavs)] #only keep behaviors
 #Split all behavior events by start and end:
 new_log=data.frame(); b=1
 for (b in 1:length(behavs)){ #For all behaviors
-
+  
   data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior
-
+  
   interim=split(data,data$Start.end) #Split the data by behavior start and behavior end
   names(interim[[2]])[1]="start.time";names(interim[[1]])[1]="end.time" #rename columns
-
+  
   data = cbind(interim[[1]],interim[[2]]); data=data[,-c(3,5,6)]
   data=data[,c("Behavior","start.time","end.time")]
+  data$start.time=as.numeric(data$start.time); data$end.time=as.numeric(data$end.time)
   data[,c("start.time","end.time")]=data[,c("start.time","end.time")]/1000
-
+  
   new_log=rbind(new_log,data)
 }
+#behavs[b]
 
 #Note: The bit of code above will have an error if there aren't the same
 #number of start and end for any one behavior. When an error occurs, check for which behavior it occurs
@@ -101,11 +103,10 @@ behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=gr
 
 #Save plot
 if (length(grep('partner',file))>0) {
-setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/','Amos',date,'/Behavior_results/',sep=""))
-ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep="")) }else
-
+  setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',m.monkey,date,'/Behavior_results/',sep=""))
+  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep="")) }else
   {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
-  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))}
+    ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))}
 
 #Add block limits
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
@@ -118,7 +119,7 @@ new_log_final = rbind(new_log_final, blocklim)
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory
 # dir <- dirname(output_file)
 if (length(grep('partner',file))>0) {
-  setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/','Amos',date,sep=""))
+  setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',m.monkey,date,sep=""))
   write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_partner.csv',sep=""),row.names = F)} else
   {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
     write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured.csv',sep=""),row.names = F)}

@@ -38,24 +38,14 @@ isolatedOnly=0;
 session_length = size(Spike_rasters,2); % get session length
 
 %Extract behavior labels
-behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
-behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+behavior_labels = groom_labels_all(:,2:end);%Get behavior label from labels structure
+groom_categ_label = {'Star.vs.end', 'Post-threat.vs.not','Reciprocated.vs.not','Initiated.vs.not'};
 
 %Set parameters
-unqLabels = 1:max(behavior_labels)-1; %Get unique behavior labels (exclude rest)
+unqLabels = 1:size(behavior_labels,2); %Get unique behavior labels (exclude rest)
 n_neurons = size(Spike_rasters,1); %Get number of neurons
-n_behav = length(unqLabels); %Get number of unique behavior labels
+n_behav = size(behavior_labels,2); %Get number of unique behavior labels
 
-%Estimate "baseline" neural firing distribution.
-idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
-mean_baseline = mean(Spike_rasters(:,idx_rest),2);
-std_baseline = std(Spike_rasters(:,idx_rest),0,2);
-
-% %Check visually that baseline is taken from epochs throughout the session
-% y=zeros(1, session_length); y(idx_rest)=1;
-% figure; plot(1:session_length, y); ylim([-0.5, 1.5])
-% yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
-% xlabel('Time in s'); title('Baseline epochs')
 
 %% Compute cohen's d
 
@@ -72,7 +62,14 @@ p_rand = nan(n_neurons, n_behav);
 for n = 1:n_neurons
 
     for b = 1:n_behav
-        idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
+
+        idx = find(behavior_labels(:,b) == 2); %get idx where grooming in context b occurred
+        idx_rest = find(behavior_labels(:,b) == 1); %rest of grooming indices
+        
+        %Estimate basline firing rate distribution
+        mean_baseline = mean(Spike_rasters(:,idx_rest),2);
+        std_baseline = std(Spike_rasters(:,idx_rest),0,2);
+
         n_per_behav(b)=length(idx);
 
         if n_per_behav(b)>10
@@ -100,7 +97,7 @@ for n = 1:n_neurons
 end
 
 %Threshold cohens'd by a cutoff
-cutoff=0.001;
+cutoff=0.01;
 h = double(p < cutoff); sum(sum(h))
 h_shuffle = double(p_rand < cutoff); sum(sum(h_shuffle))
 
@@ -108,14 +105,13 @@ cohend_thresh = h.*cohend; cohend_thresh(cohend_thresh==0)=nan;
 cohend_shuffle_thresh = h_shuffle.*cohend_shuffle; cohend_shuffle_thresh(cohend_shuffle_thresh==0)=nan;
 
 %% Plot heatmaps
-AxesLabels = behav_categ(1:end-1);
+AxesLabels = groom_categ_label;
 caxis_upper = 1.5;
 caxis_lower = -1.5;
 cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
 
 figure; set(gcf,'Position',[150 250 1000 500]); 
 hp=heatmap(cohend_thresh, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(cutoff)])
-saveas(gcf, [savePath '/Cohend_heatmap_all_units.png']); close all
 
 % figure; hold on; set(gcf,'Position',[150 250 1500 800]); 
 % subplot(2,2,1); hp=heatmap(cohend, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Cohens-d heatmap')
@@ -125,16 +121,16 @@ saveas(gcf, [savePath '/Cohend_heatmap_all_units.png']); close all
 
 if with_NC == 0 
     sgtitle(['Cohens-d heatmap for all units except noise cluster'])
-    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_NoNC_units.png'])
+    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_grooming_NoNC_units.png'])
 elseif with_NC == 2 
     sgtitle(['Cohens-d heatmap for noise clusters ONLY'])
-    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_NC_only.png'])
+    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_grooming_NC_only.png'])
 elseif isolatedOnly
     sgtitle(['Cohens-d heatmap for isolated units'])
-    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_isolated_units.png'])
+    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_grooming_isolated_units.png'])
 else
     sgtitle(['Cohens-d heatmap for all units'])
-    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_all_units.png'])
+    saveas(gcf, [savePath '/Selectivity_heatmap/Cohend_heatmap_grooming_all_units.png'])
 end
 
 close all

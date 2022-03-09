@@ -5,6 +5,9 @@ library(xlsx)
 #Load data
 file = file.choose() # choose the formatted behavior file
 log <- xlsx::read.xlsx(file, 1)
+date = substr(file,nchar(file)-24, nchar(file)-15)
+if (length(grep('Hooke',file))>0){monkey ="Hooke"}else{monkey="Amos"}
+session=paste(monkey,date,sep="_")
 
 LeftVideo_file = file.choose() # choose the left video ME file
 ME_left_file = read.delim(LeftVideo_file, header = TRUE, sep = " ")
@@ -19,7 +22,8 @@ diff_vids = nrow(ME_right_file) - nrow(ME_left_file)
 print(paste('Difference in frames between videos is:', abs(diff_vids), 'frames.'))
 if (diff_vids <0){
   ME_right[(length(ME_right)+1):(length(ME_right)+abs(diff_vids))]=0
-} else {
+} 
+if (diff_vids >0){
   ME_left[(length(ME_left)+1):(length(ME_left)+abs(diff_vids))]=0
 }
 
@@ -37,13 +41,19 @@ length_recording = log[nrow(log),"Time"]/1000
 #Unit_rasters is initialized by the line: Unit_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)+1);
 #round and +1 can lead to up to 2sec difference with the length of recording from the log.
 time_before_cameraSync = log[2,"Time"]/1000
-time_after_cameraSync = log[nrow(log),"Time"]/1000 - log[nrow(log)-1,"Time"]/1000
+if (session == "Hooke_2021-08-02"){
+  time_after_cameraSync = 0 #Camera ended after start of recording...
+}else{
+  time_after_cameraSync = log[nrow(log),"Time"]/1000 - log[nrow(log)-1,"Time"]/1000
+}
+#Special note for Hooke_2021-08-02: There was no end recording time due to a bug.
 
 #Estimate frame rate
-length_video = (log[n row(log)-1,"Time"] - log[2,"Time"])/1000
-frame_rate = 29.971
+length_video = (log[nrow(log)-1,"Time"] - log[2,"Time"])/1000
+frame_rate = 29.97 #For Amos_2021-07-29: 29.791
 expected_num_frames = frame_rate*length_video
-diff_frames = abs(expected_num_frames-length(ME_right))
+diff_frames = expected_num_frames-length(ME_right)
+print(paste('Difference in frames between real and expected is:', diff_frames, 'frames.'))
 
 #Pad ME with 0 in the extra recording spots
 total_frames_needed = round(log[nrow(log),"Time"]/1000*frame_rate)
@@ -54,10 +64,17 @@ zero_pad_after = data.frame(matrix(data = 0, nrow = numFrames_after_cameraSync, 
 
 ME_final = rbind(zero_pad_before, MotionEnergy, zero_pad_after)
 
+if (session=="Hooke_2021-08-02"){
+  #Hooke_2021-08-02 has a longer video length than recording. To rectify this mismatch,
+  #remove the extra frames to match the rneural recording length.
+  idx_to_cut = round(frame_rate*abs(log[nrow(log),"Time"]/1000 - log[nrow(log)-1,"Time"]/1000))
+  ME_final=ME_final[1:(nrow(ME_final)-idx_to_cut+1),]
+}
+
 #Save ME file
-mac =0
+mac =1
 if (mac == 1) { home = '~'} else
 {home = 'C:/Users/GENERAL'}
 
 setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/', sep="" ))
-write.csv(ME_final, 'Amos_2021-07-29/ME.csv',row.names=F)
+write.csv(ME_final, paste(session,'/ME.csv',sep=""),row.names=F)

@@ -38,24 +38,14 @@ isolatedOnly=0;
 session_length = size(Spike_rasters,2); % get session length
 
 %Extract behavior labels
-behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
-behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+behavior_labels = groom_labels_all(:,2:end);%Get behavior label from labels structure
+groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'};
 
 %Set parameters
-unqLabels = 1:max(behavior_labels)-1; %Get unique behavior labels (exclude rest)
+unqLabels = 1:size(behavior_labels,2); %Get unique behavior labels (exclude rest)
 n_neurons = size(Spike_rasters,1); %Get number of neurons
-n_behav = length(unqLabels); %Get number of unique behavior labels
+n_behav = size(behavior_labels,2); %Get number of unique behavior labels
 
-%Estimate "baseline" neural firing distribution.
-idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
-mean_baseline = mean(Spike_rasters(:,idx_rest),2);
-std_baseline = std(Spike_rasters(:,idx_rest),0,2);
-
-% %Check visually that baseline is taken from epochs throughout the session
-% y=zeros(1, session_length); y(idx_rest)=1;
-% figure; plot(1:session_length, y); ylim([-0.5, 1.5])
-% yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
-% xlabel('Time in s'); title('Baseline epochs')
 
 %% Compute cohen's d
 
@@ -72,7 +62,14 @@ p_rand = nan(n_neurons, n_behav);
 for n = 1:n_neurons
 
     for b = 1:n_behav
-        idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
+
+        idx = find(behavior_labels(:,b) == 2); %get idx where grooming in context b occurred
+        idx_rest = find(behavior_labels(:,b) == 1); %rest of grooming indices
+        
+        %Estimate basline firing rate distribution
+        mean_baseline = mean(Spike_rasters(:,idx_rest),2);
+        std_baseline = std(Spike_rasters(:,idx_rest),0,2);
+
         n_per_behav(b)=length(idx);
 
         if n_per_behav(b)>10
