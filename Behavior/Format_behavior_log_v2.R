@@ -80,7 +80,7 @@ block_end = new_log$end.time[grep('block',new_log$Behavior)]
 #Order behaviors
 new_log_final = new_log; unique(new_log$Behavior)
 new_log_final$Behavior=factor(new_log_final$Behavior,
-                              levels=c("Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",
+                              levels=c("Aggression","Proximity", "HIP","Foraging", "Vocalization","SS","Groom Give", "Masturbating","Mounting",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
                                        "Swinging", "Head Bobbing", "Object Manipulation"))
@@ -88,7 +88,7 @@ new_log_final$Behavior=factor(new_log_final$Behavior,
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 
-if (length(which(new_log_final$duration.s<0))>0){stop("NEGATIVE DURATION")}
+if (length(which(new_log_final$duration.s<=0))>0){stop("NEGATIVE OR 0 DURATION")}
 
 #Plot
 behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+

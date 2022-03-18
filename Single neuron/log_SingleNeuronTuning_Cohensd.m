@@ -4,7 +4,6 @@
 %  difference between the distribution of firing rates during behavior X
 %  with a baseline firing rate.
 
-% Load data
 %Set path
 is_mac = 1;
 if is_mac

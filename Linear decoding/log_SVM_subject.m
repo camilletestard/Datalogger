@@ -9,7 +9,6 @@
 % 6. Window size used fo decoding behaviors can be manipulated
 % 7. Brain area
 
-%% Load data
 
 %Set path
 is_mac = 1;
@@ -32,13 +31,15 @@ clearvars -except savePath filePath is_mac
 %Set parameters
 temp = 1; temp_resolution = 1;
 chan = 1; channel_flag = "all";
-randomsample=0; onlysingle=0;
-with_NC =1; isolatedOnly=1;
+randomsample=0; %subsample neurons to match between brain areas
+onlysingle=0; %If only consider epochs where only 1 behavior happens
+with_NC =1; 
+isolatedOnly=0;
 
 for channel_flag = ["vlPFC", "TEO", "all"]
 
 
-    %Get data with specified temporal resolution and channels
+    %Load data with specified temporal resolution and channels
     [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
     %filePath is the experimental data path
     %Temp_resolution is the temporal resolution at which we would like to
@@ -53,7 +54,7 @@ for channel_flag = ["vlPFC", "TEO", "all"]
     co_occurrence = cell2mat({labels{:,5}}');
 
     if onlysingle==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
-        idx_single = find(co_occurrence==1 | co_occurrence==3);
+        idx_single = find(co_occurrence==1 | co_occurrence==2 | co_occurrence==3); %(no co-occurrence, or with RR or with proximity)
         Spike_count_raster = Spike_count_raster(idx_single,:);
         behavior_labels = behavior_labels(idx_single,:);
     end

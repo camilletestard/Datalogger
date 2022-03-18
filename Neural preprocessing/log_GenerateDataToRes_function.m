@@ -59,40 +59,41 @@ end
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
 % Load motion energy
-ME = readtable('ME.csv');
+ME = [];%readtable('ME.csv');
 
-num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Session_log_num_units.csv');% Load number of unit data
+num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 
 %% Preprocessing: get motion energy at the correct resolution
-frame_rate = 29.971; %NOTE: frame rate changes slightly from video to video.
-if abs(size(Unit_rasters,2)*frame_rate - size(ME,1)) >30
-    error(['ME number of frames is ' size(Unit_rasters,2)*frame_rate - size(ME,1) ' frames different than expected'])
-end
-
-raw_ME_left= table2array(ME(:,"ME_left")); 
-raw_ME_right= table2array(ME(:,"ME_right")); 
-resolution = 1:frame_rate*temp_resolution:length(raw_ME_left); 
-ME_final_left = interp1(raw_ME_left,resolution);
-ME_final_right = interp1(raw_ME_right,resolution);
-
-% %Check interpolation visually
-% figure
-% p=plot(1:3000,raw_ME_left(1:3000),resolution(1:100),ME_final_left(1:100));
-% p(2).LineWidth = 2;
-% title('(Default) Linear Interpolation');
-
-%Adjust frame difference remaining
-expected_ME_length =round(length_recording*temp_resolution);
-abs_diff = abs(expected_ME_length-length(ME_final_left));
-ME_final_left(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
-ME_final_right(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
-ME_final = [ME_final_left; ME_final_right; ME_final_left+ME_final_right]'; %Combine ME vectors
-
-%Define motion energy categories
-ME_categ = [min(ME_final(:,3)), quantile(ME_final(:,3),10), max(ME_final(:,3))]; %Get quantiles
-Intervals_ME = [ME_categ(1:end-1)', ME_categ(2:end)'];%define ME intervals (or categories)
+ME_final = ME;
+% % % % % % % % % frame_rate = 29.971; %NOTE: frame rate changes slightly from video to video.
+% % % % % % % % % if abs(size(Unit_rasters,2)*frame_rate - size(ME,1)) >30
+% % % % % % % % %     %error(['ME number of frames is ' size(Unit_rasters,2)*frame_rate - size(ME,1) ' frames different than expected'])
+% % % % % % % % % end
+% % % % % % % % % 
+% % % % % % % % % raw_ME_left= table2array(ME(:,"ME_left")); 
+% % % % % % % % % raw_ME_right= table2array(ME(:,"ME_right")); 
+% % % % % % % % % resolution = 1:frame_rate*temp_resolution:length(raw_ME_left); 
+% % % % % % % % % ME_final_left = interp1(raw_ME_left,resolution);
+% % % % % % % % % ME_final_right = interp1(raw_ME_right,resolution);
+% % % % % % % % % 
+% % % % % % % % % % %Check interpolation visually
+% % % % % % % % % % figure
+% % % % % % % % % % p=plot(1:3000,raw_ME_left(1:3000),resolution(1:100),ME_final_left(1:100));
+% % % % % % % % % % p(2).LineWidth = 2;
+% % % % % % % % % % title('(Default) Linear Interpolation');
+% % % % % % % % % 
+% % % % % % % % % %Adjust frame difference remaining
+% % % % % % % % % expected_ME_length =round(length_recording*temp_resolution);
+% % % % % % % % % abs_diff = abs(expected_ME_length-length(ME_final_left));
+% % % % % % % % % ME_final_left(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
+% % % % % % % % % ME_final_right(length(ME_final_right)+1:(length(ME_final_right)+abs_diff)) = 0;
+% % % % % % % % % ME_final = [ME_final_left; ME_final_right; ME_final_left+ME_final_right]'; %Combine ME vectors
+% % % % % % % % % 
+% % % % % % % % % %Define motion energy categories
+% % % % % % % % % ME_categ = [min(ME_final(:,3)), quantile(ME_final(:,3),10), max(ME_final(:,3))]; %Get quantiles
+% % % % % % % % % Intervals_ME = [ME_categ(1:end-1)', ME_categ(2:end)'];%define ME intervals (or categories)
 
 %% Preprocessing: behavioral log and neural data at specified resolution
 
@@ -227,7 +228,7 @@ length_recording = size(Spike_rasters,2);
 behav_categ = ["Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",...
     "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",...
     "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",...
-    "Head Bobbing", "Swinging", "Object Manipulation"];
+    "Head Bobbing", "Swinging", "Object Manipulation","Mounting"];
 behav_categ = sort(behav_categ);
 
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
@@ -240,7 +241,7 @@ reciprocal_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_cat
     find(matches(behav_categ,"SS")), find(matches(behav_categ,"HIP")), find(matches(behav_categ,"HIS")), find(matches(behav_categ,"SP"))];
 social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"Submission")), find(matches(behav_categ,"Approach")), find(matches(behav_categ,"Leave")), find(matches(behav_categ,"Butt sniff")),...
-    find(matches(behav_categ,"Grm prsnt")), find(matches(behav_categ,"Aggression"))];
+    find(matches(behav_categ,"Grm prsnt")), find(matches(behav_categ,"Aggression")), find(matches(behav_categ,"Mounting"))];
 
 
 %% Create behavior label vector (label every window of the session)
@@ -333,9 +334,9 @@ for s = 1:length_recording %for all secs in a session
         labels{s,11} = 3;
     end
 
-    %For motion energy
-    idx_ME = find(ME_final(s,3) >= Intervals_ME(:,1) & ME_final(s,3)< Intervals_ME(:,2)); 
-    labels{s,12} = idx_ME;
+% % % % % % % % % %     %For motion energy
+% % % % % % % % % %     idx_ME = find(ME_final(s,3) >= Intervals_ME(:,1) & ME_final(s,3)< Intervals_ME(:,2)); 
+% % % % % % % % % %     labels{s,12} = idx_ME;
 end
 
 %%%%%% Create labels vector for PARTNER monkey %%%%%%

@@ -101,7 +101,7 @@ for behav = [7,8]
         disp('****************************************************************************')
 
         %pause(5)
-        if all(behav_size(:,2)>=30) && length(behav_size(:,2))>1
+        if all(behav_size(:,2)>=30) && length(behav_size(:,2))>1 %If there are at least 30 occurrence of grooming in context 'b'
             %% Run SVM over multiple iterations
             num_iter = 100;
 
@@ -164,17 +164,13 @@ for behav = [7,8]
             mean_hitrate(chan,b,groom_categ) = mean(hitrate);
             sd_hitrate(chan,b,groom_categ) = std(hitrate);
             mean_hitrate_shuffled(chan,b,groom_categ) = mean(hitrate_shuffled);
-            sd_hitrate_shuffled(chan,b,groom_categ) = std(hitrate_shuffled);
+            sd_hitrate_shuffled = std(hitrate_shuffled);
 
-            %             C_concat=cat(3,C{:});
-            %             confusion_mat_avg=round(mean(C_concat,3)*100);
-            %             rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-            %             C_table{chan,b,groom_categ} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
-            %
         else
             mean_hitrate(chan,b,groom_categ) = nan;
             sd_hitrate(chan,b,groom_categ) = nan;
-        end
+        end% End of "min number of grooming of category b" clause
+
     end
     b = b+1;
 end
