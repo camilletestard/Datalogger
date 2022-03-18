@@ -7,7 +7,7 @@ library(xlsx)
 
 #Load data:
 sessions = c("Amos_2021-07-29","Hooke_2021-08-02","Amos_2021-08-03","Hooke_2021-08-12")
-session_length = c(8896, 7836, 8895, 7184)
+session_length = c(8897, 7828, 8897, 7184) #Check in OFS files!
 
 all_logs = data.frame()
 for (s in 1:length(sessions)){

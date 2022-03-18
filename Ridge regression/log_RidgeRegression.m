@@ -1,11 +1,11 @@
 %% Log_RidgeRegression
 % Run a ridge regression (code from Musall et. al)
-
+% Testard C. Feb 2022
 
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else

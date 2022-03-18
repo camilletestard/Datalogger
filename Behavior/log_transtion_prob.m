@@ -1,7 +1,12 @@
+%% Log_transition_prob
+%This script finds behavioral transtions, computes a transition matrix
+%and plots a transition probability graph.
+%Testard C. Feb 2022
+
 %% Load data
 
 %Set path
-is_mac = 0;
+is_mac = 1;
 if is_mac
     cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
 else
@@ -27,43 +32,57 @@ chan = 1; channel_flag = "all";
 disp('Data Loaded')
 
 %Format data
-Spike_count_raster_init = Spike_rasters';
-behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
+Spike_count_raster = Spike_rasters';
+behavior_labels_subject = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+behavior_labels_partner = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
 block_labels = cell2mat({labels{:,10}}'); %Extract block info
+% labels_per_sec = table(behavior_labels_subject, behavior_labels_partner, block_labels);
+% writetable(labels_per_sec, 'Labels_per_sec.csv')
+% writematrix(behav_categ,'behav_categ.csv')
 
-x=behavior_labels_subject_init(1:end-1); y=behavior_labels_subject_init(2:end);
-behavior_labels_init= [sscanf(sprintf('%d%d,',[x.';y.']),'%d,')];
-shifts = x-y;
+%Get inter-transition interval
+x=behavior_labels_subject(1:end-1); y=behavior_labels_subject(2:end);
+shift_times = find((x-y)~=0);
+histogram(diff(shift_times),60)
 
-shift_categ_table= tabulate(behavior_labels_init(shifts~=0));
-total_transitions = 
+%Remove rest and proximity for transition probabilities
+behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=28);
+behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=18);
+
+%Get transitions
+x=behavior_labels_subject_select(1:end-1); y=behavior_labels_subject_select(2:end);
+shift_labels= [sscanf(sprintf('%d%d,',[x.';y.']),'%d,')];
+shift_times = (x-y)~=0;
+
+shift_categ_table= tabulate(shift_labels(shift_times));
+shift_categ_table=shift_categ_table(shift_categ_table(:,2)~=0,:);
+total_transitions = sum(shift_categ_table(:,2));
 
 P = zeros(length(behav_categ));
-for b = 1:length(behav_categ)-1
-    for b2 = 1:length(behav_categ)-1
+for b = 1:length(behav_categ)
+    for b2 = 1:length(behav_categ)
         
         transition = sscanf(sprintf('%d%d,',[b';b2']),'%d,');
         idx = find(shift_categ_table(:,1) == transition);
         if ~isempty(idx)
-            P(b,b2) = shift_categ_table(idx, 3);
+            P(b,b2) = shift_categ_table(idx, 2);
         end
         
     end
 end
 
-%Select behavior manually
-behav = [1,2,4,5,6,7,8,9,10,12,13,14,15,17,20,21,22,23,26];
-P_temp = P(behav,behav);
-behav_categ_temp = behav_categ(behav);
+row_non_zeros = intersect(find(any(P ~= 0)), find(any(P ~= 0,2))); 
+P_final = P(row_non_zeros,row_non_zeros);
 
-row_non_zeros = find(any(P_temp ~= 0,2));
-P_final = P_temp(row_non_zeros,row_non_zeros);
+figure; set(gcf,'Position',[150 250 1200 700])
+heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_final)
+xlabel('Following behavior'); ylabel('Preceding behavior')
+ax = gca;
+ax.FontSize = 16;
 
-mc = dtmc(P_final,'StateNames',behav_categ_temp(row_non_zeros));
+%Plot transition graph
+mc = dtmc(P_final,'StateNames',behav_categ(row_non_zeros));
 
 figure;
 graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
 
-G = digraph(P_final, behav_categ_temp(row_non_zeros))
-plot(G)

@@ -24,7 +24,7 @@ clearvars -except savePath filePath is_mac
 %Set parameters
 temp_resolution = 1;
 channel_flag = "all";
-with_NC =0; isolatedOnly=0;
+with_NC =1; isolatedOnly=1;
 
 %Get data with specified temporal resolution and channels
 [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
@@ -38,7 +38,7 @@ behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_ca
 %Get firing rate during a baseline time (when monkey doesn't engage in a
 %particular behavior)
 idx_rest=find(behavior_labels==length(behav_categ));
-baseline_firing = mean(Spike_rasters(:,idx_rest),2);
+baseline_firing = mean(Spike_rasters_final(:,idx_rest),2);
 
 %eliminate units with very low firing rate
 mean_firing_rate = mean(Spike_rasters,2);
@@ -168,18 +168,19 @@ for unit = randsample(1:n_neurons, n_neurons) %for all units
 end
 
 %Plot histogram of pvalues
-figure; hold on; set(gcf,'Position',[150 250 1300 700])
+figure; hold on; set(gcf,'Position',[150 250 1300 400])
 subplot(2,2,1)
 histogram(p, 30,'Normalization','probability'); title("Histogram of p-values")
-xlabel('Kruskall-Wallis p-value'); ylim([0 1])
+xlabel('Kruskall-Wallis p-value')
 prop_selective_units = length(find(p<0.001))/length(p)*100;
 text(0.1, 0.5, ['Proportion of selective units (p<0.001): ' num2str(round(prop_selective_units,2)) '%'])
 
 %Plot histogram of pvalues for randomized version
+figure; hold on; set(gcf,'Position',[150 250 1300 400])
 subplot(2,2,2)
 histogram(p_rand, 30,'Normalization','probability'); title("Histogram of p-values")
-xlabel('Kruskall-Wallis p-value'); ylim([0 1])
-prop_selective_units = length(find(p_rand<0.001))/length(p_rand)*100;
+xlabel('Kruskall-Wallis p-value')
+prop_selective_units = length(find(p<0.001))/length(p)*100;
 text(0.1, 0.5, ['Proportion of selective units (p<0.001): ' num2str(round(prop_selective_units,2)) '%'])
 
 % %Plot histogram of effect size
