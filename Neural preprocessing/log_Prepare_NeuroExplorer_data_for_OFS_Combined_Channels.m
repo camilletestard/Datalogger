@@ -33,7 +33,7 @@ channel_num{2} = 31:60;
 channel_num{3} = 61:90;
 channel_num{4} = 91:128;
 
-for part = 2:length(channel_num)
+for part = 1:length(channel_num)
     
     for neural_file = channel_num{part} %1:length(neural_dir)
         

@@ -8,6 +8,9 @@
 %% Initialize data
 cd('C:\Users\GENERAL\Dropbox (Penn)\Datalogger\Deuteron_Data_Backup\Sorted output')
 filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+
+cd('C:\Users\GENERAL\Dropbox (Penn)\Datalogger\Deuteron_Data_Backup\Ready to analyze output')
+outputPath = uigetdir('', 'Please select the output directory'); % Enter the path for the location of your data output
 cd(filePath)
 neural_dir = dir('*.nex*'); % Identify the files that correspond to each sorted channel. Note that this ordering is not linear using dir. This should be corrected. Its annoying, but functional.
 
@@ -45,7 +48,7 @@ for neural_file = 1:length(neural_dir) %[1:22, 32, 43, 54, 65, 67:69] % [11,22,3
         
     end
         
-    clearvars -except SpikeData filePath neural_dir length_recording
+    clearvars -except SpikeData filePath neural_dir length_recording outputPath
     
 end
 
@@ -115,5 +118,4 @@ end
 % % % % % Unit_rasters(flagged_units,:)=[];
 
 %% Save variables
-filePath = uigetdir('', 'Please select the output directory'); % Enter the path for the location of your data output
-save([filePath '\Neural_data' filePath(end-10:end) '.mat'],'Unit_rasters', 'SpikeData', 'neural_dir')
+save([outputPath '\Neural_data' outputPath(end-10:end) '.mat'],'Unit_rasters', 'SpikeData', 'neural_dir')
