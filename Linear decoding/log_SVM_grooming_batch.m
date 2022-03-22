@@ -1,10 +1,11 @@
 %% Log_SVM_grooming_batch
-%% Run a linear decoder on a the neural activity for different grooming contexts
-% This script allows to deocde grooming:
+% Run a linear decoder on a the neural activity for different grooming contexts
+% This script allows to decode grooming:
 % 1. Start vs. end
 % 2. Post-threat or not
 % 3. Reciprocated or not
 % 4. Initiated or not
+% Batch version to run across sessions.
 %Camille Testard, March 2022
 
 %Set session list
@@ -16,20 +17,32 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range=[1,2,11,12];
+session_range_no_partner=[1:6,11:13,15:18];
+session_range_with_partner=[1:3,11:13];
+
 
 %Set parameters
+with_partner =0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 randomsample=0;
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 50; %Number of SVM iterations
+num_iter =100; %Number of SVM iterations
 
 %Initialize
 mean_hitrate = cell(length(sessions),3);
 sd_hitrate = cell(length(sessions),3);
 mean_hitrate_shuffled = cell(length(sessions),3);
+
+%Select session range:
+if with_partner ==1
+    session_range = session_range_with_partner;
+    a_sessions = 1:3; h_sessions = 11:13;
+else
+    session_range = session_range_no_partner;
+    a_sessions = 1:6; h_sessions = [11:13,15:18];
+end
 
 s=1;
 for s =session_range %1:length(sessions)
@@ -41,31 +54,28 @@ for s =session_range %1:length(sessions)
     chan=1;
     for channel_flag = ["vlPFC", "TEO", "all"]
 
-        %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
-        %[Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        %% Get data with specified temporal resolution and channels
+        if with_partner ==1
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        end
 
-        %filePath is the experimental data path
-        %Temp_resolution is the temporal resolution at which we would like to
-        %analyze the data
-        %Channel_flag specifies with channels to include: only TEO array, only
-        %vlPFC array or all channels
-        %is_mac is whether a mac or a pc is being used
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
 
-        %% Add labelling for grooming
+        %% Decode grooming context for groom give and groom receive separately
         %Beginning vs. end of grooming bout
         %Grooming post-threat vs not.
         %Grooming after reciprocation or not
         %Groom received after grm Prsnt or not
 
-        groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'};
+        groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'}; %label grooming categ
 
         beh = 1;
-        for behav = [7,8] %For both groom give and groom receive separately
+        for behav = [7,8] %For both groom give and groom receive
             groom_behav={'Give','Receive'};
 
             for groom_categ = 1:4 %For all grooming contexts
@@ -154,8 +164,10 @@ for s =session_range %1:length(sessions)
                         [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
                         [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
-                        %disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
-                    end
+                        if mod(iter,10)==1
+                            disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
+                        end
+                    end %end of SVM iterations
 
                     mean_hitrate{s,chan}(beh,groom_categ) = mean(hitrate);
                     sd_hitrate{s,chan}(beh,groom_categ) = std(hitrate);
@@ -163,8 +175,10 @@ for s =session_range %1:length(sessions)
                     sd_hitrate_shuffled = std(hitrate_shuffled);
 
                 else
+
                     mean_hitrate{s,chan}(beh,groom_categ) = nan;
                     sd_hitrate{s,chan}(beh,groom_categ) = nan;
+
                 end % End of "min number of grooming of category b" clause
 
                 clear labels_id
@@ -177,7 +191,8 @@ for s =session_range %1:length(sessions)
         chan = chan +1;
     end %End of channel for loop
 
-    %Plotting results decoding accuracy for grooming context
+    %% Plotting results decoding accuracy for grooming context
+
     figure;  set(gcf,'Position',[150 250 1300 400])
     subplot(1,2,1);hold on; %Groom Give
     for c = 1:3
@@ -227,8 +242,8 @@ savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']
 %Plotting results decoding accuracy for grooming context
 figure;  set(gcf,'Position',[150 250 1300 800])
 subplot(2,2,1);hold on; %Groom Give, monkey A
-cmap={'b','r','y'};
-for s=1:2
+cmap={'b','r','g'};
+for s=a_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(1,:);
         std_dev = sd_hitrate{s,c}(1,:);
@@ -247,8 +262,7 @@ ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context',
 title('Decoding accuracy for the context of groom give, Monkey A','FontSize', 14)
 
 subplot(2,2,2);hold on; %Groom Receive, monkey A
-cmap={'b','r','y'};
-for s=1:2
+for s=a_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(2,:);
         std_dev = sd_hitrate{s,c}(2,:);
@@ -267,8 +281,8 @@ ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context',
 title('Decoding accuracy for the context of groom receive, Monkey A','FontSize', 14)
 
 subplot(2,2,3);hold on %Groom Give, monkey H
-for s=11:12
-    for c = 1:3
+for s=h_sessions
+    for c = 1:3     
     y = mean_hitrate{s,c}(1,:);
     std_dev = sd_hitrate{s,c}(1,:);
     scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
@@ -286,8 +300,8 @@ ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Contex
 title('Decoding accuracy for the context of groom give, Monkey H','FontSize', 14)
 
 
-subplot(2,2,4);hold on %Groom Receive, monkey A
-for s=11:12
+subplot(2,2,4);hold on %Groom Receive, monkey H
+for s=h_sessions
     for c = 1:3
     y = mean_hitrate{s,c}(2,:);
     std_dev = sd_hitrate{s,c}(2,:);

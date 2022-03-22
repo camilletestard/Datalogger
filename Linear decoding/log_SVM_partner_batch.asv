@@ -18,10 +18,9 @@ session_range_with_partner=[1:3,11:13];
 %Set parameters
 with_partner =1;
 temp = 1; temp_resolution = 1;
-temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
-unq_behav=0; %If only consider epochs where only 1 behavior happens
+onlysingle=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 num_iter = 100;%Number of SVM iterations
@@ -270,7 +269,7 @@ elseif randomsample ==1 && onlysingle==1
 elseif randomsample ==0 && onlysingle==0
     saveas(gcf,['SVM_results_accuracy_behav_NOsubsample_NOTunique_allSessions_partner.png'])
 elseif randomsample ==1 && onlysingle==0
-    saveas(gcf,['SVM_results_accuracy_behav_subsample_NOTunique_allSessions_partner.png'])
+    saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_allSessions_partner.png'])
 end
 close all
 

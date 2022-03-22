@@ -1,61 +1,79 @@
-%% Log_SVM
-%% Run a linear decoder to decode behavioral transitions from the neural activity
+%% Log_SVM_transitions_batch
+% Run a linear decoder to decode behavioral transitions from the neural activity
+% Batch version
+% March 2022 - Camille Testard
 
-%% Load data
-
-%Set path
-is_mac = 0;
+%Set session list
+is_mac = 1;
 if is_mac
-    cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+    home = '~';
 else
-    cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
+    home ='C:/Users/GENERAL';
 end
-filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
+sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
+session_range_no_partner=[1:6,11:13,15:18];
+session_range_with_partner=[1:3,11:13];
 
-if is_mac
-    cd('~/Dropbox (Penn)/Datalogger/Results/')
-else
-    cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Results/')
-end
-savePath = uigetdir('', 'Please select the result directory');
 
-clearvars -except savePath filePath is_mac
-
-%Set temporal resolution
+%Set parameters
+with_partner =0;
 temp = 1; temp_resolution = 1;
-%for temp_resolution = [1/30, 1/20,  1/10, 1/5, 1/2, 1, 2, 5, 10]
-%1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
-%0.1 for 10sec resolution, 1/5 for 5sec resolution
+channel_flag = "all";
+randomsample=0; %subsample neurons to match between brain areas
+unq_behav=0; %If only consider epochs where only 1 behavior happens
+with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
+isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
+num_iter = 100;%Number of SVM iterations
+transition=1;%1: decode any behavior shift irrespective of what the shift is
+             %2: decode SPECIFIC behavioral shifts 
+time_around_shift = 4; %in sec
 
-%Set channels: 'TEO', 'vlPFC' or 'all'
-chan = 1; channel_flag = "all";
-for channel_flag = ["vlPFC", "TEO", "all"]
-    
-    trans = 1; transition =1;
-    for transition = [1,2]
-        
-        %Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac);
-        %filePath is the experimental data path
-        %Temp_resolution is the temporal resolution at which we would like to
-        %analyze the data
-        %Channel_flag specifies with channels to include: only TEO array, only
-        %vlPFC array or all channels
-        %is_mac is whether a mac or a pc is being used
+%Select session range:
+if with_partner ==1
+    session_range = session_range_with_partner;
+    a_sessions = 1:3; h_sessions = 11:13;
+else
+    session_range = session_range_no_partner;
+    a_sessions = 1:6; h_sessions = [11:13,15:18];
+end
+
+s=1;
+for s =session_range %1:length(sessions)
+
+    %Set path
+    filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
+
+    chan = 1;
+    for channel_flag = ["vlPFC", "TEO", "all"]
+
+
+        %% Get data with specified temporal resolution and channels
+        if with_partner ==1
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        end
+
         disp('Data Loaded')
-        
+
         Spike_count_raster = Spike_rasters';
         behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-        behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
-        block_labels = cell2mat({labels{:,10}}'); %Extract block info
-        
         
         %% Extract transitions
 
         if transition==1
             %Get behavior shift times irrespective of what the shift is
             subject_behav_change_reg = ones(size(labels,1), 1); %initialize
-            subject_behav_change_reg(find(diff(behavior_labels_subject_init)~=0)) = 2;
+            shift_times = find(diff(behavior_labels_subject_init)~=0);
+            shift_idx=[];
+            for st =1:length(shift_times)
+                shifts = shift_times(st)-time_around_shift : shift_times(st)+time_around_shift;
+                shift_idx = [shift_idx,shifts];
+            end
+            min_occurrences = 50;
+            subject_behav_change_reg(shift_idx) = 2;
             behavior_labels = subject_behav_change_reg;
             behav = [1,2];
             %IMPORTANT NOTE: we are NOT able to decode behavior shifts vs.
@@ -69,7 +87,7 @@ for channel_flag = ["vlPFC", "TEO", "all"]
             
             shift_categ_table= tabulate(behavior_labels(shifts~=0));
             shift_categ_table = shift_categ_table(shift_categ_table(:,2)~=0,:);
-            min_occurrences = 15;
+            min_occurrences = 10;
             behav = shift_categ_table(shift_categ_table(:,2)>=min_occurrences,1);
             
             %IMPORTANT NOTE: We are able to decode above change what the
@@ -88,7 +106,6 @@ for channel_flag = ["vlPFC", "TEO", "all"]
         
       
         %% Run SVM over multiple iterations
-        num_iter = 1000;
         
         disp('Start running SVM...')
         for iter = 1:num_iter
@@ -114,7 +131,7 @@ for channel_flag = ["vlPFC", "TEO", "all"]
             Labels = labels_temp;
             
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 15;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
+            minNumTrials = min_occurrences;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -141,68 +158,60 @@ for channel_flag = ["vlPFC", "TEO", "all"]
         disp(['Transition type' num2str(transition) ', channels: ' channel '. DONE'])
         disp('****************************************************************************')
         
-        mean_hitrate(chan, trans) = mean(hitrate)
-        sd_hitrate(chan, trans) = std(hitrate);
-        mean_hitrate_shuffled(chan, trans) = mean(hitrate_shuffled)
+        mean_hitrate{s}(chan) = mean(hitrate)
+        sd_hitrate{s}(chan) = std(hitrate);
+        mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
         sd_hitrate_shuffled = std(hitrate_shuffled);
         
         C_concat=cat(3,C{:});
         confusion_mat_avg=round(mean(C_concat,3)*100);
+        rowNames{s}=cell2mat(labels_id);
         %rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-         C_table{chan, trans} = array2table(confusion_mat_avg);
+         C_table{s,chan} = array2table(confusion_mat_avg);
         %C_table{chan, trans} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
-        
-        trans =trans+1;
-        
-        clearvars -except is_mac savePath mean_hitrate sd_hitrate mean_hitrate_shuffled C_table temp_resolution channel_flag filePath chan temp behavs_eval behav trans
-    end
-    chan = chan +1;
+
+        chan = chan +1;
+    end%end of channel loop
+
+    clear labels_id
+end %end of session loop
+
+%% Plot decoding accuracy relative to chance for all sessions, separated by monkey
+
+%Change savePath for all session results folder:
+cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
+
+
+figure;  set(gcf,'Position',[150 250 700 700]);
+subplot(2,1,1);hold on;
+cmap = hsv(size(mean_hitrate,2));
+for s = a_sessions
+    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
+    scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
 end
-% temp = temp+1;
-% end
-
-colNames = ["Non-specific", "Specific"]; rowNames = ["vlPFC","TEO","all"];
-result_hitrate = array2table(mean_hitrate,'RowNames',rowNames,'VariableNames',colNames)
-result_sdhitrate = array2table(sd_hitrate,'RowNames',rowNames,'VariableNames',colNames);
-
-save([savePath '\SVM_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav.csv'],'WriteRowNames',true,'WriteVariableNames',true); 
-
-%Plotting results for non-specific state transitions 
-figure; hold on; set(gcf,'Position',[150 250 1000 500])
-    y = mean_hitrate(:,1);
-    std_dev = sd_hitrate(:,1);
-    errorbar(y,std_dev,'s','MarkerSize',10,...
-    'MarkerEdgeColor','k','MarkerFaceColor','k')
-% chance_level = 1/length(behav);
-% yline(chance_level,'--','Chance level', 'FontSize',16, 'Color', cmap(2))
-chance_level = 1/2;
-yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14; 
-ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain Area','FontSize', 18)
-title('Decoding non-specific state transitions','FontSize', 20)
-cd(savePath)
-saveas(gcf,['Decoding non-specific state transitions.png'])
-close all
-
-
-%Plotting results for specific state transitions 
-figure; hold on; set(gcf,'Position',[150 250 1000 500])
-y = mean_hitrate(:,2);
-std_dev = sd_hitrate(:,2);
-errorbar(y,std_dev,'s','MarkerSize',10,...
-    'MarkerEdgeColor','k','MarkerFaceColor','k')
-chance_level = 1/length(behav);
-yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
+legend({sessions(a_sessions).name},'Location','eastoutside')
+chance_level = 1;
+yline(chance_level,'--','At Chance', 'FontSize',16)
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 4.5])
 xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain Area','FontSize', 18)
-title('Decoding specific state transitions','FontSize', 20)
-cd(savePath)
-saveas(gcf,['Decoding specific state transitions.png'])
-close all
+ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy for behavioral transitions, Monkey A','FontSize', 14)
+
+subplot(2,1,2);hold on;
+cmap = hsv(size(mean_hitrate,2));
+for s = h_sessions
+    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
+     scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
+end
+legend({sessions(h_sessions).name},'Location','eastoutside')
+chance_level = 1;
+yline(chance_level,'--','At Chance', 'FontSize',16)
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 4.5])
+xticklabels({'','vlPFC','TEO','all',''})
+ax = gca;
+ax.FontSize = 14;
+ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy for behavioral transitions, Monkey H','FontSize', 14)
+ saveas(gcf,['SVM_results_state_transitions_allSessions.png'])

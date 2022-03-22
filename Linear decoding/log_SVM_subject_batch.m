@@ -1,5 +1,8 @@
 %% Log_SVM_subject_batch
-%% Run a linear decoder on a the neural activity for the subject's behavior (with a minimum # occurrence)
+% Run a linear decoder on the neural activity for the subject's behavior
+% (only including behaviors with a minimum # occurrence)
+% Batch version of script
+% March 2022 - Camille Testard
 
 %Set session list
 is_mac = 1;
@@ -10,18 +13,30 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range=[1,2,11,12];
+session_range_no_partner=[1:6,11:13,15:18];
+session_range_with_partner=[1:3,11:13];
+
 
 %Set parameters
+with_partner =0;
 temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
-onlysingle=0; %If only consider epochs where only 1 behavior happens
+unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 100;%Number of SVM iterations
+num_iter = 10;%Number of SVM iterations
 
-s=1;
+%Select session range:
+if with_partner ==1
+    session_range = session_range_with_partner;
+    a_sessions = 1:3; h_sessions = 11:13;
+else
+    session_range = session_range_no_partner;
+    a_sessions = 1:6; h_sessions = [11:13,15:18];
+end
+
+s=18;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -32,21 +47,20 @@ for s =session_range %1:length(sessions)
     for channel_flag = ["vlPFC", "TEO", "all"]
 
 
-        %Load data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
-        %filePath is the experimental data path
-        %Temp_resolution is the temporal resolution at which we would like to
-        %analyze the data
-        %Channel_flag specifies with channels to include: only TEO array, only
-        %vlPFC array or all channels
-        %is_mac is whether a mac or a pc is being used
+        %% Get data with specified temporal resolution and channels
+        if with_partner ==1
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        end
+
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
         co_occurrence = cell2mat({labels{:,5}}');
 
-        if onlysingle==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
+        if unq_behav==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
             idx_single = find(co_occurrence==1 | co_occurrence==2 | co_occurrence==3); %(no co-occurrence, or with RR or with proximity)
             Spike_count_raster = Spike_count_raster(idx_single,:);
             behavior_labels = behavior_labels(idx_single,:);
@@ -68,7 +82,7 @@ for s =session_range %1:length(sessions)
 
 
         % OR select behaviors manually
-        %behav = [4:10,16,23];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        % behav = [4:10,16,23];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -80,7 +94,7 @@ for s =session_range %1:length(sessions)
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
-        tabulate(behavior_labels_final);
+        tabulate(removecats(categorical(behavior_labels_final)));
 
 
         %% Run SVM over multiple iterations
@@ -127,7 +141,9 @@ for s =session_range %1:length(sessions)
             [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
             [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
-            disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
+            if mod(iter,10)==1
+                disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
+            end
         end %End of SVM for loop
 
         channel = char(channel_flag);
@@ -142,8 +158,8 @@ for s =session_range %1:length(sessions)
 
         C_concat=cat(3,C{:}); %Get confusion matrix
         confusion_mat_avg=round(mean(C_concat,3)*100); %Average over SVM iterations
-        rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}}; %Get behavior names
-        C_table{s, temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
+        rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
+        C_table{s, temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames{s},'VariableNames',colNames{s});
 
         chan = chan +1;
         clear labels_id
@@ -152,26 +168,26 @@ for s =session_range %1:length(sessions)
 
     cd(savePath)
 
-    %Plot confusion matrices
+    %% Plot confusion matrices
     vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
-    D = vlpfc-TEO;
+    D{s} = vlpfc-TEO;
     CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
     subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
     subplot(2,2,4); h = heatmap(D,'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
 
-    if randomsample ==0 && onlysingle==1
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
-    elseif randomsample ==1 && onlysingle==1
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_confmat.png'])
-    elseif randomsample ==0 && onlysingle==0
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_confmat.png'])
-    elseif randomsample ==1 && onlysingle==0
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_confmat.png'])
-    end
-
-    close all
+% % % % %     if randomsample ==0 && unq_behav==1
+% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
+% % % % %     elseif randomsample ==1 && unq_behav==1
+% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_confmat.png'])
+% % % % %     elseif randomsample ==0 && unq_behav==0
+% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_confmat.png'])
+% % % % %     elseif randomsample ==1 && unq_behav==0
+% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_confmat.png'])
+% % % % %     end
+% % % % % 
+% % % % %     close all
 
     %Plot result
     rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
@@ -201,33 +217,34 @@ for s =session_range %1:length(sessions)
     ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
     title('Decoding accuracy for subject current behavioral states','FontSize', 14)
 
-    cd(savePath)
-
-    if randomsample ==0 && onlysingle==1
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique.png'])
-    elseif randomsample ==1 && onlysingle==1
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique.png'])
-    elseif randomsample ==0 && onlysingle==0
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique.png'])
-    elseif randomsample ==1 && onlysingle==0
-        saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique.png'])
-    end
+% % %     cd(savePath)
+% % % 
+% % %     if randomsample ==0 && unq_behav==1
+% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique.png'])
+% % %     elseif randomsample ==1 && unq_behav==1
+% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique.png'])
+% % %     elseif randomsample ==0 && unq_behav==0
+% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique.png'])
+% % %     elseif randomsample ==1 && unq_behav==0
+% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique.png'])
+% % %     end
     close all
 
 end %End of session for loop
 
+%% Plot all sessions results
+
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 
-%Plot SVM results for all sessions, separated by monkey
+%Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
 subplot(2,1,1);hold on;
 cmap = hsv(size(mean_hitrate,2));
-for s = 1:2
+for s = a_sessions
     y = mean_hitrate{s};
     std_dev = sd_hitrate{s};
     errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
-    %plot(x,y,'Color','k')
 end
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -240,11 +257,10 @@ title('Decoding accuracy for subject current behavioral states, Monkey A','FontS
 
 subplot(2,1,2);hold on;
 cmap = hsv(size(mean_hitrate,2));
-for s = 11:12
+for s = h_sessions
     y = mean_hitrate{s};
     std_dev = sd_hitrate{s};
     errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
-    %plot(x,y,'Color','k')
 end
 chance_level = 1/length(behav);
 yline(chance_level,'--','Chance level', 'FontSize',16)
@@ -253,53 +269,6 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14;
 ylabel('Decoding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for subject current behavioral states, Monkey H','FontSize', 14)
-
-% if randomsample ==0 && onlysingle==1
-%     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_allSessions.png'])
-% elseif randomsample ==1 && onlysingle==1
-%     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_allSessions.png'])
-% elseif randomsample ==0 && onlysingle==0
-%     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_allSessions.png'])
-% elseif randomsample ==1 && onlysingle==0
-%     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_allSessions.png'])
-% end
-% close all
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-figure;  set(gcf,'Position',[150 250 700 700]);
-subplot(2,1,1);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = 1:2
-    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
-    std_dev = sd_hitrate{s}./mean_hitrate_shuffled{s};
-    errorbar(y,std_dev,'s','MarkerSize',8,'MarkerFaceColor',cmap(s,:))
-    %plot(x,y,'Color','k')
-end
-chance_level = 1;
-yline(chance_level,'--','At Chance', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 10])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel('Accuracy relative to chance','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for subject current behavioral states, Monkey A','FontSize', 14)
-
-subplot(2,1,2);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = 11:12
-    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
-    std_dev = sd_hitrate{s}./mean_hitrate_shuffled{s};
-    errorbar(y,std_dev,'s','MarkerSize',8,'MarkerFaceColor',cmap(s,:))
-    %plot(x,y,'Color','k')
-end
-chance_level = 1;
-yline(chance_level,'--','At Chance', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 10])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel('Accuracy relative to chance','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Decoding accuracy for subject current behavioral states, Monkey H','FontSize', 14)
 
 if randomsample ==0 && onlysingle==1
@@ -312,3 +281,59 @@ elseif randomsample ==1 && onlysingle==0
     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_allSessions.png'])
 end
 close all
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Plot decoding accuracy relative to chance for all sessions, separated by monkey
+figure;  set(gcf,'Position',[150 250 700 700]);
+subplot(2,1,1);hold on;
+cmap = hsv(size(mean_hitrate,2));
+for s = a_sessions
+    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
+    scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
+end
+legend({sessions(a_sessions).name},'Location','eastoutside')
+chance_level = 1;
+yline(chance_level,'--','At Chance', 'FontSize',16)
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 10])
+xticklabels({'','vlPFC','TEO','all',''})
+ax = gca;
+ax.FontSize = 14;
+ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy for subject current behavioral states, Monkey A','FontSize', 14)
+
+subplot(2,1,2);hold on;
+cmap = hsv(size(mean_hitrate,2));
+for s = h_sessions
+    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
+     scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
+end
+legend({sessions(h_sessions).name},'Location','eastoutside')
+chance_level = 1;
+yline(chance_level,'--','At Chance', 'FontSize',16)
+xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 10])
+xticklabels({'','vlPFC','TEO','all',''})
+ax = gca;
+ax.FontSize = 14;
+ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
+title('Decoding accuracy for subject current behavioral states, Monkey H','FontSize', 14)
+
+if randomsample ==0 && unq_behav==1
+    saveas(gcf,['SVM_results_behav_NOsubsample_unique_allSessions.png'])
+elseif randomsample ==1 && unq_behav==1
+    saveas(gcf,['SVM_results_behav_subsample_unique_allSessions.png'])
+elseif randomsample ==0 && unq_behav==0
+    saveas(gcf,['SVM_results_behav_NOsubsample_NOTunique_allSessions.png'])
+elseif randomsample ==1 && unq_behav==0
+    saveas(gcf,['SVM_results_behav_subsample_NOTunique_allSessions.png'])
+end
+close all
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % % % % %Confusion matrices
+% % % % % vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
+% % % % % D{s} = vlpfc-TEO;
+% % % % % CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
+% % % % % subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
+% % % % % subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
+% % % % % subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
+% % % % % subplot(2,2,4); h = heatmap(D,'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);

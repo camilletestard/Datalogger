@@ -1,4 +1,4 @@
-%% Log_Correlation
+%% Log_Correlation_batch
 %  This script computes pairwise correlations of neuron under different
 %  behavioral conditions.
 
@@ -11,9 +11,12 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range=[1,2,11,12];
+session_range_no_partner=[1:6,11:13,15:18];
+session_range_with_partner=[1:3,11:13];
+
 
 %Set parameters
+with_partner =0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
@@ -27,6 +30,15 @@ mean_corr = nan(length(sessions),n_behav);
 mean_corr_pos = nan(length(sessions),n_behav);
 mean_corr_neg = nan(length(sessions),n_behav);
 
+%Select session range:
+if with_partner ==1
+    session_range = session_range_with_partner;
+    a_sessions = 1:3; h_sessions = 11:13;
+else
+    session_range = session_range_no_partner;
+    a_sessions = 1:6; h_sessions = [11:13,15:18];
+end
+
 s=1;
 for s =session_range %1:length(sessions)
 
@@ -35,8 +47,11 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/'];
 
     %Get data with specified temporal resolution and channels
-    %[Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function_basic(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
-    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+    if with_partner ==1
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+    else
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+    end
 
     session_length = size(Spike_rasters,2); % get session length
 
@@ -60,7 +75,7 @@ for s =session_range %1:length(sessions)
     % yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
     % xlabel('Time in s'); title('Baseline epochs')
 
-    %% Compute cohen's d
+    %% Compute pairwise correlations
 
     for b = 1:n_behav
         idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
@@ -130,7 +145,7 @@ for s =session_range %1:length(sessions)
     ylabel('Effect size'); title('Difference in distribution of pairwise correlation between behavior and baseline')
     xticks(1:length(cohens_d(s,:))); xticklabels(behav_categ(idx_sort))
     set(gca,'FontSize',15);
-    %saveas(gcf, [savePath 'Pairwise_corr/Distribution_difference_pairwise_correl_relative2baseline.png']); close all
+    saveas(gcf, [savePath 'Pairwise_corr/Distribution_difference_pairwise_correl_relative2baseline.png']); close all
 
 end
 
@@ -141,10 +156,11 @@ savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_res
 figure;  set(gcf,'Position',[150 250 1000 800]);
 subplot(2,1,1);hold on;
 [~, idx_sort]=sort(nanmean(mean_corr_pos));
-for s = 1:2%size(mean_cohend_per_behav,1)
+for s = a_sessions
     scatter(1:length(idx_sort),mean_corr_pos(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
     %errorbar(mean_cohend_per_behav(s,idx_sort), std_cohend_per_behav(s,idx_sort),'LineWidth',1.5)
 end
+legend({sessions(a_sessions).name},'Location','eastoutside')
 ylim([0 0.6]); xlim([0 n_behav+1])
 ylabel(['Mean pairwise correlation'])
 xticks(1:n_behav)
@@ -153,10 +169,11 @@ set(gca,'FontSize',15);
 title('Pairwise POSITIVE correlation per behavior, Monkey A')
 
 subplot(2,1,2);hold on;
-for s = 11:12%size(mean_cohend_per_behav,1)
+for s = h_sessions
     scatter(1:length(idx_sort),mean_corr_pos(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
     %errorbar(mean_cohend_per_behav(s,idx_sort), std_cohend_per_behav(s,idx_sort),'LineWidth',1.5)
 end
+legend({sessions(h_sessions).name},'Location','eastoutside')
 ylim([0 0.6]); xlim([0 n_behav+1])
 ylabel(['Mean pairwise correlation'])
 xticks(1:n_behav)
@@ -169,10 +186,11 @@ saveas(gcf, [savePath '/Pairwise_pos_corr_per_behavior.png']); close all
 figure;  set(gcf,'Position',[150 250 1000 800]);
 subplot(2,1,1);hold on;
 [~, idx_sort]=sort(nanmean(mean_corr_neg));
-for s = 1:2%size(mean_cohend_per_behav,1)
+for s = a_sessions
     scatter(1:length(idx_sort),mean_corr_neg(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
     %errorbar(mean_cohend_per_behav(s,idx_sort), std_cohend_per_behav(s,idx_sort),'LineWidth',1.5)
 end
+legend({sessions(a_sessions).name},'Location','eastoutside')
 ylim([-0.6 0]); xlim([0 n_behav+1])
 ylabel(['Mean pairwise correlation'])
 xticks(1:n_behav)
@@ -181,10 +199,11 @@ set(gca,'FontSize',15);
 title('Pairwise NEGATIVE correlation per behavior, Monkey A')
 
 subplot(2,1,2);hold on;
-for s = 11:12%size(mean_cohend_per_behav,1)
+for s = h_sessions
     scatter(1:length(idx_sort),mean_corr_neg(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
     %errorbar(mean_cohend_per_behav(s,idx_sort), std_cohend_per_behav(s,idx_sort),'LineWidth',1.5)
 end
+legend({sessions(h_sessions).name},'Location','eastoutside')
 ylim([-0.6 0]); xlim([0 n_behav+1])
 ylabel(['Mean pairwise correlation'])
 xticks(1:n_behav)
