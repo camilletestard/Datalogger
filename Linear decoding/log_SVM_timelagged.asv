@@ -1,4 +1,4 @@
-%% Log_SVM_timelagged
+%% Log_SVM
 %% Run a linear decoder on a the neural activity over all or a subset of behaviors
 
 
@@ -111,6 +111,12 @@ for s =session_range %1:length(sessions)
                 %Behaviors selecte on 1 window size difference, to make sure we
                 %have equivalent # categories across sessions
 
+                %Print behaviors selected
+                behavs_eval = behav_categ(behav);
+                disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+                fprintf('Behaviors evaluated are: %s \n', behavs_eval);
+                disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+
                 %Only keep the behaviors of interest
                 idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
                 Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
@@ -129,23 +135,7 @@ for s =session_range %1:length(sessions)
                     %non-lagged versions do not overlap
                     Spike_count_raster_final = Spike_count_raster_final(idx_diff_behav,:);%Only keep timepoints where the behaviors of interest occur in spiking data
                     behavior_labels_final = behavior_labels_final(idx_diff_behav,:);%Same as above but in behavior labels
-                    behav_freq_table = tabulate(behavior_labels_final);
-
-                    %Again, only consider behaviors we have more than X
-                    %occurrences of
-                    behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);
-                    idx = find(ismember(behavior_labels_final,behav)); %find the indices of the behaviors considered
-                    Spike_count_raster_final = Spike_count_raster_final(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-                    behavior_labels_final = behavior_labels_final(idx,:);
                     tabulate(behavior_labels_final);
-
-                    %Print behaviors selected
-                    behavs_eval = behav_categ(behav);
-                    disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-                    fprintf('Behaviors evaluated are: %s \n', behavs_eval);
-                    disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-
-
                 end
 
 
@@ -199,7 +189,7 @@ for s =session_range %1:length(sessions)
 
                 channel = char(channel_flag);
                 disp('****************************************************************************')
-                disp([num2str(lag_length) 's window lag, channels: ' channel '. Prediction:' num2str(predict) '. DONE'])
+                disp([num2str(lag_length) ' window lag, channels: ' channel '. Prediction:' num2str(predict) '. DONE'])
                 disp(['Mean hitrate: ' num2str(round(mean(hitrate)*100,2)) '%, suffled:' num2str(round(mean(hitrate_shuffled)*100,2)) '%'])
                 disp('****************************************************************************')
                 pause(1)
@@ -215,8 +205,6 @@ for s =session_range %1:length(sessions)
                 C_table{s,chan,lag,pred} = array2table(confusion_mat_avg,'RowNames',rowNames{s},'VariableNames',colNames);
 
                 lag = lag+1;
-
-                clear labels_id
             end %end of lag length loop
 
             pred = pred + 1;

@@ -226,63 +226,61 @@ for s =session_range %1:length(sessions)
     end %End of channel loop
     %     temp = temp+1;
 
-end %End of session loop
-
 % mean_hitrate = permute( mean_hitrate , [1,3,2] ); sd_hitrate = permute( sd_hitrate , [1,3,2] );
 % mean_hitrate_shuffled = permute( mean_hitrate_shuffled , [1,3,2] );
 
-colNames = ["0sec","2sec","5sec","10sec","20sec"]; rowNames = ["vlPFC","TEO","all"];
-result_hitrate_future = array2table(mean_hitrate(:,:,1),'RowNames',rowNames,'VariableNames',colNames)
-result_hitrate_future_shuffled = array2table(mean_hitrate_shuffled(:,:,1),'RowNames',rowNames,'VariableNames',colNames)
-result_sdhitrate_future = array2table(sd_hitrate(:,:,1),'RowNames',rowNames,'VariableNames',colNames);
-result_hitrate_past = array2table(mean_hitrate(:,:,2),'RowNames',rowNames,'VariableNames',colNames)
-result_sdhitrate_past = array2table(sd_hitrate(:,:,2),'RowNames',rowNames,'VariableNames',colNames);
+% % colNames = ["0sec","2sec","5sec","10sec","20sec"]; rowNames = ["vlPFC","TEO","all"];
+% % result_hitrate_future = array2table(mean_hitrate(:,:,1),'RowNames',rowNames,'VariableNames',colNames)
+% % result_hitrate_future_shuffled = array2table(mean_hitrate_shuffled(:,:,1),'RowNames',rowNames,'VariableNames',colNames)
+% % result_sdhitrate_future = array2table(sd_hitrate(:,:,1),'RowNames',rowNames,'VariableNames',colNames);
+% % result_hitrate_past = array2table(mean_hitrate(:,:,2),'RowNames',rowNames,'VariableNames',colNames)
+% % result_sdhitrate_past = array2table(sd_hitrate(:,:,2),'RowNames',rowNames,'VariableNames',colNames);
+% % 
+% % % save([savePath '\SVM_results_social_context.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
+% % % writetable(result_hitrate,[savePath '\SVM_results_social_context.csv'],'WriteRowNames',true,'WriteVariableNames',true);
+% % save([savePath '\SVM_timelagged_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'mean_hitrate_shuffled','sd_hitrate', 'C_table', 'behavs_eval')
+% % writetable(result_hitrate_future,[savePath '\SVM_results_' num2str(length(behav)) 'future_behav.csv'],'WriteRowNames',true,'WriteVariableNames',true);
+% % writetable(result_hitrate_past,[savePath '\SVM_results_' num2str(length(behav)) 'past_behav.csv'],'WriteRowNames',true,'WriteVariableNames',true);
 
-% save([savePath '\SVM_results_social_context.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-% writetable(result_hitrate,[savePath '\SVM_results_social_context.csv'],'WriteRowNames',true,'WriteVariableNames',true);
-save([savePath '\SVM_timelagged_results_' num2str(length(behav)) 'behav.mat'], 'mean_hitrate', 'mean_hitrate_shuffled','sd_hitrate', 'C_table', 'behavs_eval')
-writetable(result_hitrate_future,[savePath '\SVM_results_' num2str(length(behav)) 'future_behav.csv'],'WriteRowNames',true,'WriteVariableNames',true);
-writetable(result_hitrate_past,[savePath '\SVM_results_' num2str(length(behav)) 'past_behav.csv'],'WriteRowNames',true,'WriteVariableNames',true);
-
-%Plotting results for multiple behaviors at 1sec and lower resolution
+%Plotting results for decoding future behaviors
 figure; hold on; set(gcf,'Position',[150 250 1000 500])
 cmap = hsv(size(mean_hitrate,2));
-for b = 1:size(mean_hitrate,1)
-    y = mean_hitrate(b,:,1);
-    std_dev = sd_hitrate(b,:,1);
+for b = 1:size(mean_hitrate{s},1) %for all channels
+    y = mean_hitrate{s}(b,:,1)./mean_hitrate_shuffled{s}(b,:,1);
+    std_dev = sd_hitrate{s}(b,:,1);
     errorbar(y,std_dev,'s','MarkerSize',10,...
         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend([rowNames, 'Chance']);
+leg = legend(['vlPFC',"TEO","All"],'Location','best');
 title(leg,'Brain area')
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 4 5 5.2]); xlim([0.8 5.2]); ylim([0 1])
+xticks([0.8 1 2 3 4 5 5.2]); xlim([0.8 5.2]); ylim([0 10])
 xticklabels({'','0sec','2sec','5sec','10sec','20sec',''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('Deconding accuracy','FontSize', 18); xlabel('Time lag length (#windows)','FontSize', 18)
+ylabel('Deconding accuracy relative to chance','FontSize', 18); xlabel('Time lag length (#windows)','FontSize', 18)
 title('Decoding accuracy for future behaviors','FontSize', 20)
 cd(savePath)
 saveas(gcf,['SVM_results_FutureBehav.png'])
 close all
 
-%Plotting for all channels across many time windows - including long one.
+%Plotting results for decoding past behaviors
 figure; hold on; set(gcf,'Position',[150 250 1000 500])
-cmap = hsv(size(mean_hitrate,2));
-for b = 1:size(mean_hitrate,1)
-    y = mean_hitrate(b,:,2);
-    std_dev = sd_hitrate(b,:,2);
+cmap = hsv(size(mean_hitrate{s},2));
+for b = 1:size(mean_hitrate{s},1)
+    y = mean_hitrate{s}(b,:,2)./mean_hitrate_shuffled{s}(b,:,2);
+    std_dev = sd_hitrate{s}(b,:,2);
     errorbar(y,std_dev,'s','MarkerSize',10,...
         'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
     %plot(x,y,'Color','k')
 end
-leg = legend([rowNames, 'Chance']);
+leg = legend(['vlPFC',"TEO","All"],'Location','best');
 title(leg,'Brain area')
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 4 5 5.2]); xlim([0.8 5.2]); ylim([0 1])
+xticks([0.8 1 2 3 4 5 5.2]); xlim([0.8 5.2]); ylim([0 10])
 xticklabels({'','0sec','2sec','5sec','10sec','20sec',''})
 ax = gca;
 ax.FontSize = 14;
@@ -292,3 +290,4 @@ cd(savePath)
 saveas(gcf,['SVM_results_PastBehav.png'])
 close all
 
+end %End of session loop

@@ -1,6 +1,6 @@
 %% Log_SVM_transitions_batch
-% Run a linear decoder to decode behavioral transitions from the neural activity
-% Batch version
+% Run a linear decoder to decode behavioral transitions BEFORE THEY OCCUR from the neural activity
+% Batch version -- IN DEVELOPMENT --
 % March 2022 - Camille Testard
 
 %Set session list
