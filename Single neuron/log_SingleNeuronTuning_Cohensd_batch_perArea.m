@@ -21,7 +21,7 @@ with_partner =0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
-isolatedOnly=1; %Only consider isolated units. 0=all units; 1=only well isolated units
+isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 
 %Initialize session batch variables:
 mean_cohend_per_behav_vlPFC = nan(length(sessions), 27);
@@ -42,7 +42,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=1;
+s=12;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -135,6 +135,11 @@ for s =session_range %1:length(sessions)
         chan = chan +1;
     end %end of channel loop
 
+     %sort columns in ascending order
+    [~, orderIdx] = sort(nanmean(cohend(1,:,:)), 'ascend'); orderIdx = squeeze(orderIdx);
+    cohend = cohend(:,:,orderIdx); cohend_shuffle = cohend_shuffle(:,:,orderIdx);
+    p = p(:,:,orderIdx); p_rand = p_rand(:,:,orderIdx);
+
     %Threshold cohens'd by a cohen's d AND p-value cutoff
     cohend_cutoff=0.5; p_cutoff=0.01;
     h_vlPFC = double(abs(cohend(1,:,:)) > cohend_cutoff & p(1,:,:) < p_cutoff); sum(sum(h_vlPFC))
@@ -147,7 +152,7 @@ for s =session_range %1:length(sessions)
     cohend_thresh_TEO = squeeze(h_TEO.*cohend(2,:,:)); cohend_thresh_TEO(cohend_thresh_TEO==0)=nan;
 
     %% Plot heatmaps
-    AxesLabels = behav_categ(1:end-1);
+    AxesLabels = behav_categ(orderIdx);
     caxis_upper = 1.5;
     caxis_lower = -1.5;
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));

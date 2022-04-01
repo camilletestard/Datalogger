@@ -13,7 +13,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:18];
+session_range_no_partner=[1:6,11:13,15:16];
 session_range_with_partner=[1:3,11:13];
 
 
@@ -25,7 +25,7 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 10;%Number of SVM iterations
+num_iter = 50;%Number of SVM iterations
 
 %Select session range:
 if with_partner ==1
@@ -33,7 +33,7 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
@@ -175,7 +175,7 @@ for s =session_range %1:length(sessions)
     subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
-    subplot(2,2,4); h = heatmap(D,'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
+    subplot(2,2,4); h = heatmap(D{s},'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
 
 % % % % %     if randomsample ==0 && unq_behav==1
 % % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
@@ -190,10 +190,11 @@ for s =session_range %1:length(sessions)
 % % % % %     close all
 
     %Plot result
-    rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
-    result_hitrate = array2table(mean_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
-    result_hitrate_shuffled = array2table(mean_hitrate_shuffled{s},'RowNames',rowNames,'VariableNames',colNames);
-    result_sdhitrate = array2table(sd_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
+
+%     rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
+%     result_hitrate = array2table(mean_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
+%     result_hitrate_shuffled = array2table(mean_hitrate_shuffled{s},'RowNames',rowNames,'VariableNames',colNames);
+%     result_sdhitrate = array2table(sd_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
 
     %     save([savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
     %     writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.csv'],'WriteRowNames',true,'WriteVariableNames',true);
@@ -271,13 +272,13 @@ ax.FontSize = 14;
 ylabel('Decoding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Decoding accuracy for subject current behavioral states, Monkey H','FontSize', 14)
 
-if randomsample ==0 && onlysingle==1
+if randomsample ==0 && unq_behav==1
     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_allSessions.png'])
-elseif randomsample ==1 && onlysingle==1
+elseif randomsample ==1 && unq_behav==1
     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_allSessions.png'])
-elseif randomsample ==0 && onlysingle==0
+elseif randomsample ==0 && unq_behav==0
     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_allSessions.png'])
-elseif randomsample ==1 && onlysingle==0
+elseif randomsample ==1 && unq_behav==0
     saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_allSessions.png'])
 end
 close all

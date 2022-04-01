@@ -282,10 +282,10 @@ title('Decoding accuracy for the context of groom receive, Monkey A','FontSize',
 
 subplot(2,2,3);hold on %Groom Give, monkey H
 for s=h_sessions
-    for c = 1:3
-        y = mean_hitrate{s,c}(1,:);
-        std_dev = sd_hitrate{s,c}(1,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    for c = 1:3     
+    y = mean_hitrate{s,c}(1,:);
+    std_dev = sd_hitrate{s,c}(1,:);
+    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
     end
 end
 leg = legend(["vlPFC","TEO","All"], 'Location','best');
@@ -303,10 +303,10 @@ title('Decoding accuracy for the context of groom give, Monkey H','FontSize', 14
 subplot(2,2,4);hold on %Groom Receive, monkey H
 for s=h_sessions
     for c = 1:3
-        y = mean_hitrate{s,c}(2,:);
-        std_dev = sd_hitrate{s,c}(2,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
-        %         errorbar(y,std_dev,'s')
+    y = mean_hitrate{s,c}(2,:);
+    std_dev = sd_hitrate{s,c}(2,:);
+    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    %         errorbar(y,std_dev,'s')
     end
 end
 leg = legend(["vlPFC","TEO","All"], 'Location','best');
@@ -330,7 +330,7 @@ subplot(2,2,1);hold on; %Groom Give, monkey A
 for s=a_sessions
     y = mean_hitrate{s,3}(1,:);
     std_dev = sd_hitrate{s,3}(1,:);
-    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.5)
+    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
 end
 leg = legend({sessions(a_sessions).name}, 'Location','bestoutside');
 title(leg,'Session')
@@ -345,12 +345,14 @@ title('Decoding accuracy for the context of groom give, Monkey A','FontSize', 14
 
 subplot(2,2,2);hold on; %Groom Receive, monkey A
 for s=a_sessions
-    y = mean_hitrate{s,3}(2,:);
-    std_dev = sd_hitrate{s,3}(2,:);
-    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.5)
+    for c = 1:3
+        y = mean_hitrate{s,c}(2,:);
+        std_dev = sd_hitrate{s,c}(2,:);
+        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    end
 end
-leg = legend({sessions(a_sessions).name}, 'Location','bestoutside');
-title(leg,'Session')
+leg = legend(["vlPFC","TEO","All"], 'Location','best');
+title(leg,'Brain Area')
 chance_level = 1/2;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
@@ -362,12 +364,14 @@ title('Decoding accuracy for the context of groom receive, Monkey A','FontSize',
 
 subplot(2,2,3);hold on %Groom Give, monkey H
 for s=h_sessions
-    y = mean_hitrate{s,3}(1,:);
-    std_dev = sd_hitrate{s,3}(1,:);
-    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.5)
+    for c = 1:3     
+    y = mean_hitrate{s,c}(1,:);
+    std_dev = sd_hitrate{s,c}(1,:);
+    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    end
 end
-leg = legend({sessions(h_sessions).name}, 'Location','bestoutside');
-title(leg,'Session')
+leg = legend(["vlPFC","TEO","All"], 'Location','best');
+title(leg,'Brain Area')
 chance_level = 1/2;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
@@ -380,12 +384,15 @@ title('Decoding accuracy for the context of groom give, Monkey H','FontSize', 14
 
 subplot(2,2,4);hold on %Groom Receive, monkey H
 for s=h_sessions
-    y = mean_hitrate{s,3}(2,:);
-    std_dev = sd_hitrate{s,3}(2,:);
-    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.5)
+    for c = 1:3
+    y = mean_hitrate{s,c}(2,:);
+    std_dev = sd_hitrate{s,c}(2,:);
+    scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    %         errorbar(y,std_dev,'s')
+    end
 end
-leg = legend({sessions(h_sessions).name}, 'Location','bestoutside');
-title(leg,'Session')
+leg = legend(["vlPFC","TEO","All"], 'Location','best');
+title(leg,'Brain Area')
 chance_level = 1/2;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
@@ -396,4 +403,4 @@ ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Contex
 title('Decoding accuracy for the context of groom receive, Monkey H','FontSize', 14)
 
 cd(savePath)
-saveas(gcf,['Decoding grooming given context_all units.png'])
+saveas(gcf,['Decoding grooming given context.png'])

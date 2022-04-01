@@ -30,8 +30,8 @@ if sum(abs(diag(fullQRR)) > max(size(fullR)) * eps(fullQRR(1))) < size(fullR,2) 
     rejIdx(~rejIdx) = temp; %reject regressors that cause rank-defficint matrix
 end
 
+colin_values = abs(diag(fullQRR));
 if plotting > 0 %Plots the distirbution of colinearity values
-    colin_values = abs(diag(fullQRR));
     colin_values(rejIdx(:)) = [];
     figure;
     histogram(colin_values)

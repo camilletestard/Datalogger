@@ -14,7 +14,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:18];
+session_range_no_partner=[1:6,11:13,15:16];
 session_range_with_partner=[1:3,11:13];
 
 
@@ -26,7 +26,7 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 100;%Number of SVM iterations
+num_iter = 50;%Number of SVM iterations
 
 %Select session range:
 if with_partner ==1
@@ -34,7 +34,7 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
@@ -200,7 +200,7 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14;
 ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for social context, Monkey A','FontSize', 14)
+title('Decoding accuracy for neighbor ID during grooming, Monkey A','FontSize', 14)
 
 subplot(2,1,2);hold on;
 cmap = hsv(size(mean_hitrate,2));
@@ -217,6 +217,6 @@ xticklabels({'','vlPFC','TEO','all',''})
 ax = gca;
 ax.FontSize = 14;
 ylabel('Decoding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for social context, Monkey H','FontSize', 14)
+title('Decoding accuracy for neighbor ID during grooming, Monkey H','FontSize', 14)
 
  saveas(gcf,['SVM_results_social_context_allSessions.png'])

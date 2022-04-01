@@ -12,7 +12,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:17];
+session_range_no_partner=[1:6,11:13,15:16];
 session_range_with_partner=[1:3,11:13];
 
 
@@ -24,8 +24,8 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 100;%Number of SVM iterations
-transition=2;%1: decode any behavior shift irrespective of what the shift is
+num_iter = 50;%Number of SVM iterations
+transition=1;%1: decode any behavior shift irrespective of what the shift is
              %2: decode SPECIFIC behavioral shifts 
 time_around_shift = 4; %in sec
 
@@ -35,7 +35,7 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:17];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
