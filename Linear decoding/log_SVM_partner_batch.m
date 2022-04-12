@@ -12,7 +12,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:18];
+session_range_no_partner=[1:6,11:13,15:16];
 session_range_with_partner=[1:3,11:13];
 
 %Set parameters
@@ -24,8 +24,8 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 100;%Number of SVM iterations
-min_occurrences = 50;%Minimum number of occurrence per behavior
+num_iter = 50;%Number of SVM iterations
+min_occurrences = 30;%Minimum number of occurrence per behavior
 
 %Select session range:
 if with_partner ==1
@@ -33,7 +33,7 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
@@ -89,9 +89,7 @@ for s =session_range %1:length(sessions)
         % Select behaviors with a minimum # of occurrences
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding rest which is a source of confusion.
 
         % Then select non-reciprocal behaviors
         behav = setdiff(behav, reciprocal_set);

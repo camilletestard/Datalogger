@@ -24,11 +24,12 @@ with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 
 %Initialize session batch variables:
-mean_cohend_per_behav_vlPFC = nan(length(sessions), 27);
-mean_cohend_per_behav_TEO = nan(length(sessions), 27);
+n_behav = 28;
+mean_cohend_per_behav_vlPFC = nan(length(sessions), n_behav);
+mean_cohend_per_behav_TEO = nan(length(sessions), n_behav);
 
-prop_selective_per_behav_vlPFC = nan(length(sessions), 27);
-prop_selective_per_behav_TEO = nan(length(sessions), 27);
+prop_selective_per_behav_vlPFC = nan(length(sessions), n_behav);
+prop_selective_per_behav_TEO = nan(length(sessions), n_behav);
 
 num_selective_behav_per_neuron_vlPFC=cell(1,length(sessions));
 num_selective_behav_per_neuron_TEO=cell(1,length(sessions));
@@ -42,7 +43,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=1;
+s=12;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -135,6 +136,11 @@ for s =session_range %1:length(sessions)
         chan = chan +1;
     end %end of channel loop
 
+     %sort columns in ascending order
+    [~, orderIdx] = sort(nanmean(cohend(1,:,:)), 'ascend'); orderIdx = squeeze(orderIdx);
+    cohend = cohend(:,:,orderIdx); cohend_shuffle = cohend_shuffle(:,:,orderIdx);
+    p = p(:,:,orderIdx); p_rand = p_rand(:,:,orderIdx);
+
     %Threshold cohens'd by a cohen's d AND p-value cutoff
     cohend_cutoff=0.5; p_cutoff=0.01;
     h_vlPFC = double(abs(cohend(1,:,:)) > cohend_cutoff & p(1,:,:) < p_cutoff); sum(sum(h_vlPFC))
@@ -147,7 +153,7 @@ for s =session_range %1:length(sessions)
     cohend_thresh_TEO = squeeze(h_TEO.*cohend(2,:,:)); cohend_thresh_TEO(cohend_thresh_TEO==0)=nan;
 
     %% Plot heatmaps
-    AxesLabels = behav_categ(1:end-1);
+    AxesLabels = behav_categ(orderIdx);
     caxis_upper = 1.5;
     caxis_lower = -1.5;
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
@@ -211,7 +217,7 @@ for s =session_range %1:length(sessions)
     errorbar(mean_cohend_per_neuron_TEO(idx_sort), std_cohend_per_neuron_TEO(idx_sort),'LineWidth',1.5, 'Color','c')
     legend({'mean','standard deviation'},'Location','best')
     ylim([-2 2]); xlim([0 n_neurons+1])
-    ylabel(['Cohens-d, p<' num2str(cutoff)]); xlabel('Units')
+    ylabel(['Cohens-d, p<' num2str(p_cutoff)]); xlabel('Units')
     yline(0,'LineStyle','--')
     text(10,1.5,'Increased firing relative to baseline','FontSize',14)
     text(10,-1.5,'Decreased firing relative to baseline','FontSize',14)
@@ -253,6 +259,14 @@ end %end of session loop
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
 
+%Get correlation between brain areas
+for s = session_range
+    [A B] = corrcoef(mean_cohend_per_behav_vlPFC(s,:), mean_cohend_per_behav_TEO(s,:),'Rows','complete');
+    cor_TEOvlpfc(s) = A(1,2);
+    p_TEOvlpfc(s) = A(1,2);
+end
+mean(cor_TEOvlpfc(cor_TEOvlpfc>0))
+
 %Plot distribution of effect size per behavior across all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 1000 800]);
 subplot(2,1,1);hold on;
@@ -262,7 +276,7 @@ scatter(1:length(idx_sort),mean_cohend_per_behav_vlPFC(a_sessions,idx_sort),60,'
 %boxplot(mean_cohend_per_behav_TEO(a_sessions,idx_sort), 'Color','c')
 scatter(1:length(idx_sort),mean_cohend_per_behav_TEO(a_sessions,idx_sort),60,'filled','MarkerFaceAlpha',.7,'MarkerFaceColor','c')
 ylim([-1.5 1.5]); xlim([0 n_behav+1])
-ylabel(['Cohens-d, p<' num2str(cutoff)])
+ylabel(['Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
 % text(20,-0.15,'Decreased firing relative to baseline','FontSize',14)
@@ -275,7 +289,7 @@ subplot(2,1,2);hold on;
 scatter(1:length(idx_sort),mean_cohend_per_behav_vlPFC(h_sessions,idx_sort),60,'filled','MarkerFaceAlpha',.7,'MarkerFaceColor','b')
 scatter(1:length(idx_sort),mean_cohend_per_behav_TEO(h_sessions,idx_sort),60,'filled','MarkerFaceAlpha',.7,'MarkerFaceColor','c')
 ylim([-1.5 1.5]); xlim([0 n_behav+1])
-ylabel(['Cohens-d, p<' num2str(cutoff)])
+ylabel(['Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
 % text(20,-0.15,'Decreased firing relative to baseline','FontSize',14)

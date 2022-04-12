@@ -12,7 +12,7 @@ session_length = c(8897, 7828, 8897, 7184) #Check in OFS files!
 all_logs = data.frame()
 for (s in 1:length(sessions)){
   setwd(paste('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/', sessions[s],sep=""))
-  log = read.csv(paste('EVENTLOG_restructured_',sessions[s],'.csv',sep=""))
+  log = read.csv(paste('EVENTLOG_restructured.csv',sep=""))
   log$session_num = s
   all_logs= rbind(all_logs, log)
 }
@@ -25,11 +25,15 @@ all_logs$Behavior[all_logs$Behavior=="HIP"]= "Human Intrusion Partner"
 all_logs$Behavior[all_logs$Behavior=="SS"]= "Squeeze Subject"
 all_logs$Behavior[all_logs$Behavior=="SP"]= "Squeeze Partner"
 
+#Remove blocks
+all_logs = all_logs[-grep("block",all_logs$Behavior),]
+
 #Get frequency table per behavior
 behavs = unique(all_logs$Behavior);
 behav_categ = c("social","social","asocial","social","asocial", "social",
-                "social","social","asocial","asocial","social","asocial",
-                "asocial","social","social","asocial","social","social","social","social","asocial")
+                "social","social","social","social","asocial","asocial",
+                "social","social","asocial","asocial","social","social","asocial",
+                "social","social","social","social","asocial")
 cbind(behavs, behav_categ)
 behav_freq_table = data.frame(); b=1; s=1
 behav_freq_table_full = data.frame()
@@ -78,6 +82,11 @@ ggsave("Behavior_proportion_allSessions.png")
 ggplot(data=behav_freq_table_full, aes(x=reorder(Behavior, num.events), y=num.events, fill=categ)) +
   geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('# Occurences')+
   coord_flip()+ theme_classic(base_size = 18)+ ggtitle("All session cumulated")
-ggsave(paste("Behavior_frequency_", sessions[s],".png",sep=""))
+ggsave(paste("Behavior_frequency_allSessions.png",sep=""))
+
+ggplot(data=behav_freq_table_full, aes(x=reorder(Behavior, proportion), y=proportion/4, fill=categ)) +
+  geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Proportion')+
+  coord_flip()+ theme_classic(base_size = 18)+ ggtitle("All session cumulated")
+ggsave(paste("Behavior_proportion_allSessions.png",sep=""))
 
 #Get proportion 

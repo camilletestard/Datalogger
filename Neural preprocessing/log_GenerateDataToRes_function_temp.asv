@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
 %Log GenerateDataToRes_function
 % Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
@@ -58,7 +58,7 @@ else
 end
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
-num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Session_log_num_units.csv');% Load number of unit data
+num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 
@@ -170,6 +170,10 @@ else %include noise cluster (or first channel)
                 ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
                 Spike_counts = hist(ticks, round(length_recording*temp_resolution));
                 Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
+
+                if ismember(Chan_num(i),TEO_chan)
+                brain_label(unit) = 
+                else
                 clear ticks Spike_counts
 
                 unit = unit+1;
@@ -190,7 +194,7 @@ length_recording = size(Spike_rasters,2);
 behav_categ = ["Aggression","Proximity","Groom Give", "HIP","Foraging", "Vocalization","SS", "Masturbating",...
     "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",...
     "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",...
-    "Head Bobbing", "Swinging", "Object Manipulation"];
+    "Head Bobbing", "Swinging", "Object Manipulation","Mounting"];
 behav_categ = sort(behav_categ);
 
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
@@ -199,7 +203,7 @@ behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined b
 double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];% When co-occurring, other behaviors will take precedence over these ones %, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))];
 omv = find(matches(behav_categ,'Other monkeys vocalize')); %When co-occurring with toher behaviors, vocalizations take precedence
 grmpr = find(matches(behav_categ,'Grm prsnt'));
-reciprocal_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
+reciprocal_set = [find(matches(behav_categ,'RR')), find(matches(behav_categ,'Other monkeys vocalize')), find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"SS")), find(matches(behav_categ,"HIP")), find(matches(behav_categ,"HIS")), find(matches(behav_categ,"SP"))];
 social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"Submission")), find(matches(behav_categ,"Approach")), find(matches(behav_categ,"Leave")), find(matches(behav_categ,"Butt sniff")),...
@@ -309,16 +313,15 @@ groom_labels_all=zeros(size(labels,1),5); %Initiliaze
 %2nd row: Is start (1, first half or first 20sec) or end (2, 2nd half or last 20sec) of grooming bout
 %3rd row: Is grooming bout after a threat event (within 1min after threat)
 %4th row: Is grooming bout reciprocated (within 30sec of previous grooming bout)
-%5th row: Is grooming bout initiated (within 30sec of an approach or groom present)
+%5th row: Is grooming bout sollicited (within 30sec of an approach or groom present)
 
 %set paramaters:
 time_start_end = 5; %in sec
-time_after_threat = 10;
-time_postthreat = 10;
-time_after_recip = 5;
-time_postrecip =10;
-time_after_sollicit = 5;
-time_postsollicit =10;
+time_postthreat = 30;
+time_recip = 10;
+time_postrecip =20;
+time_sollicited = 5;
+time_postsollicit =20;
 
 %Set first column as the behavior labels
 groom_labels_all(:,1) = cell2mat({labels{:,3}}');
@@ -340,9 +343,8 @@ all_sollicit_end_times = table2array(behavior_log([find(strcmp(table2array(behav
     find(strcmp(table2array(behavior_log(:,'Behavior')),'Approach'))],"end_time_round"));
 sollicit_interval=[];
 for n=1:length(all_sollicit_end_times)
-    sollicit_interval = [sollicit_interval, all_sollicit_end_times(n):all_sollicit_end_times(n)+time_after_sollicit];
+    sollicit_interval = [sollicit_interval, all_sollicit_end_times(n):all_sollicit_end_times(n)+time_sollicited];
 end
-
 
 %Create grooming label matrix
 for g = 1:length(all_groom_bouts) %For all grooming bouts
@@ -384,18 +386,13 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
 
     %Label post-threat status
     idx_postthreat=intersect(bout_idx, threat_interval);%Indices that occur during the "post-threat" interval
-%     if ~isempty(idx_postthreat)
-%         groom_labels_all(bout_idx,3)=2;
-%     else
-%         groom_labels_all(bout_idx,3)=1;
-%     end
     idx_nothreat = setdiff(bout_idx,idx_postthreat);%The rest is not "post-threat"
     groom_labels_all(idx_nothreat,3)=1; groom_labels_all(idx_postthreat,3)=2;
 
     %Label reciprocated status
     if g>1 %If this is not the first grooming bout
         if diff_bout==1 %If it is a different bout (i.e. there is at least 3sec between the two bouts)
-            if bout_start_time-previous_bout_end_time <= time_after_recip && ~ismember(previous_bout_behav,bout_behav)
+            if bout_start_time-previous_bout_end_time <= time_recip && ~ismember(previous_bout_behav,bout_behav)
                 %If there is less than Xsec between a groom receive and a groom give
                 if length(bout_idx)>time_postrecip
                     idx_recip = bout_start_time:bout_start_time+time_postrecip;
@@ -404,7 +401,6 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
                 else
                     groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
                 end
-                %groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
             else
                 groom_labels_all(bout_idx,4)=1;%Label the whole bout as non-reciprocated
             end
@@ -434,6 +430,144 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
 
 end
 groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
+
+% % % % % % % groom_labels_all=zeros(size(labels,1),5); %Initiliaze
+% % % % % % % %First row: label of all behavior
+% % % % % % % %2nd row: Is start (1, first half or first 20sec) or end (2, 2nd half or last 20sec) of grooming bout
+% % % % % % % %3rd row: Is grooming bout after a threat event (within 1min after threat)
+% % % % % % % %4th row: Is grooming bout reciprocated (within 30sec of previous grooming bout)
+% % % % % % % %5th row: Is grooming bout initiated (within 30sec of an approach or groom present)
+% % % % % % % 
+% % % % % % % %set paramaters:
+% % % % % % % time_start_end = 5; %in sec
+% % % % % % % time_after_threat = 30;
+% % % % % % % time_postthreat = 10;
+% % % % % % % time_after_recip = 5;
+% % % % % % % time_postrecip =10;
+% % % % % % % time_after_sollicit = 5;
+% % % % % % % time_postsollicit =10;
+% % % % % % % 
+% % % % % % % %Set first column as the behavior labels
+% % % % % % % groom_labels_all(:,1) = cell2mat({labels{:,3}}');
+% % % % % % % 
+% % % % % % % %get all grooming bouts
+% % % % % % % all_groom_bouts = sort([find(strcmp(table2array(behavior_log(:,'Behavior')),'Groom Give'));...
+% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'Groom Receive'))]);
+% % % % % % % 
+% % % % % % % %Get human threat times and intervals considered "post-threat"
+% % % % % % % all_threat_end_times = table2array(behavior_log([find(strcmp(table2array(behavior_log(:,'Behavior')),'HIS'));...
+% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'HIP'))],"end_time_round")); %Get threat times
+% % % % % % % threat_interval=[]; %Initialize
+% % % % % % % for n=1:length(all_threat_end_times) %For all threat times
+% % % % % % %     threat_interval = [threat_interval, all_threat_end_times(n):all_threat_end_times(n)+time_after_threat]; %Get all indices consideres as "post-threat"
+% % % % % % % end
+% % % % % % % 
+% % % % % % % %Get sollicitation times and intervals considered "post-sollicitation"
+% % % % % % % all_sollicit_end_times = table2array(behavior_log([find(strcmp(table2array(behavior_log(:,'Behavior')),'Grm prsnt'));...
+% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'Approach'))],"end_time_round"));
+% % % % % % % sollicit_interval=[];
+% % % % % % % for n=1:length(all_sollicit_end_times)
+% % % % % % %     sollicit_interval = [sollicit_interval, all_sollicit_end_times(n):all_sollicit_end_times(n)+time_after_sollicit];
+% % % % % % % end
+% % % % % % % 
+% % % % % % % 
+% % % % % % % %Create grooming label matrix
+% % % % % % % for g = 1:length(all_groom_bouts) %For all grooming bouts
+% % % % % % % 
+% % % % % % %     bout_behav = table2array(behavior_log(all_groom_bouts(g),"Behavior")); %Groom give or groom receive
+% % % % % % %     bout_start_time = table2array(behavior_log(all_groom_bouts(g),"start_time_round"));%Start time
+% % % % % % %     bout_end_time = table2array(behavior_log(all_groom_bouts(g),"end_time_round"))-1;%End time
+% % % % % % % 
+% % % % % % %     if g>1 %If not first bout
+% % % % % % %         previous_bout_behav = table2array(behavior_log(all_groom_bouts(g-1),"Behavior"));%Grooming behavior of previous bout
+% % % % % % %         previous_bout_end_time = table2array(behavior_log(all_groom_bouts(g-1),"end_time_round"));%End time previous bout
+% % % % % % %         previous_bout_start_time = table2array(behavior_log(all_groom_bouts(g-1),"start_time_round"));%Start time previous bout
+% % % % % % % 
+% % % % % % %         %If there is less than 5sec between two bouts of the SAME grooming
+% % % % % % %         %behavior
+% % % % % % %         if bout_start_time - previous_bout_end_time < 5 && isequal(bout_behav, previous_bout_behav)
+% % % % % % %             %Consider this bouts to be the same as the previous bout.
+% % % % % % %             diff_bout =0; %Set bout as NOT different
+% % % % % % %             bout_start_time = previous_bout_start_time; %Change start time to be the start time of the previous bout.
+% % % % % % %         else
+% % % % % % %             diff_bout =1; %Set bout as different.
+% % % % % % %         end
+% % % % % % %     end
+% % % % % % % 
+% % % % % % %     bout_length = bout_end_time - bout_start_time+1; %Set bout length in sec
+% % % % % % %     bout_idx = bout_start_time:bout_end_time;%Get bout indices
+% % % % % % % 
+% % % % % % %     %Label start and end of bout
+% % % % % % %     if bout_length > time_start_end*2 %If bout is longer than twice the start/end time
+% % % % % % %         idx_start = bout_start_time:bout_start_time+time_start_end-1; %First 20s is "start" of grooming bout
+% % % % % % %         idx_end = bout_end_time-time_start_end+1:bout_end_time;%Last 20s is "end" of grooming bout
+% % % % % % %         idx_middle = setdiff(bout_start_time:bout_end_time, [idx_start idx_end]);%Rest is middle
+% % % % % % %     else %If bout is shorter
+% % % % % % %         idx_start = bout_start_time:bout_start_time+round(bout_length/2);%Consider the first half of the bout as start
+% % % % % % %         idx_end = bout_start_time+round(bout_length/2)+1:bout_end_time;%Last half of the bout as end
+% % % % % % %         idx_middle =[];%No middle
+% % % % % % %     end
+% % % % % % %     groom_labels_all(idx_start,2)=1; groom_labels_all(idx_end,2)=2; groom_labels_all(idx_middle,2)=3;
+% % % % % % % 
+% % % % % % %     %Label post-threat status
+% % % % % % %     idx_postthreat=intersect(bout_idx, threat_interval);%Indices that occur during the "post-threat" interval
+% % % % % % %     if ~isempty(idx_postthreat)
+% % % % % % %         if length(bout_idx)>time_postthreat
+% % % % % % %             idx_threat = bout_start_time:bout_start_time+time_postthreat;
+% % % % % % %             idx_nonthreat = setdiff(bout_idx,idx_threat);
+% % % % % % %             groom_labels_all(idx_threat,3)=2; groom_labels_all(idx_nonthreat,3)=1;
+% % % % % % %         else
+% % % % % % %             groom_labels_all(bout_idx,3)=2;%Label the whole bout as sollicited
+% % % % % % %         end
+% % % % % % %         %         groom_labels_all(bout_idx,3)=2;
+% % % % % % %     else
+% % % % % % %         groom_labels_all(bout_idx,3)=1;
+% % % % % % %     end
+% % % % % % %     %     idx_nothreat = setdiff(bout_idx,idx_postthreat);%The rest is not "post-threat"
+% % % % % % %     %     groom_labels_all(idx_nothreat,3)=1; groom_labels_all(idx_postthreat,3)=2;
+% % % % % % % 
+% % % % % % %     %Label reciprocated status
+% % % % % % %     if g>1 %If this is not the first grooming bout
+% % % % % % %         if diff_bout==1 %If it is a different bout (i.e. there is at least 3sec between the two bouts)
+% % % % % % %             if bout_start_time-previous_bout_end_time <= time_after_recip && ~ismember(previous_bout_behav,bout_behav)
+% % % % % % %                 %If there is less than Xsec between a groom receive and a groom give
+% % % % % % %                 if length(bout_idx)>time_postrecip
+% % % % % % %                     idx_recip = bout_start_time:bout_start_time+time_postrecip;
+% % % % % % %                     idx_nonrecip = setdiff(bout_idx,idx_recip);
+% % % % % % %                     groom_labels_all(idx_recip,4)=2; groom_labels_all(idx_nonrecip,4)=1;
+% % % % % % %                 else
+% % % % % % %                     groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
+% % % % % % %                 end
+% % % % % % %                 %groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
+% % % % % % %             else
+% % % % % % %                 groom_labels_all(bout_idx,4)=1;%Label the whole bout as non-reciprocated
+% % % % % % %             end
+% % % % % % %         else % If it is actually the same bout (not enough difference between the bouts)
+% % % % % % %             groom_labels_all(bout_idx,4)=groom_labels_all(bout_idx(1),4);%Label the same way as the previous bout
+% % % % % % %         end
+% % % % % % %     else %If it is the first grooming bout of the session
+% % % % % % %         groom_labels_all(bout_idx,4)=1;%Label as non-reciprocal
+% % % % % % %     end
+% % % % % % % 
+% % % % % % %     %Label initiated status
+% % % % % % %     idx_initiated=intersect(bout_idx, sollicit_interval);%Indices that occur during the "post-sollicitation" interval
+% % % % % % %     if ~isempty(idx_initiated)
+% % % % % % %         if length(bout_idx)>time_postsollicit
+% % % % % % %             idx_sollicited = bout_start_time:bout_start_time+time_postsollicit;
+% % % % % % %             idx_nonsollicited = setdiff(bout_idx,idx_sollicited);
+% % % % % % %             groom_labels_all(idx_sollicited,5)=2; groom_labels_all(idx_nonsollicited,5)=1;
+% % % % % % %         else
+% % % % % % %             groom_labels_all(bout_idx,5)=2;%Label the whole bout as sollicited
+% % % % % % %         end
+% % % % % % %         %groom_labels_all(bout_idx,5)=2;
+% % % % % % %     else
+% % % % % % %         groom_labels_all(bout_idx,5)=1;
+% % % % % % %     end
+% % % % % % %     %     idx_not_initiated = setdiff(bout_idx,idx_initiated);%The rest is not post-sollicitation
+% % % % % % %     %     groom_labels_all(idx_not_initiated,5)=1; groom_labels_all(idx_initiated,5)=2;
+% % % % % % % 
+% % % % % % % end
+% % % % % % % groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
 
 
 end

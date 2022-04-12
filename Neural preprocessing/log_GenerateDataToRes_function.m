@@ -210,6 +210,12 @@ else %include noise cluster (or first channel)
                 Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
                 clear ticks Spike_counts
 
+                if ismember(Chan_num(i),TEO_chan)
+                    brain_label(unit) = "TEO";
+                else
+                    brain_label(unit) = "vlPFC";
+                end
+
                 unit = unit+1;
             end
         end
@@ -237,7 +243,7 @@ behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined b
 double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];% When co-occurring, other behaviors will take precedence over these ones %, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))];
 omv = find(matches(behav_categ,'Other monkeys vocalize')); %When co-occurring with toher behaviors, vocalizations take precedence
 grmpr = find(matches(behav_categ,'Grm prsnt'));
-reciprocal_set = [find(matches(behav_categ,'Other monkeys vocalize')), find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
+reciprocal_set = [find(matches(behav_categ,'RR')), find(matches(behav_categ,'Other monkeys vocalize')), find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"SS")), find(matches(behav_categ,"HIP")), find(matches(behav_categ,"HIS")), find(matches(behav_categ,"SP"))];
 social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"Submission")), find(matches(behav_categ,"Approach")), find(matches(behav_categ,"Leave")), find(matches(behav_categ,"Butt sniff")),...

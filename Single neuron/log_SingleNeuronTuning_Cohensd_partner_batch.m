@@ -13,7 +13,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:18];
+session_range_no_partner=[1:6,11:13,15:16];
 session_range_with_partner=[1:3,11:13];
 
 %Set parameters
@@ -22,14 +22,12 @@ temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
-min_occurrences = 30;
 
-%Initialize session batch variables:
-mean_cohend_per_behav = nan(length(sessions), length(behav_categ)-1);
-std_cohend_per_behav = nan(length(sessions), length(behav_categ)-1);
-se_cohend_per_behav = nan(length(sessions), length(behav_categ)-1);
-prop_selective_per_behav = nan(length(sessions), length(behav_categ)-1);
-num_selective_behav_per_neuron=cell(1,length(sessions));
+% % %Initialize session batch variables:
+% % n_behav = 28;
+% % mean_cohend_per_behav = nan(length(sessions), n_behav );
+% % prop_selective_per_behav = nan(length(sessions), n_behav );
+% % num_selective_behav_per_neuron=cell(1,length(sessions));
 
 %Select session range:
 if with_partner ==1
@@ -37,7 +35,7 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
@@ -65,30 +63,29 @@ for s =session_range %1:length(sessions)
     behavior_labels = behavior_labels_partner_init;%Get behavior label from labels structure
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
 
-    %% Select behaviors to decode
+    %% Get baseline firing from epochs where the partner rests idle.
 
-    %Compute freq of behavior for the session
-    behav_freq_table = tabulate(behavior_labels);
-    behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
+    %Estimate "baseline" neural firing distribution.
+    idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
+    baseline_firing = Spike_rasters(:,idx_rest);
+    mean_baseline = mean(baseline_firing,2);
+    std_baseline = std(Spike_rasters(:,idx_rest),0,2);
 
-    % Select behaviors with a minimum # of occurrences
-    behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-    behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-    behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding rest which is a source of confusion.
+    %Check visually that baseline is taken from epochs throughout the session
+    y=zeros(1, session_length); y(idx_rest)=1;
+    figure; plot(1:session_length, y); ylim([-0.5, 1.5])
+    yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
+    xlabel('Time in s'); title('Baseline epochs')
+    set(gca,'FontSize',15);
+    close all
 
-    % Then select non-reciprocal behaviors
+    %% Select non-reciprocal behaviors and time points where the behavior differs between partner and subject
+
+    % Select non-reciprocal behaviors
+    behav = 1:length(behav_categ)-1; %exclude rest
     behav = setdiff(behav, reciprocal_set);
 
-    % OR select behaviors manually
-    %behav = [4,5,17,23,25];%manually select behaviors of interest
-    %Select behaviors manually to ensure that the same
-    %behaviors are considered for the partner and subject comparisons.
-    %This list could change from session to session.. I'll have to
-    %think of a way to automatize this.
-
-    %Only keep the behaviors of interest
+    % Only keep the behaviors of interest
     idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
     Spike_raster_final = Spike_rasters(:,idx);%Only keep timepoints where the behaviors of interest occur in spiking data
     behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
@@ -101,7 +98,7 @@ for s =session_range %1:length(sessions)
     diff_idx = find(partner_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
     Spike_raster_final = Spike_raster_final(:,diff_idx);%Only keep timepoints where the behaviors of interest occur in spiking data
     behavior_labels_final = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
-    behav = unique(behavior_labels_final);
+    %behav = unique(behavior_labels_final);
 
     tabulate(removecats(categorical(behavior_labels_final)));
 
@@ -117,18 +114,6 @@ for s =session_range %1:length(sessions)
     n_neurons = size(Spike_rasters,1); %Get number of neurons
     n_behav = length(unqLabels); %Get number of unique behavior labels
 
-    %Estimate "baseline" neural firing distribution.
-    idx_rest=find(behavior_labels_subject_init==length(behav_categ));%Get idx of "rest" epochs.
-    mean_baseline = mean(Spike_rasters(:,idx_rest),2);
-    std_baseline = std(Spike_rasters(:,idx_rest),0,2);
-
-    %Check visually that baseline is taken from epochs throughout the session
-    y=zeros(1, session_length); y(idx_rest)=1;
-    figure; plot(1:session_length, y); ylim([-0.5, 1.5])
-    yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
-    xlabel('Time in s'); title('Baseline epochs')
-    set(gca,'FontSize',15);
-    close all
 
     %% Compute cohen's d
 
@@ -151,29 +136,29 @@ for s =session_range %1:length(sessions)
             if n_per_behav(b)>10
 
                 if length(idx)<length(idx_rest)
-                    idx_rand = randsample(idx_rest,length(idx));
+                    idx_rand = randsample(1:length(idx_rest),length(idx));
                 else
-                    idx_rand = randsample(idx_rest,length(idx),true);
+                    idx_rand = randsample(1:length(idx_rest),length(idx),true);
                 end
 
                 mean_beh(n,b)=mean(Spike_raster_final(n, idx),2);
                 std_beh(n,b)=std(Spike_raster_final(n, idx),0,2);
 
-                mean_beh_shuffle(n,b)=mean(Spike_rasters(n, idx_rand),2);
-                std_beh_shuffle(n,b)=std(Spike_rasters(n, idx_rand),0,2);
+                mean_beh_shuffle(n,b)=mean(baseline_firing(n, idx_rand),2);
+                std_beh_shuffle(n,b)=std(baseline_firing(n, idx_rand),0,2);
 
                 cohend(n,b) = (mean_beh(n,b)-mean_baseline(n)) ./ sqrt( (std_beh(n,b).^2 + std_baseline(n).^2) / 2);
                 cohend_shuffle(n,b) = (mean_beh_shuffle(n,b)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b).^2 + std_baseline(n).^2) / 2);
 
-                [~, p(n,b)] = ttest2(Spike_raster_final(n, idx), Spike_rasters(n,idx_rest));
-                [~, p_rand(n,b)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
+                [~, p(n,b)] = ttest2(Spike_raster_final(n, idx), baseline_firing(n,:));
+                [~, p_rand(n,b)] = ttest2(baseline_firing(n, idx_rand), baseline_firing(n,:));
             end
 
         end
     end
 
     %Threshold cohens'd by a cutoff
-    cutoff=0.01;
+    cutoff=0.005;
     h = double(p < cutoff); sum(sum(h))
     h_shuffle = double(p_rand < cutoff); sum(sum(h_shuffle))
 
@@ -219,15 +204,12 @@ for s =session_range %1:length(sessions)
     figure; scatter(nanmean(abs(cohend_thresh)), n_per_behav); corrcoef(nanmean(abs(cohend_thresh)), n_per_behav,'rows','pairwise')
     figure; scatter(sum(~isnan(cohend_thresh)), n_per_behav); corrcoef(sum(~isnan(cohend_thresh)), n_per_behav,'rows','pairwise')
 
-    no_nan_idx=find(n_per_behav~=0);
-    mean_cohend_per_behav(s,no_nan_idx) = nanmean(cohend_thresh);
-    std_cohend_per_behav(s,no_nan_idx) = nanstd(cohend_thresh);
-    se_cohend_per_behav(s,no_nan_idx) = nanstd(cohend_thresh)./sqrt(sum(~isnan(cohend_thresh)));
-    prop_selective_per_behav(s,no_nan_idx) = sum(~isnan(cohend_thresh))/n_neurons;
+    mean_cohend_per_behav(s,:) = nanmean(cohend_thresh);
+    prop_selective_per_behav(s,:) = sum(~isnan(cohend_thresh))/n_neurons;
 
     %Plot the distribution of effect sizes for each behavior
     figure; hold on; set(gcf,'Position',[150 250 1000 500]);
-    [~, idx_sort]=sort(mean_cohend_per_behav(s,no_nan_idx));
+    [~, idx_sort]=sort(mean_cohend_per_behav(s,:));
     boxplot(cohend_thresh(:,idx_sort))
     % scatter(1:length(idx_sort),mean_cohend_per_behav(idx_sort),60,'filled')
     % errorbar(mean_cohend_per_behav(idx_sort), std_cohend_per_behav(idx_sort),'LineWidth',1.5)
@@ -245,7 +227,7 @@ for s =session_range %1:length(sessions)
 
     %Plot the proportion of selective neurons per behavior
     figure; hold on; set(gcf,'Position',[150 250 1000 500]);
-    [~,idx_sort]=sort(prop_selective_per_behav(s,no_nan_idx),'descend');
+    [~,idx_sort]=sort(prop_selective_per_behav(s,:),'descend');
     scatter(1:n_behav,prop_selective_per_behav(s,idx_sort),60,'filled')
     ylabel('Prop. selective units')
     xticks(1:n_behav); xlim([0 n_behav+1]); ylim([0 1])
@@ -300,6 +282,9 @@ end
 
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
+mean_cohend_per_behav(mean_cohend_per_behav==0)=NaN;
+prop_selective_per_behav(prop_selective_per_behav==0)=NaN;
+
 
 %Plot distribution of effect size per behavior across all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 1000 800]);
@@ -335,7 +320,7 @@ xticks(1:n_behav)
 xticklabels(AxesLabels(idx_sort))
 set(gca,'FontSize',15);
 title('Distribution of effect size per behavior, Monkey H')
-saveas(gcf, [savePath '/Distribution_effect_size_per_behavior.png']); pause(2); close all
+saveas(gcf, [savePath '/Distribution_effect_size_per_behavior_PARTNER.png']); pause(2); close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot proportion of selective units per behavior across all sessions, separated by monkey
@@ -368,7 +353,7 @@ xticks(1:n_behav)
 xticklabels(AxesLabels(idx_sort))
 set(gca,'FontSize',15);
 title('Proportion of selective units per behavior, Monkey H')
-saveas(gcf, [savePath '/Proportion_selective_units_per_behavior.png']); pause(2); close all
+saveas(gcf, [savePath '/Proportion_selective_units_per_behavior_PARTNER.png']); pause(2); close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot number of behaviors a single neuron is selective for across all sessions, separated by monkey
@@ -391,5 +376,5 @@ legend({sessions(h_sessions).name},'Location','eastoutside')
 xlabel('Number of behaviors a given neuron is selective for')
 set(gca,'FontSize',15);
 title('Distribution of the number of behaviors single units are selective for, Monkey H')
-saveas(gcf, [savePath '/Number_selective_behavior_per_unit.png']); pause(2); close all
+saveas(gcf, [savePath '/Number_selective_behavior_per_unit_PARTNER.png']); pause(2); close all
 

@@ -33,8 +33,8 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=1;
-for s =session_range %1:length(sessions)
+s=2;
+for s =session_range([1,3:length(session_range)]) %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
@@ -54,7 +54,7 @@ for s =session_range %1:length(sessions)
         disp('Data Loaded')
 
         %Format data
-        Vc = Spike_rasters';
+        Vc{s,chan} = Spike_rasters';
 
         %% Set options
 
@@ -87,14 +87,14 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
         %Create subject behavior regressors:
-        subject_behav_reg = zeros(size(Vc,1), length(behav_categ)-1); %initialize
+        subject_behav_reg = zeros(size(Vc{s,chan},1), length(behav_categ)-1); %initialize
         for b = 1:length(behav_categ)-1 %for all behaviors
             idx = find(behavior_labels_subject == b);
             subject_behav_reg(idx,b) = 1;
         end
 
         %Create partner behavior regressors:
-        partner_behav_reg = zeros(size(Vc,1), length(behav_categ)-1); %initialize
+        partner_behav_reg = zeros(size(Vc{s,chan},1), length(behav_categ)-1); %initialize
         for b = 1:length(behav_categ)-1
             idx = find(behavior_labels_partner == b);
             partner_behav_reg(idx,b) = 1;
@@ -188,7 +188,7 @@ for s =session_range %1:length(sessions)
         % subject have undefined behaviors? only one of the two?
 
         all_nan_inds = find(behavior_labels_subject==length(behav_categ));
-        percent_lost_to_nans = size(all_nan_inds,1)/size(Vc,1);
+        percent_lost_to_nans = size(all_nan_inds,1)/size(Vc{s,chan},1);
 
         %remove from predictors and neural data
         behavR(all_nan_inds,:) = []; %blank these indices out
@@ -196,7 +196,7 @@ for s =session_range %1:length(sessions)
         zero_regressors_behav = find(all(behavR == 0,1));
         zero_regressors_move = find(all(moveR == 0,1));
 
-        Vc(all_nan_inds,:) = [];
+        Vc{s,chan}(all_nan_inds,:) = [];
 
         %remove empty regressors
         if ~isempty(zero_regressors_behav)
@@ -238,7 +238,7 @@ for s =session_range %1:length(sessions)
         fullR(:,analoginds) = (fullR(:,analoginds)- mean(fullR(:,analoginds),1))./std(fullR(:,analoginds));
 
         %Churchland median centered the neuronal data, so we will do the same.
-        Vc = (Vc - median(Vc,1));
+        Vc{s,chan} = (Vc{s,chan} - median(Vc{s,chan},1));
 
         disp('Data centered')
 
@@ -336,9 +336,9 @@ for s =session_range %1:length(sessions)
         disp('Start full model cross validation')
         tic %This is for timing how long it takes to run the entire analysis
 
-        [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
-        Vfull = Vfull';
-        CV_ResultsFull  = modelCorr(Vc,Vfull); %compute model results
+        [Vfull{s,chan}, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc{s,chan}, regLabels, regIdx_orthog, regLabels, opts.folds);
+        Vfull{s,chan} = Vfull{s,chan}';
+        CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull{s,chan}); %compute model results
         RsqFull(s, chan) = CV_ResultsFull.r_value.^2
 
         %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
@@ -431,7 +431,7 @@ end
 
 %% Plot some results
 
-for unit =1:size(Vc,2)
+for unit =1:size(Vc{s,chan},2)
     correl(unit) = round(corr(Vc{s,chan}(:,unit),Vfull{s,chan}(:,unit)),2);
 end
 

@@ -24,11 +24,12 @@ with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 
 %Initialize session batch variables:
-mean_cohend_per_behav_vlPFC = nan(length(sessions), 27);
-mean_cohend_per_behav_TEO = nan(length(sessions), 27);
+n_behav = 28;
+mean_cohend_per_behav_vlPFC = nan(length(sessions), n_behav);
+mean_cohend_per_behav_TEO = nan(length(sessions), n_behav);
 
-prop_selective_per_behav_vlPFC = nan(length(sessions), 27);
-prop_selective_per_behav_TEO = nan(length(sessions), 27);
+prop_selective_per_behav_vlPFC = nan(length(sessions), n_behav);
+prop_selective_per_behav_TEO = nan(length(sessions), n_behav);
 
 num_selective_behav_per_neuron_vlPFC=cell(1,length(sessions));
 num_selective_behav_per_neuron_TEO=cell(1,length(sessions));
@@ -257,6 +258,14 @@ end %end of session loop
 
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
+
+%Get correlation between brain areas
+for s = session_range
+    [A B] = corrcoef(mean_cohend_per_behav_vlPFC(s,:), mean_cohend_per_behav_TEO(s,:),'Rows','complete');
+    cor_TEOvlpfc(s) = A(1,2);
+    p_TEOvlpfc(s) = B(1,2);
+end
+mean(cor_TEOvlpfc(cor_TEOvlpfc>0))
 
 %Plot distribution of effect size per behavior across all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 1000 800]);

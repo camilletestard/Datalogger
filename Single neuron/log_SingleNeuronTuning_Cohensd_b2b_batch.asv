@@ -96,30 +96,51 @@ for s =session_range %1:length(sessions)
 
     for n = 1:n_neurons(s)
 
-        for b = 1:n_behav
-            idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
-            n_per_behav(s,b)=length(idx);
+        for b1 = 1:n_behav
+            idx_b1 = find(behavior_labels == unqLabels(b1)); %get idx where behavior b occurred
+            n_per_behav(s,b1)=length(idx);
 
-            if n_per_behav(s,b)>min_occurrence
+            for b2=1:n_behav
+                idx_b2 = find(behavior_labels == unqLabels(b2));
 
-                if length(idx)<length(idx_rest)
-                    idx_rand = randsample(idx_rest,length(idx));
-                else
-                    idx_rand = randsample(idx_rest,length(idx),true);
+                if n_per_behav(s,b1)>min_occurrence && n_per_behav(s,b2)>min_occurrence && b1~=b2
+
+                    %Get indices for shuffled analysis
+                    if length(idx_b1)<length(idx_rest)
+                        idx_b1_rand = randsample(idx_rest,length(idx_b1));
+                    else
+                        idx_b1_rand = randsample(idx_rest,length(idx_b1),true);
+                    end
+
+                    if length(idx_b2)<length(idx_rest)
+                        idx_b2_rand = randsample(idx_rest,length(idx_b2));
+                    else
+                        idx_b2_rand = randsample(idx_rest,length(idx_b2),true);
+                    end
+
+                    %Get mean firing rate for b1
+                    mean_beh1(n,b1)=mean(Spike_rasters(n, idx_b1),2);
+                    std_beh1(n,b1)=std(Spike_rasters(n, idx_b1),0,2);
+
+                    %Get mean firing rate for b2
+                    mean_beh2(n,b2)=mean(Spike_rasters(n, idx_b2),2);
+                    std_beh2(n,b2)=std(Spike_rasters(n, idx_b2),0,2);
+
+                    %Get shuffled firing rates
+                    mean_beh1_shuffle(n,b1)=mean(Spike_rasters(n, idx_b1_rand),2);
+                    std_beh1_shuffle(n,b1)=std(Spike_rasters(n, idx_b1_rand),0,2);
+
+                    mean_beh2_shuffle(n,b2)=mean(Spike_rasters(n, idx_b2_rand),2);
+                    std_beh2_shuffle(n,b2)=std(Spike_rasters(n, idx_b2_rand),0,2);
+
+                    %Calculate cohen's d
+                    cohend(n,b1, b2) = (mean_beh1(n,b1)-mean_beh2(n,b2)) ./ sqrt( (std_beh1(n,b1).^2 + std_beh2(n,b2).^2) / 2);
+                    cohend_shuffle(n,b1) = (mean_beh_shuffle(n,b1)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b1).^2 + std_baseline(n).^2) / 2);
+
+                    [~, p(n,b1)] = ttest2(Spike_rasters(n, idx), Spike_rasters(n,idx_rest));
+                    [~, p_rand(n,b1)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
+
                 end
-                
-                mean_beh(n,b)=mean(Spike_rasters(n, idx),2);
-                std_beh(n,b)=std(Spike_rasters(n, idx),0,2);
-
-                mean_beh_shuffle(n,b)=mean(Spike_rasters(n, idx_rand),2);
-                std_beh_shuffle(n,b)=std(Spike_rasters(n, idx_rand),0,2);
-
-                cohend(n,b) = (mean_beh(n,b)-mean_baseline(n)) ./ sqrt( (std_beh(n,b).^2 + std_baseline(n).^2) / 2);
-                cohend_shuffle(n,b) = (mean_beh_shuffle(n,b)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b).^2 + std_baseline(n).^2) / 2);
-
-                [~, p(n,b)] = ttest2(Spike_rasters(n, idx), Spike_rasters(n,idx_rest));
-                [~, p_rand(n,b)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
-
             end
 
         end
