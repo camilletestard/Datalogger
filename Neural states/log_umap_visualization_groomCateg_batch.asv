@@ -53,63 +53,31 @@ for s =session_range %1:length(sessions)
         Spike_count_raster = Spike_rasters';
 
         %% Select behaviors to decode
-        %Compute freq of behavior for the session
-        behavior_labels = cell2mat({labels{:,3}}');
-        block_labels = cell2mat({labels{:,11}}');
+        groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'}; %label grooming categ
+        groom_categ =2;
+        groom_labels = groom_labels_all(groom_categ+1);
 
-        behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
-        block_categ = string(block_times{:,1})';
-
-        % Select behaviors
-
-        %Compute freq of behavior for the session
-        behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
-
-        % Select behaviors with a minimum # of occurrences
-% %         min_occurrences = 70;
-% %         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-% %         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-
-
-        % OR select behaviors manually
-        behav = [4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
-
-        %Print behaviors selected
+        % Select behaviors manually
+        behav = [8];%groom receive
         behavs_eval = behav_categ(behav);
-% %         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-% %         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
-% %         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-
-%         idx = [];
-%         for b=behav
-%             idx_temp = find(ismember(behavior_labels,b)); %find the indices of the behaviors considered
-%             subset = min(length(idx_temp), 200);
-%             idx_subset = randsample(idx_temp, subset,1);
-%             idx = [idx; idx_subset];
-%         end
-        idx= find(ismember(behavior_labels,behav));
+        %Only keep the behaviors of interest
+        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final = groom_labels(idx,:);%Same as above but in behavior labels
 
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
-        block_labels_final =  block_labels(idx);
-        behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+        behavior_labels_final = groom_labels(idx,:);%Same as above but in behavior labels
 
         %% Run umap
         data = [Spike_count_raster_final, behavior_labels_final];
         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); %Run umap to get 2d embedded states
-        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5); %Run umap to get 2d embedded states
-       
         channel = char(channel_flag);
         %saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
         
         %Order for later plotting
         labels_plot{s} = categorical(behav_categ(behavior_labels_final));
-        %labels_plot{s} = categorical(behav_categ(behavior_labels_final_rand));
+        labels_plot_context{s} = categorical(block_categ(block_labels_final));
+        %MElabels_plot = categorical(ME_label_final)';
         ordered_labels = {'Drinking', 'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Receive','Groom Give'};
         labels_order = reordercats(labels_plot{s},ordered_labels);
   
@@ -148,14 +116,14 @@ end %end of session for loop
 figure
 for s = 1:length(a_sessions)
     subplot(length(a_sessions),1,s)
-    gscatter(umap_result{a_sessions(s),3}(:,1), umap_result{a_sessions(s),3}(:,2), labels_plot{a_sessions(s)},[],[],10)
+    gscatter(umap_result{a_sessions(s),1}(:,1), umap_result{a_sessions(s),1}(:,2), labels_plot{a_sessions(s)},[],[],5)
     xlabel('UMAP 1'); ylabel('UMAP 2');
     set(gca,'xtick',[]); set(gca,'ytick',[])
 end
 
 for s = 1:length(h_sessions)
     subplot(length(h_sessions),1,s)
-    gscatter(umap_result{a_sessions(s),3}(:,1), umap_result{a_sessions(s),3}(:,2), labels_plot{a_sessions(s)},[],[],10)
+    gscatter(umap_result{a_sessions(s),1}(:,1), umap_result{a_sessions(s),1}(:,2), labels_plot{a_sessions(s)},[],[],10)
     xlabel('UMAP 1'); ylabel('UMAP 2');
     set(gca,'xtick',[]); set(gca,'ytick',[])
 end

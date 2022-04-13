@@ -97,19 +97,19 @@ for s =session_range %1:length(sessions)
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
         block_labels_final =  block_labels(idx);
-        behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+        %ME_label_final = ME_label(idx);
+        tabulate(behavior_labels_final);
 
         %% Run umap
         data = [Spike_count_raster_final, behavior_labels_final];
         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); %Run umap to get 2d embedded states
-        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5); %Run umap to get 2d embedded states
-       
         channel = char(channel_flag);
         %saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
         
         %Order for later plotting
         labels_plot{s} = categorical(behav_categ(behavior_labels_final));
-        %labels_plot{s} = categorical(behav_categ(behavior_labels_final_rand));
+        labels_plot_context{s} = categorical(block_categ(block_labels_final));
+        %MElabels_plot = categorical(ME_label_final)';
         ordered_labels = {'Drinking', 'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Receive','Groom Give'};
         labels_order = reordercats(labels_plot{s},ordered_labels);
   

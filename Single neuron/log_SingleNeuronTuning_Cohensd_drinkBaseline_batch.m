@@ -71,7 +71,7 @@ for s =session_range %1:length(sessions)
     n_behav = length(unqLabels); %Get number of unique behavior labels
 
     %Estimate "baseline" neural firing distribution.
-    idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
+    idx_rest=find(behavior_labels==find(behav_categ=="Drinking"));%Get idx of "drink" epochs.
     mean_baseline = mean(Spike_rasters(:,idx_rest),2);
     std_baseline = std(Spike_rasters(:,idx_rest),0,2);
 
@@ -96,51 +96,30 @@ for s =session_range %1:length(sessions)
 
     for n = 1:n_neurons(s)
 
-        for b1 = 1:n_behav
-            idx_b1 = find(behavior_labels == unqLabels(b1)); %get idx where behavior b occurred
-            n_per_behav(s,b1)=length(idx);
+        for b = 1:n_behav
+            idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
+            n_per_behav(s,b)=length(idx);
 
-            for b2=1:n_behav
-                idx_b2 = find(behavior_labels == unqLabels(b2));
+            if n_per_behav(s,b)>min_occurrence
 
-                if n_per_behav(s,b1)>min_occurrence && n_per_behav(s,b2)>min_occurrence && b1~=b2
-
-                    %Get indices for shuffled analysis
-                    if length(idx_b1)<length(idx_rest)
-                        idx_b1_rand = randsample(idx_rest,length(idx_b1));
-                    else
-                        idx_b1_rand = randsample(idx_rest,length(idx_b1),true);
-                    end
-
-                    if length(idx_b2)<length(idx_rest)
-                        idx_b2_rand = randsample(idx_rest,length(idx_b2));
-                    else
-                        idx_b2_rand = randsample(idx_rest,length(idx_b2),true);
-                    end
-
-                    %Get mean firing rate for b1
-                    mean_beh1(n,b1)=mean(Spike_rasters(n, idx_b1),2);
-                    std_beh1(n,b1)=std(Spike_rasters(n, idx_b1),0,2);
-
-                    %Get mean firing rate for b2
-                    mean_beh2(n,b2)=mean(Spike_rasters(n, idx_b2),2);
-                    std_beh2(n,b2)=std(Spike_rasters(n, idx_b2),0,2);
-
-                    %Get shuffled firing rates
-                    mean_beh1_shuffle(n,b1)=mean(Spike_rasters(n, idx_b1_rand),2);
-                    std_beh1_shuffle(n,b1)=std(Spike_rasters(n, idx_b1_rand),0,2);
-
-                    mean_beh2_shuffle(n,b2)=mean(Spike_rasters(n, idx_b2_rand),2);
-                    std_beh2_shuffle(n,b2)=std(Spike_rasters(n, idx_b2_rand),0,2);
-
-                    %Calculate cohen's d
-                    cohend(n,b1, b2) = (mean_beh1(n,b1)-mean_beh2(n,b2)) ./ sqrt( (std_beh1(n,b1).^2 + std_beh2(n,b2).^2) / 2);
-                    cohend_shuffle(n,b1) = (mean_beh_shuffle(n,b1)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b1).^2 + std_baseline(n).^2) / 2);
-
-                    [~, p(n,b1)] = ttest2(Spike_rasters(n, idx), Spike_rasters(n,idx_rest));
-                    [~, p_rand(n,b1)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
-
+                if length(idx)<length(idx_rest)
+                    idx_rand = randsample(idx_rest,length(idx));
+                else
+                    idx_rand = randsample(idx_rest,length(idx),true);
                 end
+                
+                mean_beh(n,b)=mean(Spike_rasters(n, idx),2);
+                std_beh(n,b)=std(Spike_rasters(n, idx),0,2);
+
+                mean_beh_shuffle(n,b)=mean(Spike_rasters(n, idx_rand),2);
+                std_beh_shuffle(n,b)=std(Spike_rasters(n, idx_rand),0,2);
+
+                cohend(n,b) = (mean_beh(n,b)-mean_baseline(n)) ./ sqrt( (std_beh(n,b).^2 + std_baseline(n).^2) / 2);
+                cohend_shuffle(n,b) = (mean_beh_shuffle(n,b)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b).^2 + std_baseline(n).^2) / 2);
+
+                [~, p(n,b)] = ttest2(Spike_rasters(n, idx), Spike_rasters(n,idx_rest));
+                [~, p_rand(n,b)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
+
             end
 
         end
@@ -189,10 +168,10 @@ for s =session_range %1:length(sessions)
    %Plot ordered heatmaps
     figure; set(gcf,'Position',[150 250 1000 500]);
     hp=heatmap(cohend_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
-    saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
+    %saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
     figure; set(gcf,'Position',[150 250 1000 500]);
     hp=heatmap(cohend_thresh_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
-    saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded.png']); close all
+    %saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded.png']); close all
 
     %Includes both p-value and cohen d as thresholds
     figure; hold on; set(gcf,'Position',[150 250 1500 800]);
@@ -200,7 +179,7 @@ for s =session_range %1:length(sessions)
     subplot(2,2,2); hp=heatmap(cohend_thresh, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
     subplot(2,2,3); hp=heatmap(cohend_shuffle, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Cohens-d heatmap SHUFFLED')
     subplot(2,2,4); hp=heatmap(cohend_shuffle_thresh, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap SHUFFLED, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
-    saveas(gcf, [savePath '/Cohend_heatmap_all_units.png'])
+    %saveas(gcf, [savePath '/Cohend_heatmap_all_units.png'])
 
 %     if with_NC == 0
 %         sgtitle(['Cohens-d heatmap for all units except noise cluster'])
@@ -222,8 +201,10 @@ for s =session_range %1:length(sessions)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Summary figures
 
-    figure; scatter(nanmean(abs(cohend_thresh)), n_per_behav(s,:)); corrcoef(nanmean(abs(cohend_thresh)), n_per_behav(s,:),'rows','pairwise');
-    figure; scatter(sum(~isnan(cohend_thresh)), n_per_behav(s,:)); corrcoef(sum(~isnan(cohend_thresh)), n_per_behav(s,:),'rows','pairwise');
+    figure; scatter(n_per_behav(s,:), nanmean(abs(cohend_thresh))); xlabel('n'); ylabel('Mean abs(cohend)')
+    corrcoef(nanmean(abs(cohend_thresh)), n_per_behav(s,:),'rows','pairwise');
+    figure; scatter(n_per_behav(s,:), sum(~isnan(cohend_thresh))); xlabel('n'); ylabel('# Selective units')
+    corrcoef(sum(~isnan(cohend_thresh)), n_per_behav(s,:),'rows','pairwise');
 
     mean_cohend_per_behav(s,:) = nanmean(cohend_thresh); 
     std_cohend_per_behav(s,:) = nanstd(cohend_thresh); 
@@ -246,7 +227,7 @@ for s =session_range %1:length(sessions)
     xticklabels(AxesLabels(idx_sort))
     set(gca,'FontSize',15);
     title('Distribution of effect size per behavior')
-    saveas(gcf, [savePath '/Distribution_cohend_per_behavior.png']); %pause(2); close all
+    %saveas(gcf, [savePath '/Distribution_cohend_per_behavior.png']); %pause(2); close all
 
     %Plot the proprotion of selective neurons per behavior
     figure; hold on; set(gcf,'Position',[150 250 1000 500]);
@@ -257,7 +238,7 @@ for s =session_range %1:length(sessions)
     xticklabels(AxesLabels(idx_sort))
     set(gca,'FontSize',15);
     title(['Proportion of selective units per behavior'])
-    saveas(gcf, [savePath '/Proportion_units_selective_per_behav.png']); %pause(2); close all
+    %saveas(gcf, [savePath '/Proportion_units_selective_per_behav.png']); %pause(2); close all
 
     % Variance in single neuron selectivity
     mean_cohend_per_neuron = nanmean(cohend_thresh,2);
@@ -275,27 +256,14 @@ for s =session_range %1:length(sessions)
     text(10,-1.5,'Decreased firing relative to baseline','FontSize',14)
     set(gca,'FontSize',15);
     title('Distribution of effect size across all units')
-    saveas(gcf, [savePath '/Distribution_cohend_all_units.png']); pause(2); close all
+    %saveas(gcf, [savePath '/Distribution_cohend_all_units.png']); pause(2); close all
 
     %Number of behaviors a single neuron is selective for
     num_selective_behav_per_neuron{s} = sum(~isnan(cohend_thresh),2);
     figure; histogram(num_selective_behav_per_neuron{s})
     xlabel('Number of behavior a given neuron is selective to')
     title('Distribution of the number of behaviors single units are selective for')
-    saveas(gcf, [savePath '/Distribution_number_selective_behavior_per_unit.png']); %pause(2); close all
-
-    % % %%%%%%%%%%%%%%%%%%%%%%%%
-    % % %Single neuron selectivity:
-    % % figure; set(gcf,'Position',[150 250 1000 300]);
-    % % data = cohend_thresh(1,:);
-    % % [~, idx_sorted]=sort(data);
-    % % scatter(1:n_behav, cohend_thresh(1,idx_sorted),40, 'filled')
-    % % ylim([caxis_lower caxis_upper]); xlim([0 n_behav+1])
-    % % ylabel(['Cohens-d, p<' num2str(cutoff)])
-    % % yline(0,'LineStyle','--')
-    % % xticks(1:n_behav)
-    % % xticklabels(AxesLabels(idx_sorted))
-    % % set(gca,'FontSize',15);
+    %saveas(gcf, [savePath '/Distribution_number_selective_behavior_per_unit.png']); %pause(2); close all
 
     close all
 
@@ -316,7 +284,7 @@ for s = a_sessions
     %pause(1)
 end
 legend({sessions(a_sessions).name},'Location','eastoutside')
-ylim([-1.5 1.5]); xlim([0 n_behav+1])
+ylim([-1.2 2]); xlim([0 n_behav+1])
 ylabel(['Mean Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
@@ -333,7 +301,7 @@ for s = h_sessions
     %pause(1)
 end
 legend({sessions(h_sessions).name},'Location','eastoutside')
-ylim([-1.5 1.5]); xlim([0 n_behav+1])
+ylim([-1.2 2]); xlim([0 n_behav+1])
 ylabel(['Mean Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
@@ -344,7 +312,7 @@ set(gca,'FontSize',15);
 title('Monkey H')
 
 sgtitle('Distribution of effect sizes per behavior','FontSize',20)
-saveas(gcf, [savePath '/Distribution_effect_size_per_behavior.png']); pause(2); close all
+%saveas(gcf, [savePath '/Distribution_effect_size_per_behavior.png']); pause(2); close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot proportion of selective units per behavior across all sessions, separated by monkey
@@ -378,7 +346,7 @@ xticklabels(AxesLabels(idx_sort))
 set(gca,'FontSize',15);
 title('Monkey H')
 sgtitle('Proportion of selective units per behavior','FontSize',20)
-saveas(gcf, [savePath '/Proportion_selective_units_per_behavior.png']); pause(2); close all
+%saveas(gcf, [savePath '/Proportion_selective_units_per_behavior.png']); pause(2); close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot number of behaviors a single neuron is selective for across all sessions, separated by monkey
@@ -406,7 +374,7 @@ set(gca,'FontSize',15);
 title('Monkey H')
 
 sgtitle('Distribution of the number of behaviors single units are selective for','FontSize',20)
-saveas(gcf, [savePath '/Number_selective_behavior_per_unit.png']); pause(2); close all
+%saveas(gcf, [savePath '/Number_selective_behavior_per_unit.png']); pause(2); close all
 
 mean(prop_not_tuned(prop_not_tuned>0))
 mean(prop_tuned_more_than_one_behav(prop_tuned_more_than_one_behav>0))
