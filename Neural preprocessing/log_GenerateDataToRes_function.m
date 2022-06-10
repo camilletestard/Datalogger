@@ -16,9 +16,25 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       simultaneously, we chose one, see below for details)
 %       4th column whether behavior happens in isolation or co-occurs
 %       with another.
-%       5th column indicates the block in which we are
+%       5th column binary code for behavior happening in isolation (1) or not (0)
+%       6th column is the behavior "reciprocal" (i.e. partner behavior can
+%       be 100% predictted by subject behavior and vice-versa)
+%       7th column binary code reciprocal (1) vs. not (0)
+%       8th column is the behavior "social" or not (i.e. done with a
+%       conspecific)
+%       9th column binary code for social (1) or not (0).
+%       10th column indicates the block in which we are
 %       (Paired,monkey1; Paired monkey2 or Alone)
-%       6th column gives a corresponding numerical value to the block
+%       11th column gives a corresponding numerical value to the block
+% 3. Label for partner behavior, same columns as subject labels
+% 4. Label for grooming, length of the session, with the following columns:
+%       1. Behavior label. If not grooming (7 groom give, 8 groom receive),
+%       then all categories below will be 0. If grooming, the bout can be
+%       qualified as:
+%       2. Is it the start (1), end (2) or middle (3) of grooming bout
+%       3. Grooming after a threat (1) or not (2)
+%       4. Grooming reciprocated (1) or not (2)
+%       5. Grooming initiated (1) or not (2)
 
 % Arguments: 
 %   filePath is the experimental data path
