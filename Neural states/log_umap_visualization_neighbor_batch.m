@@ -70,6 +70,7 @@ for s =session_range %1:length(sessions)
 
         %% Run umap
         data = [Spike_count_raster_final, block_labels_final];
+        [umap_unsupervised_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); 
         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); %Run umap to get 2d embedded states
         channel = char(channel_flag);
         %saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
@@ -77,12 +78,15 @@ for s =session_range %1:length(sessions)
         %Order for later plotting
         labels_plot_context{s} = categorical(block_categ(block_labels_final));
         labels_order = labels_plot_context{s};
-        labels_plot_context{s} = categorical(behav_categ(behavior_labels_final)); labels_order = labels_plot_context{s};
+        %labels_plot_context{s} = categorical(behav_categ(behavior_labels_final)); 
+        labels_order = labels_plot_context{s};
   
         %Plot results color-coded by behavior
         figure
-        gscatter(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2), labels_order ,[],[],6, 'MarkerFaceAlpha',0.7)
-        legend({'Groom Give','Groom Receive'})
+        %gscatter(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2), labels_order ,[],[],6, 'MarkerFaceAlpha',0.7)
+        gscatter(umap_unsupervised_result{s,chan}(:,1), umap_unsupervised_result{s,chan}(:,2), labels_order ,[],[],6, 'MarkerFaceAlpha',0.7)
+        %legend({'Groom Give','Groom Receive'})
+        legend({'Neighbor1','Neighbor2'})
         xlabel('UMAP 1'); ylabel('UMAP 2');
         set(gca,'xtick',[]); set(gca,'ytick',[])
         title('Neighbor identity during grooming')

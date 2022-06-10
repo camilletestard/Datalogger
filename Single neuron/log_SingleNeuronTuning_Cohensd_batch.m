@@ -18,13 +18,13 @@ session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 plot_toggle = 0;
-with_partner =0;
+with_partner = 0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =10;
-cohend_cutoff=0.5; p_cutoff=0.01;%Set thresholds
+cohend_cutoff=0; p_cutoff=0.01;%Set thresholds
 
 %Initialize session batch variables:
 n_behav = 28;
@@ -50,7 +50,7 @@ for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Subject_behav'];
 
     %% Load data
 
@@ -66,6 +66,7 @@ for s =session_range %1:length(sessions)
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+    
 
     %% Set parameters
     unqLabels = 1:max(behavior_labels)-1; %Get unique behavior labels (exclude rest)
@@ -73,7 +74,13 @@ for s =session_range %1:length(sessions)
     n_behav = length(unqLabels); %Get number of unique behavior labels
 
     %Estimate "baseline" neural firing distribution.
-    idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
+    if with_partner ==0
+        idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
+    else
+        behavior_labels_partner = cell2mat({labels_partner{:,3}}');
+        behavior_labels_partner(behavior_labels_partner==find(behav_categ=="Proximity"))=length(behav_categ);
+        idx_rest = intersect(find(behavior_labels ==length(behav_categ)), find(behavior_labels_partner ==length(behav_categ)));
+    end
     mean_baseline = mean(Spike_rasters(:,idx_rest),2);
     std_baseline = std(Spike_rasters(:,idx_rest),0,2);
 
@@ -118,8 +125,8 @@ for s =session_range %1:length(sessions)
                 mean_beh_shuffle(n,b)=mean(Spike_rasters(n, idx_rand),2);
                 std_beh_shuffle(n,b)=std(Spike_rasters(n, idx_rand),0,2);
 
-                cohend(n,b) = (mean_beh(n,b)-mean_baseline(n)) ./ sqrt( (std_beh(n,b).^2 + std_baseline(n).^2) / 2);
-                cohend_shuffle(n,b) = (mean_beh_shuffle(n,b)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b).^2 + std_baseline(n).^2) / 2);
+                cohend(n,b) = (mean_beh(n,b)-mean_baseline(n)) ./ sqrt( ((n_per_behav(s,b)-1)*(std_beh(n,b).^2) + (length(idx_rest)-1)*(std_baseline(n).^2)) / (n_per_behav(s,b)+length(idx_rest)-2) );
+                cohend_shuffle(n,b) = (mean_beh_shuffle(n,b)-mean_baseline(n)) ./ sqrt( ((n_per_behav(s,b)-1)*(std_beh_shuffle(n,b).^2) + (length(idx_rest)-1)*(std_baseline(n).^2)) / (n_per_behav(s,b)+length(idx_rest)-2) );
 
                 [~, p(n,b)] = ttest2(Spike_rasters(n, idx), Spike_rasters(n,idx_rest));
                 [~, p_rand(n,b)] = ttest2(Spike_rasters(n, idx_rand), Spike_rasters(n,idx_rest));
@@ -129,18 +136,52 @@ for s =session_range %1:length(sessions)
         end
     end
 
-    % %     %plot firing rate distribution for example unit
-    % %     %Specifically comparing groom give to rest
-    % %     b=7 ; n=209;
-    % %     idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
-    % %     idx_rand = randsample(idx_rest,length(idx));
-    % %     figure; hold on
-    % %     histogram(Spike_rasters(n, idx),20)
-    % %     histogram(Spike_rasters(n, idx_rand),20)
-    % %     legend({'Groom partner','Rest'})
-    % %     set(gca,'FontSize',15);
-    % %     xlabel('Firing rate (Hz)'); ylabel('Frequency');title('Firing
-    % rate during grooming vs. rest for example unit')
+% %     %plot firing rate distribution for example unit
+% %     %Specifically comparing groom give to rest
+% %     b=7 ; [~, n]=max(abs(cohend(:,b))); %Groom give (suppressed activity) 209 is the min separability considered. (For session s=1)
+% %     %b=10 ;[max_val, n]=max(abs(cohend(:,b))); %Threat to subject (increased activity)
+% %     idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
+% %     idx_rand = randsample(idx_rest,length(idx));
+% %     figure; hold on
+% %     histogram(Spike_rasters(n, idx),20, 'FaceColor','b')
+% %     histogram(Spike_rasters(n, idx_rand),20, 'FaceColor',[0.5 0.5 0.5])
+% %     legend({'Groom partner','Rest'})
+% %     title('Firing rate during grooming vs. rest for example unit')
+% % %     histogram(Spike_rasters(n, idx),20, 'FaceColor','r')
+% % %     histogram(Spike_rasters(n, idx_rand),20, 'FaceColor',[0.5 0.5 0.5])
+% % %     legend({'Aggression','Rest'})
+% % %     title('Firing rate during aggression vs. rest for example unit')
+% %     set(gca,'FontSize',15);
+% %     xlabel('Firing rate (Hz)'); ylabel('Frequency');
+
+
+% % %     %Plot example spike trains
+% % %     %figure; hold on
+% % %     spiketrains = 5;
+% % %     length_bout = 10;
+% % %     %xlim([0 length_bout]); ylim([0 spiketrains])
+% % %     spike_times_behav = []; spike_times_rest = []; trials_behav = []; trials_rest = [];
+% % %     for st=1:spiketrains
+% % %         Hz_behav =Spike_rasters(n,randsample(idx,length_bout));
+% % %         Hz_rest =Spike_rasters(n,randsample(idx_rest,length_bout));
+% % % 
+% % %         total_spikes_behav = 0; total_spikes_rest = 0;
+% % %         for lb = 1:length_bout
+% % %             ticks_behav = rand(Hz_behav(lb),1);
+% % %             spike_times_behav = [spike_times_behav; lb-1+ticks_behav];
+% % %             total_spikes_behav = total_spikes_behav + Hz_behav(lb);
+% % % 
+% % %             ticks_rest = rand(Hz_rest(lb),1);
+% % %             spike_times_rest=[spike_times_rest; lb-1+ticks_rest];
+% % %             total_spikes_rest = total_spikes_rest+Hz_rest(lb);
+% % %         end
+% % % 
+% % %     trials_rest = [trials_rest, ones(1,total_spikes_rest)*st];
+% % %     trials_behav = [trials_behav, ones(1,total_spikes_behav)*st];
+% % %     end
+% % % 
+% % %     figure; subplot(2,1,1); spikeRasterPlot(seconds(spike_times_behav), trials_behav,'ColorOrder',[0 0 1])
+% % %     subplot(2,1,2); spikeRasterPlot(seconds(spike_times_rest), trials_rest,'ColorOrder',[1 0 0])
 
     %sort columns in ascending order
     [~, orderIdx] = sort(nanmean(cohend), 'ascend');
@@ -170,12 +211,19 @@ for s =session_range %1:length(sessions)
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
 
     if plot_toggle
-        %Plot ordered heatmaps
-        figure; set(gcf,'Position',[150 250 1000 500]);
-        hp=heatmap(cohend_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
+        %Plot ordered heatmap
+        figure; %set(gcf,'Position',[150 250 1000 500]);
+        [nanrow nancol]=find(~isnan(cohend_sorted)); nancol = unique(nancol);
+        hp=heatmap(cohend_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
+        ax = gca;
+        ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
-        figure; set(gcf,'Position',[150 250 1000 500]);
-        hp=heatmap(cohend_thresh_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
+
+        %Plot ordered heatmap thresholded
+        figure; %set(gcf,'Position',[150 250 1000 500]);
+        hp=heatmap(cohend_thresh_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
+        ax = gca;
+        ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded.png']); close all
 
         %Includes both p-value and cohen d as thresholds
@@ -221,7 +269,7 @@ for s =session_range %1:length(sessions)
         %Plot the distribution of effect sizes for each behavior
         figure; hold on; set(gcf,'Position',[150 250 1000 500]);
         [~, idx_sort]=sort(mean_cohend_per_behav(s,:));
-        boxplot(cohend_thresh(:,idx_sort))
+        boxchart(cohend_thresh(:,idx_sort))
         % scatter(1:length(idx_sort),mean_cohend_per_behav(idx_sort),60,'filled')
         % errorbar(mean_cohend_per_behav(idx_sort), std_cohend_per_behav(idx_sort),'LineWidth',1.5)
         % legend({'mean','standard deviation'},'Location','best')
@@ -412,6 +460,14 @@ sgtitle('Proportion of selective units per behavior','FontSize',20)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot number of behaviors a single neuron is selective for across all sessions, separated by monkey
+
+figure
+histogram(vertcat(num_selective_behav_per_neuron{:}))
+length(find(vertcat(num_selective_behav_per_neuron{:})~=0))/sum(n_neurons)
+length(find(vertcat(num_selective_behav_per_neuron{:})>1))/sum(n_neurons)
+xlabel('Number of behaviors a given neuron is selective for')
+ylabel('Neuron count')
+set(gca,'FontSize',15);
 
 figure; set(gcf,'Position',[150 250 1000 700]);
 subplot(2,1,1); hold on

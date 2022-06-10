@@ -39,7 +39,7 @@ for s =session_range %1:length(sessions)
     chan = 1;
 
     %for channel_flag = ["vlPFC", "TEO", "all"]
-
+    channel_flag = "TEO";
         
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
@@ -55,6 +55,8 @@ for s =session_range %1:length(sessions)
         %% Select behaviors to decode
         %Compute freq of behavior for the session
         behavior_labels = cell2mat({labels{:,3}}');
+        behavior_labels(behavior_labels==21)=9;
+        behavior_labels(behavior_labels==22)=10;
         block_labels = cell2mat({labels{:,11}}');
 
         behav_freq_table = tabulate(behavior_labels);
@@ -68,22 +70,22 @@ for s =session_range %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-% %         min_occurrences = 70;
-% %         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-% %         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
-% %         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-
+        min_occurrences = 30;
+        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
+        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+        %behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding Rowdy Room which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
 
         % OR select behaviors manually
-        behav = [4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17];%[1:6,9:11,16,17]; %manually select behaviors of interest
+        behav = unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
-% %         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-% %         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
-% %         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        fprintf('Behaviors evaluated are: %s \n', behavs_eval);
+        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
 %         idx = [];
 %         for b=behav
@@ -101,8 +103,8 @@ for s =session_range %1:length(sessions)
 
         %% Run umap
         data = [Spike_count_raster_final, behavior_labels_final];
-        [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); %Run umap to get 2d embedded states
-        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5); %Run umap to get 2d embedded states
+        [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'n_components', 2,'label_column', 'end'); %Run umap to get 2d embedded states
+        %[umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5, 'n_components', 3); %Run umap to get 2d embedded states
        
         channel = char(channel_flag);
         %saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
@@ -110,7 +112,7 @@ for s =session_range %1:length(sessions)
         %Order for later plotting
         labels_plot{s} = categorical(behav_categ(behavior_labels_final));
         %labels_plot{s} = categorical(behav_categ(behavior_labels_final_rand));
-        ordered_labels = {'Drinking', 'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Receive','Groom Give'};
+        ordered_labels = behav_categ(behav);%{'Drinking', 'Foraging','Self-groom','Threat to partner', 'Threat to subject','Groom Receive','Groom Give'};
         labels_order = reordercats(labels_plot{s},ordered_labels);
   
         %Plot results color-coded by behavior
@@ -120,6 +122,7 @@ for s =session_range %1:length(sessions)
         xlabel('UMAP 1'); ylabel('UMAP 2');
         set(gca,'xtick',[]); set(gca,'ytick',[])
         title('Brain states in dimensionally reduced space')
+        set(gca,'FontSize',15);
         saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
 
 %         %Color-coded by amount of ME

@@ -81,7 +81,7 @@ for s =session_range %1:length(sessions)
         %% Select behaviors to decode
 
         % Select behaviors which occur in multiple blocks
-        behav =[find(matches(behav_categ,'Groom Give')), find(matches(behav_categ,'Groom Receive'))]; %manually select behaviors of interest
+        behav =[find(matches(behav_categ,'Groom partner')), find(matches(behav_categ,'Getting groomed'))]; %manually select behaviors of interest
         %behav =[find(matches(behav_categ,'Threat to subject')), find(matches(behav_categ,'Threat to partner'))];
         %behav = find(matches(behav_categ,'Rest'));
 
@@ -182,6 +182,7 @@ end %end of session loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
+save('SVM_results_NeighborID.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
@@ -220,3 +221,27 @@ ylabel('Decoding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 title('Decoding accuracy for neighbor ID during grooming, Monkey H','FontSize', 14)
 
  saveas(gcf,['SVM_results_social_context_allSessions.png'])
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bar plot decoding accuracy
+
+figure; hold on
+data = cell2mat(mean_hitrate');
+data_shuffle = cell2mat(mean_hitrate_shuffled');
+bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+
+sp1 = scatter(ones(size(data,1))*0.77,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data,1))*1.77,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
+
+legend(bp,{'vlPFC','TEO','all'},'Location','best')
+
+ylabel('Decoding Accuracy'); ylim([0.4 1])
+xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
+ax = gca;
+ax.FontSize = 16;
+saveas(gcf,['SVM_results_allSessions_allUnits_SocialContext.png'])

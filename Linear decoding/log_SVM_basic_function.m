@@ -43,6 +43,7 @@ for fold = 1:kfolds
     end
 
     % Train/test SVM model:
+    % !!!!!!!!!! CHANGE SVM KERNEL HERE !!!!!!!!!!!!!!!
     model = svmtrain(trainlbls, traindata, '-t, 0, -q'); %train the model using a linear kernel (-t: 0) or a RBF kernel (-t: 2) and default parameters
     [svmlbls] = svmpredict(testlbls, testdata, model, '-q'); %get predicted labels given model
 

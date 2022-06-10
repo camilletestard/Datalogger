@@ -52,7 +52,8 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan=1;
-    for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = "all" %["vlPFC", "TEO", "all"]
+
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
@@ -193,61 +194,64 @@ for s =session_range %1:length(sessions)
 
     %% Plotting results decoding accuracy for grooming context
 
-    figure;  set(gcf,'Position',[150 250 1300 400])
-    subplot(1,2,1);hold on; %Groom Give
-    for c = 1:3
-        y = mean_hitrate{s,c}(1,:);
-        std_dev = sd_hitrate{s,c}(1,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
-        %         errorbar(y,std_dev,'s')
-    end
-    leg = legend(["vlPFC","TEO","All"]);
-    title(leg,'Brain Area')
-    chance_level = 1/2;
-    yline(chance_level,'--','Chance level', 'FontSize',16)
-    xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 0.85])
-    xticklabels(groom_categ_label)
-    ax = gca;
-    ax.FontSize = 14;
-    ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
-    title('Decoding accuracy for the context of groom give','FontSize', 14)
-
-    subplot(1,2,2);hold on %Groom Receive
-    for c = 1:3
-        y = mean_hitrate{s,c}(2,:);
-        std_dev = sd_hitrate{s,c}(2,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
-        %         errorbar(y,std_dev,'s')
-    end
-    leg = legend(["vlPFC","TEO","All"]);
-    title(leg,'Brain Area')
-    chance_level = 1/2;
-    yline(chance_level,'--','Chance level', 'FontSize',16)
-    xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 0.85])
-    xticklabels(groom_categ_label)
-    ax = gca;
-    ax.FontSize = 14;
-    ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
-    title('Decoding accuracy for the context of groom receive','FontSize', 14)
-
-    cd(savePath)
-    saveas(gcf,['Decoding grooming given context.png'])
-    close all
+% % % %     figure;  set(gcf,'Position',[150 250 1300 400])
+% % % %     subplot(1,2,1);hold on; %Groom Give
+% % % %     for c = 1:3
+% % % %         y = mean_hitrate{s,c}(1,:);
+% % % %         std_dev = sd_hitrate{s,c}(1,:);
+% % % %         scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
+% % % %         %         errorbar(y,std_dev,'s')
+% % % %     end
+% % % %     leg = legend(["vlPFC","TEO","All"]);
+% % % %     title(leg,'Brain Area')
+% % % %     chance_level = 1/2;
+% % % %     yline(chance_level,'--','Chance level', 'FontSize',16)
+% % % %     xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 0.85])
+% % % %     xticklabels(groom_categ_label)
+% % % %     ax = gca;
+% % % %     ax.FontSize = 14;
+% % % %     ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
+% % % %     title('Decoding accuracy for the context of groom give','FontSize', 14)
+% % % % 
+% % % %     subplot(1,2,2);hold on %Groom Receive
+% % % %     for c = 1:3
+% % % %         y = mean_hitrate{s,c}(2,:);
+% % % %         std_dev = sd_hitrate{s,c}(2,:);
+% % % %         scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
+% % % %         %         errorbar(y,std_dev,'s')
+% % % %     end
+% % % %     leg = legend(["vlPFC","TEO","All"]);
+% % % %     title(leg,'Brain Area')
+% % % %     chance_level = 1/2;
+% % % %     yline(chance_level,'--','Chance level', 'FontSize',16)
+% % % %     xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 0.85])
+% % % %     xticklabels(groom_categ_label)
+% % % %     ax = gca;
+% % % %     ax.FontSize = 14;
+% % % %     ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
+% % % %     title('Decoding accuracy for the context of groom receive','FontSize', 14)
+% % % % 
+% % % %     cd(savePath)
+% % % %     saveas(gcf,['Decoding grooming given context.png'])
+% % % %     close all
 
 end %End of session for loop
 
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/'];
+save('SVM_results_groomingCateg.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ","home")
+load('SVM_results_groomingCateg.mat')
 
 %Plotting results decoding accuracy for grooming context
 figure;  set(gcf,'Position',[150 250 1300 800])
 subplot(2,2,1);hold on; %Groom Give, monkey A
 cmap={'b','r','g'};
+jitter = [-0.1 0 0.1];
 for s=a_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(1,:);
         std_dev = sd_hitrate{s,c}(1,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
     end
 end
 leg = legend(["vlPFC","TEO","All"], 'Location','best');
@@ -259,14 +263,14 @@ xticklabels(groom_categ_label)
 ax = gca;
 ax.FontSize = 14;
 ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
-title('Decoding accuracy for the context of groom give, Monkey A','FontSize', 14)
+title('Decoding accuracy for the context of groom partner, Monkey A','FontSize', 14)
 
 subplot(2,2,2);hold on; %Groom Receive, monkey A
 for s=a_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(2,:);
         std_dev = sd_hitrate{s,c}(2,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
     end
 end
 leg = legend(["vlPFC","TEO","All"], 'Location','best');
@@ -278,14 +282,14 @@ xticklabels(groom_categ_label)
 ax = gca;
 ax.FontSize = 14;
 ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
-title('Decoding accuracy for the context of groom receive, Monkey A','FontSize', 14)
+title('Decoding accuracy for the context of getting groomed, Monkey A','FontSize', 14)
 
 subplot(2,2,3);hold on %Groom Give, monkey H
 for s=h_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(1,:);
         std_dev = sd_hitrate{s,c}(1,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
     end
 end
 leg = legend(["vlPFC","TEO","All"], 'Location','best');
@@ -297,7 +301,7 @@ xticklabels(groom_categ_label)
 ax = gca;
 ax.FontSize = 14;
 ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
-title('Decoding accuracy for the context of groom give, Monkey H','FontSize', 14)
+title('Decoding accuracy for the context of groom partner, Monkey H','FontSize', 14)
 
 
 subplot(2,2,4);hold on %Groom Receive, monkey H
@@ -305,7 +309,7 @@ for s=h_sessions
     for c = 1:3
         y = mean_hitrate{s,c}(2,:);
         std_dev = sd_hitrate{s,c}(2,:);
-        scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
         %         errorbar(y,std_dev,'s')
     end
 end
@@ -318,7 +322,7 @@ xticklabels(groom_categ_label)
 ax = gca;
 ax.FontSize = 14;
 ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
-title('Decoding accuracy for the context of groom receive, Monkey H','FontSize', 14)
+title('Decoding accuracy for the context of getting groomed, Monkey H','FontSize', 14)
 
 cd(savePath)
 saveas(gcf,['Decoding grooming given context by area.png'])
@@ -397,3 +401,111 @@ title('Decoding accuracy for the context of groom receive, Monkey H','FontSize',
 
 cd(savePath)
 saveas(gcf,['Decoding grooming given context_all units.png'])
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bar plot decoding accuracy
+
+figure; hold on
+data = cell2mat(mean_hitrate');
+data_shuffle = cell2mat(mean_hitrate_shuffled');
+bp = bar([mean(data(:,1:4)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+
+sp1 = scatter(ones(size(data,1))*0.75,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*1.25,data(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data,1))*1.75,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*2.25,data_shuffle(:,3), 'filled','y');
+
+legend(bp,{'vlPFC','TEO','all'},'Location','best')
+
+ylabel('Decoding Accuracy'); ylim([0.4 0.9])
+xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
+ax = gca;
+ax.FontSize = 16;
+saveas(gcf,['SVM_results_allSessions_GroomingContext.png'])
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Plotting results decoding accuracy for grooming context
+figure;  set(gcf,'Position',[150 250 1300 800])
+subplot(2,1,1);hold on; %Groom Give, monkey A
+cmap={'b','r','g'};
+jitter = [-0.1 0 0.1];
+
+for s=[a_sessions h_sessions]
+    for c = 1:3
+        y = mean_hitrate{s,c}(1,:);
+        std_dev = sd_hitrate{s,c}(1,:);
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    end
+end
+leg = legend(["vlPFC","TEO","All"], 'Location','best');
+title(leg,'Brain Area')
+chance_level = 1/2;
+yline(chance_level,'--','Chance level', 'FontSize',16)
+xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
+xticklabels(groom_categ_label)
+ax = gca;
+ax.FontSize = 14;
+ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
+title('Decoding accuracy for the context of groom partner, Monkey A','FontSize', 14)
+
+subplot(2,1,2);hold on; %Groom Receive, monkey A
+for s=[a_sessions h_sessions]
+    for c = 1:3
+        y = mean_hitrate{s,c}(2,:);
+        std_dev = sd_hitrate{s,c}(2,:);
+        scatter(1+jitter(c):4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    end
+end
+leg = legend(["vlPFC","TEO","All"], 'Location','best');
+title(leg,'Brain Area')
+chance_level = 1/2;
+yline(chance_level,'--','Chance level', 'FontSize',16)
+xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
+xticklabels(groom_categ_label)
+ax = gca;
+ax.FontSize = 14;
+ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
+title('Decoding accuracy for the context of getting groomed, Monkey A','FontSize', 14)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Plotting results decoding accuracy for grooming context --> combining
+figure;  set(gcf,'Position',[150 250 1300 800])
+hold on; 
+cmap={'b','r','y'};
+jitter = 0;%[-0.22 0 0.22];
+
+sesh=1;
+for s=[a_sessions h_sessions]
+    for c = 1%:3 % for all brain areas
+        y = mean_hitrate{s,c}(1,1); g1(sesh, c) = nanmean(y);
+        scatter(1+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+
+        y = mean_hitrate{s,c}(2,2); g2(sesh, c) = nanmean(y);
+        scatter(2+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+
+        y = mean_hitrate{s,c}(2,3); g3(sesh, c) = nanmean(y);
+        scatter(3+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+
+        y = mean_hitrate{s,c}(1,4); g4(sesh, c) = nanmean(y);
+        scatter(4+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
+    end
+    sesh = sesh+1;
+end
+bp = bar([nanmean(g1); nanmean(g2); nanmean(g3); nanmean(g4)],'FaceAlpha',0.2);
+bp(1).FaceColor= [0 0.4470 0.7410]; bp(2).FaceColor= [0.8500 0.3250 0.0980]; bp(3).FaceColor= [0.9290 0.6940 0.1250];
+%leg = legend(["vlPFC","TEO","All"], 'Location','best');
+%title(leg,'Brain Area')
+chance_level = 1/2;
+yline(chance_level,'--','Chance level', 'FontSize',16, 'LineWidth',2)
+xticks([1:4]); xlim([0 5]); ylim([0.4 0.9])
+%xticklabels({'Start vs. end grooming bout', 'Getting grooming post-threat vs. not', 'Reciprocated grooming vs. not', 'Initiated grooming vs. not'})
+xticklabels({'Start vs. end', 'Post-threat', 'Reciprocated', 'Initiated'})
+ax = gca;
+ax.FontSize = 24;
+ylabel('Decoding accuracy','FontSize', 24); %xlabel('Grooming Give Context','FontSize', 18)
+%title('Decoding accuracy for the context of groom partner, Monkey A','FontSize', 14)
+cd(savePath)
+saveas(gcf,['Decoding grooming given context by area.png'])

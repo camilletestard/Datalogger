@@ -59,6 +59,7 @@ for s =session_range %1:length(sessions)
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
 
+        %Only consider activity during one of the paired blocks
         block_labels = cell2mat({labels{:,11}}'); 
         pair2block = find(strcmp(block_times{:,1}, 'Pair2.block'));
         idx_block = find(block_labels==pair2block);
@@ -73,7 +74,7 @@ for s =session_range %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 2;
+        min_occurrences = 20;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         %behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
@@ -201,6 +202,8 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
+save('SVM_results_SocialVsNonsocial.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+load('SVM_results_SocialVsNonsocial.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
@@ -239,3 +242,27 @@ title('Decoding accuracy for subject current behavioral states, Monkey H','FontS
 saveas(gcf,['Decoding social vs nonsocial allSessions.png'])
 
 close all
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bar plot decoding accuracy
+
+figure; hold on
+data = cell2mat(mean_hitrate');
+data_shuffle = cell2mat(mean_hitrate_shuffled');
+bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+
+sp1 = scatter(ones(size(data,1))*0.75,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*1.25,data(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data,1))*1.75,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*2.25,data_shuffle(:,3), 'filled','y');
+
+legend(bp,{'vlPFC','TEO','all'},'Location','best')
+
+ylabel('Decoding Accuracy'); ylim([0.4 0.9])
+xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
+ax = gca;
+ax.FontSize = 16;
+saveas(gcf,['SVM_results_allSessions_SocialVsNonsocial.png'])

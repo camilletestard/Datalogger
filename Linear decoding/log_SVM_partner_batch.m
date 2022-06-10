@@ -226,6 +226,8 @@ end% End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
+save('SVM_results_partnerBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+
 
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
@@ -317,3 +319,28 @@ elseif randomsample ==1 && unq_behav==0
     saveas(gcf,['SVM_results_behav_subsample_NOTunique_allSessions_partner.png'])
 end
 close all
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bar plot decoding accuracy
+
+figure; hold on
+data = cell2mat(mean_hitrate');
+data_shuffle = cell2mat(mean_hitrate_shuffled');
+bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+
+sp1 = scatter(ones(size(data,1))*0.75,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*1.25,data(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data,1))*1.75,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*2.25,data_shuffle(:,3), 'filled','y');
+
+legend(bp,{'vlPFC','TEO','all'},'Location','best')
+
+ylabel('Decoding Accuracy'); ylim([0.1 0.6])
+xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
+ax = gca;
+ax.FontSize = 16;
+saveas(gcf,['SVM_results_allSessions_allUnits_PARTNER.png'])
+

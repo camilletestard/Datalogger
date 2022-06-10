@@ -18,11 +18,13 @@ if (mac == 1) { home = '~'} else
 
 setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output', sep=""))
 file = file.choose() # chose the formatted behavior file (xls file)
-if (length(grep('partner',file))>0) {
+if (length(grep('partner',file)>0)) {
   if (length(grep('Amos',file))>0) {monkey = "Lovelace"; m.monkey="Amos" } else {monkey = "Sally"; m.monkey="Hooke" }
   date = as.character(substr(file, nchar(file)-33, nchar(file)-23))
-} else
-{ if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
+} else if (length(grep('neighbor',file)>0)){
+  if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
+  date = as.character(substr(file, nchar(file)-34, nchar(file)-24))
+} else { if (length(grep('Amos',file))>0) {monkey = "Amos" } else {monkey = "Hooke"}
   date = as.character(substr(file, nchar(file)-25, nchar(file)-15))
 }
 
@@ -83,18 +85,37 @@ new_log_final$Behavior=factor(new_log_final$Behavior,
                               levels=c("Aggression","Proximity", "HIP","Foraging", "Vocalization","SS","Groom Give", "Masturbating","Mounting",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
-                                       "Swinging", "Head Bobbing", "Object Manipulation"))
+                                       "Swinging", "Head Bobbing", "Object manipulation","watch.neighbor"))
 
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
 
 if (length(which(new_log_final$duration.s<=0))>0){stop("NEGATIVE OR 0 DURATION")}
 
+new_log_final_plot <- new_log_final
+new_log_final_plot$Behavior = as.character(new_log_final_plot$Behavior)
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="SS"]="HIS"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="SP"]="HIP"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="HIS"]="Threat to subject"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="HIP"]="Threat to partner"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="Pacing/Travel"]="Travel"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="Groom Give"]="Groom partner"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="Groom Receive"]="Getting groomed"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="RR"]="Alert"
+new_log_final_plot$Behavior[new_log_final_plot$Behavior=="Grm prsnt"]="Limb presentation"
+new_log_final_plot$Behavior = factor(new_log_final_plot$Behavior)
+
+new_log_final_plot$Behavior=factor(new_log_final_plot$Behavior,
+                              levels=c("Aggression","Proximity", "Threat to partner","Foraging", "Vocalization","Groom partner", "Mounting",
+                                      "Approach","Yawning","Self-groom","Threat to subject","Other monkeys vocalize", 
+                                       "Getting groomed","Leave","Drinking","Travel","Scratch","Alert", "Limb presentation"))
+
 #Plot
-behavior.log<-ggplot(new_log_final, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
+behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
   geom_vline(xintercept = block_end[1])+
   geom_vline(xintercept = block_end[2])+
+  scale_fill_viridis(option="turbo", discrete = TRUE)+
   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
   xlab('Time since start of recording (in s)')+
   theme(axis.text.y= element_blank(),
@@ -120,7 +141,10 @@ new_log_final = rbind(new_log_final, blocklim)
 # dir <- dirname(output_file)
 if (length(grep('partner',file))>0) {
   setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',m.monkey,date,sep=""))
-  write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_partner.csv',sep=""),row.names = F)} else
-  {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
+  write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_partner.csv',sep=""),row.names = F)
+  } else if (length(grep('neighbor',file))>0) {
+    setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
+    write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured_neighbor.csv',sep=""),row.names = F)
+  } else {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/',monkey,date,sep=""))
     write.csv(new_log_final[,-c(4,5)],file=paste('EVENTLOG_restructured.csv',sep=""),row.names = F)}
 

@@ -419,13 +419,6 @@ for s = 1:length_recording %for all secs in a session
     %
 end
 
-%Rename behavior category to not have acronyms
-behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
-behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
-behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
-behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
-behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
-behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 
 %% Create grooming label
 
@@ -552,5 +545,17 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
 end
 groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
 
+
+%% Rename behavior category to not have acronyms
+
+behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
+behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
+behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
+behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
+behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
+behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
+behav_categ{find(matches(behav_categ,'Grm prsnt'))}='Groom sollicitation';
+behav_categ{find(matches(behav_categ,'Groom Give'))}='Groom partner';
+behav_categ{find(matches(behav_categ,'Groom Receive'))}='Getting groomed';
 
 end

@@ -60,7 +60,7 @@ for s =session_range %1:length(sessions)
         groom_categ_label = {'Not Reciprocated', 'Reciprocated'};
 
         % Select behaviors manually
-        behav = [7,8];%groom receive
+        behav = 7;%[7,8];%groom receive
         behavs_eval = behav_categ(behav);
         %Only keep the behaviors of interest
         idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered

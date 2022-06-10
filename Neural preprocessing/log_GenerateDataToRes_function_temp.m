@@ -308,6 +308,9 @@ behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
 behav_categ{find(matches(behav_categ,'RR'))}='Rowdy Room';
 behav_categ{find(matches(behav_categ,'SP'))}='Squeeze partner';
 behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
+behav_categ{find(matches(behav_categ,'Grm prsnt'))}='Groom sollicitation';
+behav_categ{find(matches(behav_categ,'Groom Give'))}='Groom partner';
+behav_categ{find(matches(behav_categ,'Groom Receive'))}='Getting groomed';
 
 %% Create grooming label
 
