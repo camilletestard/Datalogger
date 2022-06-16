@@ -18,7 +18,7 @@ session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 plot_toggle = 0;
-with_partner = 1;
+with_partner = 0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
@@ -56,7 +56,7 @@ for s =session_range %1:length(sessions)
 
     %Get data with specified temporal resolution and channels
     if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
     else
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
     end
@@ -80,8 +80,6 @@ for s =session_range %1:length(sessions)
         behavior_labels_partner = cell2mat({labels_partner{:,3}}');
         behavior_labels_partner(behavior_labels_partner==find(behav_categ=="Proximity"))=length(behav_categ);
         idx_rest = intersect(find(behavior_labels ==length(behav_categ)), find(behavior_labels_partner ==length(behav_categ)));
-        percent_corest = length(intersect(find(behavior_labels ==length(behav_categ)),...
-            find(behavior_labels_partner ==length(behav_categ))))/length(find(behavior_labels ==length(behav_categ)));
     end
     mean_baseline = mean(Spike_rasters(:,idx_rest),2);
     std_baseline = std(Spike_rasters(:,idx_rest),0,2);
@@ -216,15 +214,15 @@ for s =session_range %1:length(sessions)
         %Plot ordered heatmap
         figure; %set(gcf,'Position',[150 250 1000 500]);
         [nanrow nancol]=find(~isnan(cohend_sorted)); nancol = unique(nancol);
-        order_units = [find(strcmp(brain_label,"TEO")), find(strcmp(brain_label,"vlPFC"))];
-        hp=heatmap(cohend_sorted(order_units,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
+        order_units = [strcmp(brain_label,"TEO"),
+        hp=heatmap(cohend_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
         ax = gca;
         ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
 
         %Plot ordered heatmap thresholded
         figure; %set(gcf,'Position',[150 250 1000 500]);
-        hp=heatmap(cohend_thresh_sorted(order_units,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
+        hp=heatmap(cohend_thresh_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
         ax = gca;
         ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded.png']); close all

@@ -187,7 +187,7 @@ for s =session_range %1:length(sessions)
     end
 
     %Threshold cohens'd by a cutoff
-    cutoff=0.005;
+    cutoff=0.01;
     h = double(p < cutoff); sum(sum(h))
     h_shuffle = double(p_rand < cutoff); sum(sum(h_shuffle))
 
@@ -354,9 +354,16 @@ set(gca,'FontSize',15);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot proportion of selective units per behavior across all sessions, separated by monkey
 
+prop_selective_per_behav_partner(prop_selective_per_behav_partner==0)=nan;
+prop_selective_per_behav_subject(prop_selective_per_behav_subject==0)=nan;
+prop_partner_and_subject(prop_partner_and_subject==0)=nan;
+prop_neither(prop_neither==0)=nan;
+values = [nanmean(nanmean(prop_selective_per_behav_partner)), nanmean(nanmean(prop_selective_per_behav_subject)), ...
+    nanmean(nanmean(prop_partner_and_subject)), nanmean(nanmean(prop_neither))]
 figure
-venn([mean(nanmean(prop_selective_per_behav_partner)), mean(nanmean(prop_selective_per_behav_subject))], ...
-    mean(nanmean(prop_partner_and_subject)));
+venn([nanmean(nanmean(prop_selective_per_behav_partner)), nanmean(nanmean(prop_selective_per_behav_subject))], ...
+    nanmean(nanmean(prop_partner_and_subject)));
+title([channel_flag, ', ' num2str(values)])
 set(gca,'xtick',[])
 set(gca,'ytick',[])
 

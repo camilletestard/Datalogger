@@ -414,7 +414,7 @@ for s=session_range
 end
 ylim([0 1]); xlim([0.5 2.5])
 
-ylabel('Proportion'); xlabel('Number of Behaviors')
-xticks([0.8 1 1.2 1.8 2 2.2]); xticklabels({'0', '1', '>1', '0', '1', '>1'});
+ylabel('Proportion'); 
+xticks([0.8 1 1.2 1.8 2 2.2]); xticklabels({'0', '1'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;

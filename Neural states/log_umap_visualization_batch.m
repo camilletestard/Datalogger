@@ -39,7 +39,7 @@ for s =session_range %1:length(sessions)
     chan = 1;
 
     %for channel_flag = ["vlPFC", "TEO", "all"]
-    channel_flag = "TEO";
+    channel_flag = "all";
         
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
@@ -57,6 +57,7 @@ for s =session_range %1:length(sessions)
         behavior_labels = cell2mat({labels{:,3}}');
         behavior_labels(behavior_labels==21)=9;
         behavior_labels(behavior_labels==22)=10;
+        behavior_labels(behavior_labels==19)=29;
         block_labels = cell2mat({labels{:,11}}');
 
         behav_freq_table = tabulate(behavior_labels);

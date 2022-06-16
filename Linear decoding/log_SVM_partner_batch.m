@@ -228,7 +228,8 @@ end% End of session for loop
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 save('SVM_results_partnerBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 
-
+load('SVM_results_partnerBehav.mat')
+   
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
 subplot(2,1,1);hold on;
@@ -328,17 +329,17 @@ data = cell2mat(mean_hitrate');
 data_shuffle = cell2mat(mean_hitrate_shuffled');
 bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
 
-sp1 = scatter(ones(size(data,1))*0.75,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*0.78,data(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*1.25,data(:,3), 'filled','y');
+sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
 
-sp1 = scatter(ones(size(data,1))*1.75,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*1.78,data_shuffle(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*2.25,data_shuffle(:,3), 'filled','y');
+sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
 
 legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
-ylabel('Decoding Accuracy'); ylim([0.1 0.6])
+ylabel('Decoding Accuracy'); ylim([0.1 0.55])
 xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;

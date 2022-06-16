@@ -1,8 +1,9 @@
-%% Log_SingleNeuronTuning_Cohensd
+%% Log_SingleNeuronTuning_Cohensd_partner_vs_subject
 %  This script computes firing rate of individual neuron under different
-%  behavioral conditions. Then, it computes a cohen's d (or effect size)
+%  behavioral conditions for both partner and subject behavior. 
+%  Then, it computes a cohen's d (or effect size)
 %  difference between the distribution of firing rates during behavior X
-%  with a baseline firing rate.
+%  with firing rate during a baseline state (rest/proximity).
 
 %Set session list
 is_mac = 1;
@@ -186,7 +187,7 @@ for s =session_range %1:length(sessions)
     end
 
     %Threshold cohens'd by a cutoff
-    cutoff=0.005;
+    cutoff=0.01;
     h = double(p < cutoff); sum(sum(h))
     h_shuffle = double(p_rand < cutoff); sum(sum(h_shuffle))
 
@@ -353,6 +354,19 @@ set(gca,'FontSize',15);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot proportion of selective units per behavior across all sessions, separated by monkey
 
+prop_selective_per_behav_partner(prop_selective_per_behav_partner==0)=nan;
+prop_selective_per_behav_subject(prop_selective_per_behav_subject==0)=nan;
+prop_partner_and_subject(prop_partner_and_subject==0)=nan;
+prop_neither(prop_neither==0)=nan;
+values = [nanmean(nanmean(prop_selective_per_behav_partner)), nanmean(nanmean(prop_selective_per_behav_subject)), ...
+    nanmean(nanmean(prop_partner_and_subject))]
+figure
+venn([nanmean(nanmean(prop_selective_per_behav_partner)), nanmean(nanmean(prop_selective_per_behav_subject))], ...
+    nanmean(nanmean(prop_partner_and_subject)));
+title([channel_flag, ', ' num2str(values)])
+set(gca,'xtick',[])
+set(gca,'ytick',[])
+
 % % % % figure; set(gcf,'Position',[150 250 1400 300]);
 % % % % for c = 1:length(behav)
 % % % % 
@@ -388,7 +402,7 @@ for c = 1:length(behav)
     set(gca,'xtick',[])
     set(gca,'ytick',[])
     %a =gca; set(a,'box','off','color','none')
-    title(behav_categ(behav(c)))
+    %title(behav_categ(behav(c)))
     
     
     numbers_h(:,c)=[nansum(num_neither(h_sessions,c)), nansum(num_partner_and_subject(h_sessions,c)), ...
@@ -396,11 +410,18 @@ for c = 1:length(behav)
 
 end
 
-nanmean(prop_same_direction(a_sessions,:))
-nanmean(prop_same_direction(h_sessions,:))
+mean(nanmean(prop_same_direction(a_sessions,:)))
+mean(nanmean(prop_same_direction(h_sessions,:)))
+
+X = [mean(nanmean(prop_same_direction)), 1-mean(nanmean(prop_same_direction))];
+explode = [1 1];
+pie(X,explode)
+ax = gca;
+ax.FontSize = 16;
+lgd = legend({'Same response', 'Different response'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Bar plot decoding accuracy
+% Bar plot number of neurons selective for partner, subject, both, neither
 
 prop_neither(prop_neither==1)=nan;
 figure; set(gcf,'Position',[150 250 600 400]); hold on
