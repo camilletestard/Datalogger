@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac,is_ron, with_NC, isolatedOnly)
 %Log GenerateDataToRes_function
 % Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
@@ -76,8 +76,11 @@ length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
 % Load motion energy
 ME = [];%readtable('ME.csv');
-
+if is_ron
+num_unit_allsessions = readtable('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_results\Number of units\Session_log_num_units.csv');
+else
 num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
+end
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 
