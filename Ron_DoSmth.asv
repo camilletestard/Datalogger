@@ -12,7 +12,7 @@ channel_flag = "all"; %Channels considered
 with_NC =1; %0: Noise cluster (NC) is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well-isolated units
 
-for s =11 %For now focus on session Amos_2021-07-29
+for s = 1 %For now focus on session Amos_2021-07-29
 
     %Set path
     if is_ron
@@ -276,9 +276,7 @@ end
 table(principal_angle,some_labels,'VariableNames',{'principal angle', 'comparison'})
 
 
-%% Test 1.3 sanity check on overlap between grooming and all other behaviors
-%Using principal angle definition from above to make sure grooming subspace
-%doesn't have tremendous overlap with subspace for all other behaviors
+%% Test 1.3 sanity check on overlap between grooming and
 
 %% Test(s) 2-? Replicating Geometry of sequence working memory in macaque prefrontal cortex analyses
 %Our analyses don't exactly align due to the difference in our behavior vs
