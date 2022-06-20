@@ -8,11 +8,11 @@ is_mac = 0; %For loading the data
 is_ron = 1; %For setting path
 with_partner =1;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
-channel_flag = "all"; %Channels considered
+channel_flag = "T"; %Channels considered (sets brain region TEO vlPFC all
 with_NC =1; %0: Noise cluster (NC) is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well-isolated units
 
-for s = 1 %For now focus on session Amos_2021-07-29
+for s = 3 %For now focus on session Amos_2021-07-29
 
     %Set path
     if is_ron
@@ -34,7 +34,7 @@ for s = 1 %For now focus on session Amos_2021-07-29
     %% Load data
 
     %Get data with specified temporal resolution and channels
-    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac,is_ron, with_NC, isolatedOnly);
+    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_Ron(filePath, temp_resolution, channel_flag, is_mac,is_ron, with_NC, isolatedOnly);
     % Output:
     %       1. Spike_rasters: n_neuron X time in seconds (if temp_resolution = 1)
     %       2. labels: time X 11 - check the function description for
@@ -83,6 +83,8 @@ groominds_postthreat = groom_labels_all(:,3) == 1;
 groominds_reciprocal = groom_labels_all(:, 4) == 1;
 groominds_initiated = groom_labels_all(:,5) == 1;
 
+groominds_self = behavior_labels_subject_init == 24; %24 is label for self groom
+
 %Use Spike_count_raster as it is in obs x vars format these algorithms are
 %expecting
 
@@ -103,7 +105,7 @@ Results.all.var_exp = var_exp;
 
 
 Data_grooming = Spike_count_raster(groominds_all,:);
-Data_rest = Spike_count_raster(~groominds_all,:);
+Data_self = Spike_count_raster(groominds_self,:);
 Data_groomgive = Spike_count_raster(groominds_give,:);
 Data_groomrec = Spike_count_raster(groominds_receive,:);
 
@@ -129,7 +131,7 @@ Results.groomrec.score = score;
 Results.groomrec.eigenval = eigenval;
 Results.groomrec.var_exp = var_exp;
 
-[eigenvec, score, eigenval, ~, var_exp] = pca(Data_rest);
+[eigenvec, score, eigenval, ~, var_exp] = pca(Data_self);
 
 Results.therest.eigenvec = eigenvec;
 Results.therest.score = score;
@@ -144,23 +146,25 @@ Results.groomall.majdim = find(cumsum(Results.groomall.var_exp)>threshold,1,'fir
 Results.groomgive.majdim = find(cumsum(Results.groomgive.var_exp)>threshold,1,'first');
 Results.groomrec.majdim = find(cumsum(Results.groomrec.var_exp)>threshold,1,'first');
 
-sorted_axis = 1:length(var_exp);%changed mind don't like this./length(var_exp); %quick trick for setting axes for eigen plots
+%sorted_axis = 1:length(var_exp);%changed mind don't like this./length(var_exp); %quick trick for setting axes for eigen plots
 figure
-plot(sorted_axis,cumsum(Results.all.var_exp),'k')
+plot(1:length(Results.all.var_exp),cumsum(Results.all.var_exp),'k')
+title([channel_flag ' ' num2str(s)])
 ylabel('var explained')
 xlabel('Eigenvectors used')
+ylim([0,110])
 hold on
-plot(sorted_axis,cumsum(Results.groomall.var_exp),'b')
-plot(sorted_axis,cumsum(Results.groomgive.var_exp),'b--')
-plot(sorted_axis,cumsum(Results.groomrec.var_exp),'b.-')
-plot(sorted_axis,cumsum(Results.therest.var_exp),'r')
-plot(sorted_axis, threshold * ones(size(sorted_axis)),'k--') %put dashed black line for majority of variance
+plot(1:length(Results.groomall.var_exp),cumsum(Results.groomall.var_exp),'b')
+plot(1:length(Results.groomgive.var_exp),cumsum(Results.groomgive.var_exp),'b--')
+plot(1:length(Results.groomrec.var_exp),cumsum(Results.groomrec.var_exp),'b.-')
+plot(1:length(Results.therest.var_exp),cumsum(Results.therest.var_exp),'r')
+plot(1:length(var_exp), threshold * ones(size(var_exp)),'k--') %put dashed black line for majority of variance
 %number beside is number of PCs needed to cross threshold var explained
 legend(['All: ' num2str(Results.all.majdim)],...
     ['Grooming: ' num2str(Results.groomall.majdim)],...
     ['Groom Give: ' num2str(Results.groomgive.majdim)],...
     ['Groom Receive:' num2str(Results.groomrec.majdim)],...
-    ['Rest: ' num2str(Results.therest.majdim)],...
+    ['Groom Self: ' num2str(Results.therest.majdim)],...
     'Threshold')
 
 
@@ -203,13 +207,14 @@ Results.groomini.majdim = find(cumsum(Results.groomini.var_exp)>threshold,1,'fir
 
 
 figure
-plot(sorted_axis,cumsum(Results.groomall.var_exp),'b')
+plot(1:length(Results.groomall.var_exp),cumsum(Results.groomall.var_exp),'b')
+title([channel_flag ' ' num2str(s)])
 ylabel('var explained')
 xlabel('Eigenvectors used')
 hold on
-plot(sorted_axis,cumsum(Results.groompt.var_exp),'bx')
-plot(sorted_axis,cumsum(Results.groomrecip.var_exp),'b--')
-plot(sorted_axis,cumsum(Results.groomini.var_exp),'b.-')
+plot(1:length(Results.groompt.var_exp),cumsum(Results.groompt.var_exp),'bx')
+plot(1:length(Results.groomrecip.var_exp),cumsum(Results.groomrecip.var_exp),'b--')
+plot(1:length(Results.groomini.var_exp),cumsum(Results.groomini.var_exp),'b.-')
 
 plot(sorted_axis, threshold * ones(size(sorted_axis)),'k--') %put dashed black line for majority of variance
 %number beside is number of PCs needed to cross threshold var explained
@@ -253,7 +258,7 @@ comparison = [1 2; 1 3; 2 3]; %better ways to do this but for now just manually 
 %     
 % end
 % 
-% some_labels = {'post-threat to reciprocal','post-threat to initiated','reciprocal to initated'}';
+ some_labels = {'post-threat to reciprocal','post-threat to initiated','reciprocal to initated'}';
 % 
 % table(avg_angle,some_labels,'VariableNames',{'avg angle', 'comparison'})
 
@@ -276,7 +281,9 @@ end
 table(principal_angle,some_labels,'VariableNames',{'principal angle', 'comparison'})
 
 
-%% Test 1.3 sanity check on overlap between grooming and
+%% Test 1.3 sanity check on overlap between grooming and all other behaviors
+%Using principal angle definition from above to make sure grooming subspace
+%doesn't have tremendous overlap with subspace for all other behaviors
 
 %% Test(s) 2-? Replicating Geometry of sequence working memory in macaque prefrontal cortex analyses
 %Our analyses don't exactly align due to the difference in our behavior vs
