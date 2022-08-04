@@ -25,7 +25,7 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 50;%Number of SVM iterations
+num_iter = 100;%Number of SVM iterations
 
 %Select session range:
 if with_partner ==1
