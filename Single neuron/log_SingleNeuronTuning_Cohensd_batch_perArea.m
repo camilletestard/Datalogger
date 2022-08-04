@@ -403,18 +403,18 @@ for s=session_range
     vlPFC(3,s) = length(find(vertcat(num_selective_behav_per_neuron_vlPFC{s})>1))/n_neurons(1,s);
     TEO(3,s) = length(find(vertcat(num_selective_behav_per_neuron_TEO{s})>1))/n_neurons(2,s);
 
-    scatter(0.8, vlPFC(1,s), 'filled','b');
-    scatter(1, vlPFC(2,s), 'filled','b');
-    scatter(1.2, vlPFC(3,s), 'filled','b');
+    scatter(0.8, vlPFC(1,s), 'filled','g');
+    scatter(1, vlPFC(2,s), 'filled','g');
+    scatter(1.2, vlPFC(3,s), 'filled','g');
 
-    scatter(1.8, TEO(1,s), 'filled','r');
-    scatter(2, TEO(2,s), 'filled','r');
-    scatter(2.2, TEO(3,s), 'filled','r');
+    scatter(1.8, TEO(1,s), 'filled','b');
+    scatter(2, TEO(2,s), 'filled','b');
+    scatter(2.2, TEO(3,s), 'filled','b');
 
 end
 ylim([0 1]); xlim([0.5 2.5])
 
-ylabel('Proportion'); xlabel('Number of Behaviors')
+ylabel('Proportion of units'); xlabel('Number of Behaviors units are selective for')
 xticks([0.8 1 1.2 1.8 2 2.2]); xticklabels({'0', '1', '>1', '0', '1', '>1'});
 ax = gca;
 ax.FontSize = 16;

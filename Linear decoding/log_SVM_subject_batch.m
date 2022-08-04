@@ -44,7 +44,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
-    for channel_flag = "all" %["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO", "all"]
 
 
         %% Get data with specified temporal resolution and channels
@@ -237,7 +237,7 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-%save('SVM_results_subjectBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_subjectBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 %load('SVM_results_subjectBehav.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
@@ -341,7 +341,7 @@ bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
 
 sp1 = scatter(ones(size(data,1))*0.77,data(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*1.25,data(:,3), 'filled','y');
+sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
 
 sp1 = scatter(ones(size(data,1))*1.77,data_shuffle(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
@@ -349,12 +349,12 @@ sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
 
 legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
-ylabel('Decoding Accuracy'); ylim([0 0.8])
+ylabel('Decoding Accuracy'); ylim([0 1])
 xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;
 
-saveas(gcf,['SVM_results_subjectBehav.png'])
+saveas(gcf,['SVM_results_subjectBehav.pdf'])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

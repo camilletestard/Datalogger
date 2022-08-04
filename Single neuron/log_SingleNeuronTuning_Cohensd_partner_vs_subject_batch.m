@@ -219,7 +219,7 @@ for s =session_range %1:length(sessions)
         subplot(1,3,2); hp=heatmap(sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
         subplot(1,3,3); hp=heatmap(sign(cohend_thresh(:,:,1))-sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject - Partner')
         sgtitle(['Binarized heatmap, p<' num2str(cutoff)])
-        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER_binarized.png']); pause(3);
+        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER_binarized.pdf']); pause(3);
 
         close all
     end

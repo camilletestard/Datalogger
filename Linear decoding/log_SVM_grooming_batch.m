@@ -52,7 +52,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan=1;
-    for channel_flag = "all" %["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO", "all"]
 
 
         %% Get data with specified temporal resolution and channels
@@ -475,11 +475,11 @@ title('Decoding accuracy for the context of getting groomed, Monkey A','FontSize
 figure;  set(gcf,'Position',[150 250 1300 800])
 hold on; 
 cmap={'b','r','y'};
-jitter = 0;%[-0.22 0 0.22];
+jitter = [-0.22 0 0.22];
 
 sesh=1;
 for s=[a_sessions h_sessions]
-    for c = 1%:3 % for all brain areas
+    for c = 1:3 % for all brain areas
         y = mean_hitrate{s,c}(1,1); g1(sesh, c) = nanmean(y);
         scatter(1+jitter(c),y,60,'filled', 'MarkerFaceAlpha',0.7,'MarkerFaceColor',cmap{c})
 
@@ -500,7 +500,7 @@ bp(1).FaceColor= [0 0.4470 0.7410]; bp(2).FaceColor= [0.8500 0.3250 0.0980]; bp(
 %title(leg,'Brain Area')
 chance_level = 1/2;
 yline(chance_level,'--','Chance level', 'FontSize',16, 'LineWidth',2)
-xticks([1:4]); xlim([0 5]); ylim([0.4 0.9])
+xticks([1:4]); xlim([0 5]); ylim([0.4 1])
 %xticklabels({'Start vs. end grooming bout', 'Getting grooming post-threat vs. not', 'Reciprocated grooming vs. not', 'Initiated grooming vs. not'})
 xticklabels({'Start vs. end', 'Post-threat', 'Reciprocated', 'Initiated'})
 ax = gca;
@@ -508,4 +508,4 @@ ax.FontSize = 24;
 ylabel('Decoding accuracy','FontSize', 24); %xlabel('Grooming Give Context','FontSize', 18)
 %title('Decoding accuracy for the context of groom partner, Monkey A','FontSize', 14)
 cd(savePath)
-saveas(gcf,['Decoding grooming given context by area.png'])
+saveas(gcf,['Decoding grooming given context by area.pdf'])

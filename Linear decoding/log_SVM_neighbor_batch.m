@@ -26,6 +26,7 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 num_iter = 50;%Number of SVM iterations
 min_occurrences = 25;%Minimum number of occurrence per behavior
+alone_block =0;
 
 %Select session range:
 if with_partner ==1
@@ -67,13 +68,41 @@ for s =session_range %1:length(sessions)
         behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
         behavior_labels_neighbor_init = cell2mat({labels_neighbor{:,3}}');
         block_labels = cell2mat({labels{:,11}}'); %Extract block info
-        alone_block_num = find(strcmp(block_times{:,1},"Alone.block"));
+        alone_block_id = find(strcmp(block_times{:,1},"Alone.block"));
 
         %SANITY CHECK: Compute overlap between partner behavior and subject behavior
         perc_overlap_subject_partner = length(find(behavior_labels_subject_init == behavior_labels_partner_init))/length(behavior_labels_subject_init);
         perc_overlap_subject_neighbor = length(find(behavior_labels_subject_init == behavior_labels_neighbor_init))/length(behavior_labels_subject_init);
         perc_overlap_partner_neighbor = length(find(behavior_labels_partner_init == behavior_labels_neighbor_init))/length(behavior_labels_subject_init);   
     
+        %Only consider pair or alone blocks
+        if alone_block==1
+            behav_freq_table = tabulate(behavior_labels_subject_init(block_labels== alone_block_id));
+            [~, max_beh]= max(behav_freq_table(:,2));
+
+            idx = find(block_labels== alone_block_id & behavior_labels_subject_init==max_beh);
+            behavior_labels_subject_init = behavior_labels_subject_init(idx);
+            behavior_labels_partner_init = behavior_labels_partner_init(idx);
+            behavior_labels_neighbor_init = behavior_labels_neighbor_init(idx);
+            Spike_count_raster = Spike_count_raster(idx,:);
+            block_labels=block_labels(idx);
+
+        elseif alone_block==0
+            behavior_labels_subject_init = behavior_labels_subject_init(block_labels~= alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels~= alone_block_id);
+            behavior_labels_neighbor_init = behavior_labels_neighbor_init(block_labels~= alone_block_id);
+            Spike_count_raster = Spike_count_raster(block_labels~= alone_block_id,:);
+            block_labels=block_labels(block_labels~= alone_block_id,:);
+
+        elseif alone_block==3
+            idx = find(behavior_labels_subject_init==7);
+            behavior_labels_subject_init = behavior_labels_subject_init(idx);
+            behavior_labels_partner_init = behavior_labels_partner_init(idx);
+            behavior_labels_neighbor_init = behavior_labels_neighbor_init(idx);
+            Spike_count_raster = Spike_count_raster(idx,:);
+            block_labels=block_labels(idx);
+
+        end
 
 
         behavior_labels = behavior_labels_neighbor_init;
@@ -82,12 +111,12 @@ for s =session_range %1:length(sessions)
 
         %Compute freq of behavior for the session
         behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
+        %behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
+%         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+%         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
 
         % Then select non-reciprocal behaviors
         behav = setdiff(behav, reciprocal_set);
@@ -106,11 +135,12 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
         %Only keep the behaviors of interest
-        idx = find(ismember(behavior_labels,behav) & block_labels~=alone_block_num); %find the indices of the behaviors considered
+        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
         tabulate(removecats(categorical(behavior_labels_final)));
 
+    
         %check the amount of labels that differ in the partner vs. subject
         %labels after selecting the behaviors of interest.
         subject_behav_after_selection = behavior_labels_subject_init(idx);
@@ -132,7 +162,8 @@ for s =session_range %1:length(sessions)
         %partner do not overlap
         diff_idx = find(neighbor_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
         Spike_count_raster_final = Spike_count_raster_final(diff_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
+        behavior_labels_final = behavior_labels_final(diff_idx);%Same as above but in behavior labels
+        subject_behav_after_selection = subject_behav_after_selection(diff_idx);
         block_after_selection_final = block_after_selection(diff_idx);
         behav = unique(behavior_labels_final);
 

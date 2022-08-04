@@ -149,15 +149,27 @@ data3$duration[1]/sum(data3$duration)
 behav_freq_table_full<-behav_freq_table_full[behav_freq_table_full$Behavior!="Proximity",]
 behav_freq_table_full$duration[is.na(behav_freq_table_full$duration)]=0
 
+#plot frequency
 ggplot(data=behav_freq_table_full, aes(x=reorder(Behavior, num.events), y=num.events, fill=social_categ)) +
   geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('# Occurences')+
   coord_flip()+ theme_classic(base_size = 18)+ ggtitle("All session cumulated")
 ggsave(paste("Behavior_frequency_allSessions.png",sep=""))
 
+#plot duration
 ggplot(data=behav_freq_table_full, aes(x=reorder(Behavior, duration), y=duration)) +
   geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Duration (s)')+
   coord_flip()+ theme_classic(base_size = 16)+ ggtitle("All session cumulated")
+ggsave(paste("Behavior_duration_allSessions.png",sep=""))
 
+ggplot(data=behav_freq_table_full[behav_freq_table_full$session %in% a_sessions,], aes(x=reorder(Behavior, duration), y=duration)) +
+  geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Duration (s)')+
+  coord_flip()+ theme_classic(base_size = 16)+ ggtitle("Amos")
+ggsave(paste("Behavior_duration_AmosSessions.png",sep=""))
+
+ggplot(data=behav_freq_table_full[behav_freq_table_full$session %in% h_sessions,], aes(x=reorder(Behavior, duration), y=duration)) +
+  geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Duration (s)')+
+  coord_flip()+ theme_classic(base_size = 16)+ ggtitle("Hooke")
+ggsave(paste("Behavior_duration_HookeSessions.png",sep=""))
 
 ggplot(data=behav_freq_table_full, aes(x=reorder(Behavior, proportion), y=proportion/4, fill=categ)) +
   geom_bar(stat="identity")+ xlab('Behaviors')+ ylab('Proportion')+
