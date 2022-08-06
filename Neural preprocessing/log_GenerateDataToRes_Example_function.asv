@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
+function [Spike_rasters, SpikeData, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
 
 %Log GenerateDataToRes_function
 % Input data files: 
@@ -8,9 +8,22 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %   "Neural_data_*sessionname*_isolatedunits.mat"
 %   4. Motion energy measure for each top view video: "ME.csv"
 
+% Arguments: 
+%   filePath is the experimental data path
+%   Temp_resolution is the temporal resolution at which we would like to
+%   analyze the dat
+%   Channel_flag specifies with channels to include: only TEO array, only
+%   vlPFC array or all channels
+%   is_mac: specifies whether the code is run on a mac or pc
+%   with_NC: specifies whether the "noise cluster" (or the first cell of
+%   every channel) is included (1) or not (0). If with_NC=2 then we only
+%   inlcude the noise cluster (not the other neurons).
+%   isolatedOnly: specifies if only the well isolated units are considered.
+
 % This function formats the raw input data to have the following elements:
-% 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
-% 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
+% 1. Neural data matrix, size [#neurons x Time (to chosen resolution)] --> 'Spike_rasters' output matrix
+% 2. Label vector which describes the behavior at time t [Time (to chosen
+% resolution) x 11] --> 'labels' cell structure
 %       1st column includes all behaviors in "plain english"
 %       2nd column behavior number code
 %       3rd column unique behavior code (when two occur
@@ -27,8 +40,9 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       10th column indicates the block in which we are
 %       (Paired,monkey1; Paired monkey2 or Alone)
 %       11th column gives a corresponding numerical value to the block
-% 3. Label for partner behavior, same columns as subject labels
+% 3. Label for partner behavior, same columns as subject labels  --> 'labels_partner' cell structure
 % 4. Label for grooming, length of the session, with the following columns:
+%  --> 'groom_labels_all' matrix
 %       1. Behavior label. If not grooming (7 groom give, 8 groom receive),
 %       then all categories below will be 0. If grooming, the bout can be
 %       qualified as:
@@ -37,17 +51,20 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       4. Grooming reciprocated (1) or not (2)
 %       5. Grooming initiated (1) or not (2)
 
-% Arguments: 
-%   filePath is the experimental data path
-%   Temp_resolution is the temporal resolution at which we would like to
-%   analyze the dat
-%   Channel_flag specifies with channels to include: only TEO array, only
-%   vlPFC array or all channels
-%   is_mac: specifies whether the code is run on a mac or pc
-%   with_NC: specifies whether the "noise cluster" (or the first cell of
-%   every channel) is included (1) or not (0). If with_NC=2 then we only
-%   inlcude the noise cluster (not the other neurons).
-%   isolatedOnly: specifies if only the well isolated units are considered.
+% Other outputs:
+%   SpikeData: Structure containing the spike times for each cell for each
+%   channel (there can be multiple units per electrode or channel).
+%   behav_categ: name of the behavioral categories observed (eg:1=aggression)
+%   block_times: start and end times of experimental blocks 
+%   monkey: name of monkey
+%   reciprocal_set: set of behaviors which are "reciprocal" (i.e. one can
+%   100% predict the behavior of the partner monkey based on that of the
+%   subject)
+%   social_set: set of behaviors that are social (with a conspecific, as
+%   opposed to non-social)
+%   ME_final: disregard for now
+%   unit_count: # units for TEO, vlPFC and bo
+%   brain_labels:
 
 % Camille Testard - Nov. 2021
 

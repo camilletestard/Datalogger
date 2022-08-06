@@ -26,6 +26,7 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 num_iter = 50;%Number of SVM iterations
 min_occurrences = 30;%Minimum number of occurrence per behavior
+alone_block=1; %1: during alone block; 0:during paired blocks; anything else: all blocks.
 
 %Select session range:
 if with_partner ==1
@@ -61,6 +62,7 @@ for s =session_range %1:length(sessions)
         behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
         behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
         block_labels = cell2mat({labels{:,11}}'); %Extract block info
+        alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
 
         %SANITY CHECK: Compute overlap between partner behavior and subject behavior
         perc_overlap_allbehav = length(find(behavior_labels_subject_init == behavior_labels_partner_init))/length(behavior_labels_subject_init);
@@ -77,6 +79,19 @@ for s =session_range %1:length(sessions)
         %3. it is often the case that self-groom events co-occur for Amos and Lovelace. I expect
         %this to be the case for foraging in Hooke-pair.
 
+
+        %Only consider paired blocks
+        if alone_block==1
+            behavior_labels_subject_init = behavior_labels_subject_init(block_labels== alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels== alone_block_id);
+            Spike_count_raster = Spike_count_raster(block_labels== alone_block_id,:);
+            block_labels=block_labels(block_labels== alone_block_id,:);
+        elseif alone_block==0
+            behavior_labels_subject_init = behavior_labels_subject_init(block_labels~= alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels~= alone_block_id);
+            Spike_count_raster = Spike_count_raster(block_labels~= alone_block_id,:);
+            block_labels=block_labels(block_labels~= alone_block_id,:);
+        end
 
         behavior_labels = behavior_labels_partner_init;
 
@@ -179,7 +194,7 @@ for s =session_range %1:length(sessions)
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 30;%min(num_trials); %find the minimum one %CT change to have 30 of each class
+            minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -339,7 +354,7 @@ sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
 
 legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
-ylabel('Decoding Accuracy'); ylim([0.1 0.55])
+ylabel('Decoding Accuracy'); ylim([0 1])
 xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;
