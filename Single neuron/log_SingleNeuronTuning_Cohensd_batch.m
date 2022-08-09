@@ -138,53 +138,6 @@ for s =session_range %1:length(sessions)
         end
     end
 
-% %     %plot firing rate distribution for example unit
-% %     %Specifically comparing groom give to rest
-% %     b=7 ; [~, n]=max(abs(cohend(:,b))); %Groom give (suppressed activity) 209 is the min separability considered. (For session s=1)
-% %     %b=10 ;[max_val, n]=max(abs(cohend(:,b))); %Threat to subject (increased activity)
-% %     idx = find(behavior_labels == unqLabels(b)); %get idx where behavior b occurred
-% %     idx_rand = randsample(idx_rest,length(idx));
-% %     figure; hold on
-% %     histogram(Spike_rasters(n, idx),20, 'FaceColor','b')
-% %     histogram(Spike_rasters(n, idx_rand),20, 'FaceColor',[0.5 0.5 0.5])
-% %     legend({'Groom partner','Rest'})
-% %     title('Firing rate during grooming vs. rest for example unit')
-% % %     histogram(Spike_rasters(n, idx),20, 'FaceColor','r')
-% % %     histogram(Spike_rasters(n, idx_rand),20, 'FaceColor',[0.5 0.5 0.5])
-% % %     legend({'Aggression','Rest'})
-% % %     title('Firing rate during aggression vs. rest for example unit')
-% %     set(gca,'FontSize',15);
-% %     xlabel('Firing rate (Hz)'); ylabel('Frequency');
-
-
-% % %     %Plot example spike trains
-% % %     %figure; hold on
-% % %     spiketrains = 5;
-% % %     length_bout = 10;
-% % %     %xlim([0 length_bout]); ylim([0 spiketrains])
-% % %     spike_times_behav = []; spike_times_rest = []; trials_behav = []; trials_rest = [];
-% % %     for st=1:spiketrains
-% % %         Hz_behav =Spike_rasters(n,randsample(idx,length_bout));
-% % %         Hz_rest =Spike_rasters(n,randsample(idx_rest,length_bout));
-% % % 
-% % %         total_spikes_behav = 0; total_spikes_rest = 0;
-% % %         for lb = 1:length_bout
-% % %             ticks_behav = rand(Hz_behav(lb),1);
-% % %             spike_times_behav = [spike_times_behav; lb-1+ticks_behav];
-% % %             total_spikes_behav = total_spikes_behav + Hz_behav(lb);
-% % % 
-% % %             ticks_rest = rand(Hz_rest(lb),1);
-% % %             spike_times_rest=[spike_times_rest; lb-1+ticks_rest];
-% % %             total_spikes_rest = total_spikes_rest+Hz_rest(lb);
-% % %         end
-% % % 
-% % %     trials_rest = [trials_rest, ones(1,total_spikes_rest)*st];
-% % %     trials_behav = [trials_behav, ones(1,total_spikes_behav)*st];
-% % %     end
-% % % 
-% % %     figure; subplot(2,1,1); spikeRasterPlot(seconds(spike_times_behav), trials_behav,'ColorOrder',[0 0 1])
-% % %     subplot(2,1,2); spikeRasterPlot(seconds(spike_times_rest), trials_rest,'ColorOrder',[1 0 0])
-
     %sort columns in ascending order
     [~, orderIdx] = sort(nanmean(cohend), 'ascend');
     cohend_sorted = cohend(:,orderIdx); cohend_shuffle_sorted = cohend_shuffle(:,orderIdx);
@@ -221,6 +174,15 @@ for s =session_range %1:length(sessions)
         ax = gca;
         ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
+
+% %         %Plot example unit
+% %         figure; %set(gcf,'Position',[150 250 1000 500]);
+% %         unit = 138
+% %         [nanrow nancol]=find(~isnan(cohend_sorted)); nancol = unique(nancol);
+% %         hp=heatmap(cohend_sorted(unit,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
+% %         ax = gca;
+% %         ax.FontSize = 14;
+% %         saveas(gcf, [savePath '/Cohend_heatmap_sorted_example_unit.png']); close all
 
         %Plot ordered heatmap thresholded
         figure; %set(gcf,'Position',[150 250 1000 500]);
