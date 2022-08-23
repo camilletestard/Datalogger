@@ -186,7 +186,6 @@ elseif strcmp(channel_flag,'all')
 end
 
 %Create spike matrix structure
-
 if with_NC==0 && isolatedOnly==0 %If don't include noise cluster
     unit=1;
     for i = channels %For all channels
@@ -226,7 +225,9 @@ else %include noise cluster (or first channel)
             for j = 1:length(SpikeData.(Chan_name{i})) %For all units
 
                 Spike_rasters(unit,:) = zeros(1,round(length_recording*temp_resolution)); %Fill the line with zeros to initiate raster for that trial (IMPORTANT NOTE: removed +1)
+                %spike_timing(unit,:) = zeros(1,round(length_recording*temp_resolution)*1000);
                 ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
+                %spike_timing(unit, round(round(SpikeData.(Chan_name{i}){j}*temp_resolution,3)*1000))=1;
                 Spike_counts = hist(ticks, round(length_recording*temp_resolution));
                 Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
                 clear ticks Spike_counts
