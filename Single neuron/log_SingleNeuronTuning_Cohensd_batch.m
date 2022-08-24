@@ -175,15 +175,6 @@ for s =session_range %1:length(sessions)
         ax.FontSize = 14;
         saveas(gcf, [savePath '/Cohend_heatmap_sorted.png']); close all
 
-% %         %Plot example unit
-% %         figure; %set(gcf,'Position',[150 250 1000 500]);
-% %         unit = 138
-% %         [nanrow nancol]=find(~isnan(cohend_sorted)); nancol = unique(nancol);
-% %         hp=heatmap(cohend_sorted(unit,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
-% %         ax = gca;
-% %         ax.FontSize = 14;
-% %         saveas(gcf, [savePath '/Cohend_heatmap_sorted_example_unit.png']); close all
-
         %Plot ordered heatmap thresholded
         figure; %set(gcf,'Position',[150 250 1000 500]);
         hp=heatmap(cohend_thresh_sorted(order_units,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])

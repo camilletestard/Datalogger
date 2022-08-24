@@ -18,7 +18,7 @@ session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 plot_toggle = 0;
-with_partner = 1;
+with_partner = 0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
@@ -40,7 +40,7 @@ for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Subject_behav'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Example_units'];
 
     %% Load data
 
@@ -130,16 +130,27 @@ for s =session_range %1:length(sessions)
         end
     end
 
+    %Smooth data
     sigma = 10;% 0.045 * opts.Fs; %og SDF window was 45 ms, so simply mutiply 45 ms by fs
     gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
     smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
     smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
-    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate 
+    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
     Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
 
-    color_scheme = {'r','','','',[0 0.7 0],'','c','b','','','','','','','','','','y','','','','',[0.8 0.6 0],[0.8 0 0.8]}
+    %Low-pass filter
+%     figure; plot(Spike_rasters(23,:))
+%     pspectrum(Spike_rasters(23,:),1);
+    Spike_rasters_LowPass = lowpass(Spike_rasters',0.0005,1);
+    figure; hold on; plot(Spike_rasters_LowPass(:,138)); plot(Spike_rasters_smooth(138,:))
 
-    n= 218;%randsample(unit_count(3),1);%138;218;222
+    color_scheme = {'r','','','',[0 0.7 0],'','c','b','','','','','','','','','','y','','','','',[0.8 0.6 0],[0.8 0 0.8]};
+%     Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 0.65];[0 1 1];...
+%             [0 0 1];[0.5 0 0];[1 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];...
+%             [0 0 0];[0 0 0];[0.9 0.7 0.12];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.8 0.6 0];[0.8 0 0.8];...
+%             [0 0 0];[0 0 0];[0.2 0.2 1]];
+
+    n= 42;%randsample(unit_count(3),1);%138;218;222
     cohend_per_neuron = cohend(n,:);
     [~, orderIdx] = sort(cohend_per_neuron, 'ascend');
     cohend_per_neuron_sorted = cohend_per_neuron(:,orderIdx); 
@@ -159,7 +170,7 @@ for s =session_range %1:length(sessions)
         histogram(Spike_rasters_smooth(n, idx),'BinWidth',1,'Normalization','pdf', 'FaceColor',color_scheme{b})
         histogram(Spike_rasters_smooth(n, idx_rest),'BinWidth',1,'Normalization','pdf', 'FaceColor',[0.5 0.5 0.5])
         legend({behav_categ(b),'Rest'})
-        title(['Firing rate during ' behav_categ(b) ' vs. rest for example unit'])
+        title([behav_categ(b)])
         %     histogram(Spike_rasters(n, idx),20, 'FaceColor','r')
         %     histogram(Spike_rasters(n, idx_rand),20, 'FaceColor',[0.5 0.5 0.5])
         %     legend({'Aggression','Rest'})
@@ -168,7 +179,7 @@ for s =session_range %1:length(sessions)
         xlabel('Firing rate (Hz)'); ylabel('Normalized Frequency');
         i=i+1;
     end
-    
+    %saveas(gcf, [savePath '/ExampleUnitSelectivity.eps'])
 
 
     %Plot smoothed firing rate over the length of the session and highlight
@@ -219,7 +230,7 @@ for s =session_range %1:length(sessions)
     plot(1:session_length, to_plot, "LineWidth",2, "Color","y")
 
     %Scratch
-    to_plot=nan(1,session_length); to_plot(idx_travel)=Spike_rasters_smooth(unit,idx_travel);
+    to_plot=nan(1,session_length); to_plot(idx_scratch)=Spike_rasters_smooth(unit,idx_scratch);
     plot(1:session_length, to_plot, "LineWidth",2, "Color",[0.8 0.6 0])
 
     legend({'','','Smooth spike trace', 'Rest','Getting groomed','Grooming','Self-groom','Foraging','Aggression','Travel','Scratch'},...
@@ -228,9 +239,9 @@ for s =session_range %1:length(sessions)
     set(gca,'FontSize',15);
     ylabel('Firing rate (Hz)'); xlabel('Time (s)');
     title(['Example Unit from ' brain_label(n)])
-    saveas(gcf, [savePath '/ExampleUnitLabeledSmoothTrace.pdf'])
+    %saveas(gcf, [savePath '/ExampleUnitLabeledSmoothTrace.eps'])
     
-    ; close all
+    close all
 
 end
 
