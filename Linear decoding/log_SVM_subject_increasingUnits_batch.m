@@ -25,7 +25,7 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 1000;%Number of SVM iterations
+num_iter = 500;%Number of SVM iterations
 
 %Select session range:
 if with_partner ==1
@@ -44,7 +44,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
-    for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO"]
 
 
         %% Get data with specified temporal resolution and channels
@@ -77,6 +77,7 @@ for s =session_range %1:length(sessions)
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
 
@@ -98,7 +99,7 @@ for s =session_range %1:length(sessions)
 
 
         %% Run SVM over increasing numbers of units, over multiple iterations
-        u = 1; unit_num_range = round(linspace(1,unit_count(chan),20));
+        u = 1; unit_num_range = round(linspace(1,min(unit_count),20));
         for unit_num = unit_num_range
 
             disp('Start running SVM...')
@@ -137,8 +138,8 @@ for s =session_range %1:length(sessions)
 
                 % Run svm
                 [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
-                [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
-                hitrate_ratio(iter) = hitrate(iter)/hitrate_shuffled(iter);
+%                 [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
+%                 hitrate_ratio(iter) = hitrate(iter)/hitrate_shuffled(iter);
 
                 if mod(iter,50)==1
                     disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
@@ -155,10 +156,10 @@ for s =session_range %1:length(sessions)
 
             mean_hitrate{s,chan}(u) = mean(hitrate);
             sd_hitrate{s,chan}(u) = std(hitrate);
-            mean_hitrate_shuffled{s,chan}(u) = mean(hitrate_shuffled);
-            sd_hitrate_shuffled = std(hitrate_shuffled);
-            mean_hitrate_ratio{s,chan}(u) = mean(hitrate_ratio);
-            sd_hitrate_ratio{s,chan}(u) = std(hitrate_ratio);
+%             mean_hitrate_shuffled{s,chan}(u) = mean(hitrate_shuffled);
+%             sd_hitrate_shuffled = std(hitrate_shuffled);
+%             mean_hitrate_ratio{s,chan}(u) = mean(hitrate_ratio);
+%             sd_hitrate_ratio{s,chan}(u) = std(hitrate_ratio);
 
             %chan = chan +1;
             clear labels_id
@@ -173,12 +174,15 @@ for s =session_range %1:length(sessions)
 
     %Plotting results decoding accuracy for all behaviors at 1sec and lower resolution
     figure; hold on; set(gcf,'Position',[150 250 700 500])
-    y = mean_hitrate_ratio(s,:);
-    std_dev = sd_hitrate_ratio(s,:);
-    errorbar(y,std_dev,'s','MarkerSize',10)
-    chance_level = 1;
+    y1 = mean_hitrate{s,1};
+    y2 = mean_hitrate{s,2};
+    std_dev1 = sd_hitrate{s,1};
+    std_dev2 = sd_hitrate{s,2};
+    errorbar(y1,std_dev1,'s','MarkerSize',10)
+    errorbar(y2,std_dev2,'s','MarkerSize',10)
+    chance_level = 1/behav;
     yline(chance_level,'--','Chance level', 'FontSize',16)
-    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]); ylim([0 12])
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]); ylim([0 1])
     xticklabels(unit_num_range)
     ax = gca;
     ax.FontSize = 14;
@@ -194,7 +198,7 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('Increasing_unit_SVM.mat')
+save('IncreasingUnits.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);

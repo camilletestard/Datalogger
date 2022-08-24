@@ -54,6 +54,15 @@ for s =session_range %1:length(sessions)
     end
 
     session_length = size(Spike_rasters,2); % get session length
+    Spike_rasters = zscore(Spike_rasters,0,2);
+
+    %Get correlation between units
+    correl_across_units = corrcoef(Spike_rasters'); 
+    caxis_upper = 1;
+    caxis_lower = -1;
+    cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
+    heatmap(tril(correl_across_units,-1),'Colormap',cmap);caxis([caxis_lower caxis_upper]);
+    plot(range(tril(correl_across_units,-1)))
 
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure

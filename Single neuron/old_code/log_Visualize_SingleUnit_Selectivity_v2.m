@@ -18,11 +18,11 @@ session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 plot_toggle = 0;
-with_partner = 1;
+with_partner = 0;
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
-with_NC =0; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
-isolatedOnly=1; %Only consider isolated units. 0=all units; 1=only well isolated units
+with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
+isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =100;
 cohend_cutoff=0; p_cutoff=0.01;%Set thresholds
 
@@ -130,16 +130,26 @@ for s =session_range %1:length(sessions)
         end
     end
 
+    %Smooth data
     sigma = 10;% 0.045 * opts.Fs; %og SDF window was 45 ms, so simply mutiply 45 ms by fs
     gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
     smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
     smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
-    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate 
+    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
     Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
 
-    color_scheme = {'r','','','',[0 0.7 0],'','c','b','','','','','','','','','','y','','','','',[0.8 0.6 0],[0.8 0 0.8]}
+    %Low-pass filter
+    Spike_rasters_LowPass = lowpass(Spike_rasters',0.00005,1);
+%     figure; hold on; plot(Spike_rasters_LowPass(:,138)); plot(Spike_rasters_smooth(138,:))
+    Spike_rasters_smooth = Spike_rasters_LowPass';
 
-    n= 42;%randsample(unit_count(3),1);%138;218;222
+    color_scheme = {'r','','','',[0 0.7 0],'','c','b','','','','','','','','','','y','','','','',[0.8 0.6 0],[0.8 0 0.8]};
+%     Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 0.65];[0 1 1];...
+%             [0 0 1];[0.5 0 0];[1 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];...
+%             [0 0 0];[0 0 0];[0.9 0.7 0.12];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.8 0.6 0];[0.8 0 0.8];...
+%             [0 0 0];[0 0 0];[0.2 0.2 1]];
+
+    n= 138;%randsample(unit_count(3),1);%42;138;218;222
     cohend_per_neuron = cohend(n,:);
     [~, orderIdx] = sort(cohend_per_neuron, 'ascend');
     cohend_per_neuron_sorted = cohend_per_neuron(:,orderIdx); 

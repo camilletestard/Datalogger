@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
 %Log GenerateDataToRes_function
 % Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
@@ -187,6 +187,18 @@ end
 
 
 length_recording = size(Spike_rasters,2);
+
+%% Smooth data
+
+if smooth
+    %sigma = 20;% 0.045 * opts.Fs; %og SDF window was 45 ms, so simply mutiply 45 ms by fs
+    gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
+    smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
+    smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
+    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
+    Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
+    Spike_rasters = Spike_rasters_smooth;
+end
 
 %% Get behavior label vector for each time bin at specified resolution
 
