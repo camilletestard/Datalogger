@@ -17,6 +17,8 @@ for iRegs = 1 : length(eventType)
         kernelIdx = 0:opts.sPostTime; %this is correct as kernels are same size and below will handle the trials being different lengths.
     elseif eventType(iRegs) == 1
         kernelIdx = 0:opts.sPostTime; % 2020-06-10 CT: For now leave it like event type 2. Will need to adjust later.
+    elseif eventType(iRegs) == 0 %2022-08-22 RWD: created default case if put in zero where there are no delays added.
+        kernelIdx = 0;  %Setting to zero works!
     end
     
     frames = size(events,1);%Duration of session
@@ -32,7 +34,7 @@ for iRegs = 1 : length(eventType)
     
     fullMat{iRegs} = false(frames, length(kernelIdx)); %initialize matrix
     for c = 1:length(kernelIdx)
-        fullMat{iRegs}(cIdx(:,c),c) = true; %Fill in with time varying kernel; %NOT THE RIGHT INDEXING
+        fullMat{iRegs}(cIdx(:,c),c) = true; %Fill in with time varying kernel; 
     end
     
     cIdx = sum(fullMat{iRegs},1) > 0; %don't use empty regressors

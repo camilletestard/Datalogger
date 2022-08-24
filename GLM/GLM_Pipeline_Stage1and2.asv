@@ -13,6 +13,17 @@
 %Again, main focus is having a MUCH cleaner end result than we had with T
 %and T 2022.
 
+%2022-08-23
+%Focus for now on getting design matrix with state-events (what I am calling
+%things like subject behavior, partner behavior, context) working and then
+%will come back to get that working with kinematics as not clear when
+%exactly we will have kinematics and doesn't seem like we will have them in
+%time for Parma...have to see.  For now need to get this to work while
+%keeping track of regressors then switch to getting GLM loop to work.
+
+%% Stage 1 Get data loaded in and set up loops
+
+
 %% Step 1.0: Set filenames, Set loop for sessions
 
 %Update notes: Make these straightfoward to change to interact with later
@@ -74,6 +85,10 @@ end
         Results(br).BR = BRs(br);
         channel_flag = Results(br).BR;
         %Get data with specified temporal resolution and channels
+        %2022-08-23 note: have to change this to new function when Camille
+        %is done with that and rego through everything again to make sure
+        %there isn't a change.
+        
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_Ron(filePath, temp_resolution, channel_flag, is_mac,is_ron, with_NC, isolatedOnly);
             % Output:
         %       1. Spike_rasters: n_neuron X time in seconds (if temp_resolution = 1)
@@ -130,8 +145,8 @@ nan_inds = nan_counts > 0;  %Naturally anything that has a count greater than 0 
 
 %% Step 1.3 Set Proximity to  non-identified behavior
 
- behavior_labels_subject_init = labels(:,2); %Extract all behavior info for subject
-        behavior_labels_partner_init = labels_partner(:,2); %Extract all behavior info for partner
+ behavior_labels_subject = labels(:,2); %Extract all behavior info for subject
+        behavior_labels_partner = labels_partner(:,2); %Extract all behavior info for partner
 
         % Set proximity as rest
         prox_ind = find(behav_categ=="Proximity");
@@ -141,170 +156,237 @@ nan_inds = nan_counts > 0;  %Naturally anything that has a count greater than 0 
         
    %NOTE: ASSUMES THAT REST/UNIDENTIFIED IS ALWAYS MAX NUMERIC LABEL
         
-        for i = 1:length(behavior_labels_partner_init)
+        for i = 1:length(behavior_labels_partner)
             
-             check_inds = behavior_labels_subject_init{i,:} == prox_ind;
+             check_inds = behavior_labels_subject{i,:} == prox_ind;
             
             if any(check_inds)
             
-                behavior_labels_subject_init{i}(check_inds) = length(behav_categ);
+                behavior_labels_subject{i}(check_inds) = length(behav_categ);
             
             end
             
-            check_inds = behavior_labels_partner_init{i,:} == prox_ind;
+            check_inds = behavior_labels_partner{i,:} == prox_ind;
             
             if any(check_inds)
             
-                behavior_labels_partner_init{i}(check_inds) = length(behav_categ);
+                behavior_labels_partner{i}(check_inds) = length(behav_categ);
             
             end
             
         end
 
+%Temporary joining of those cells so I can easily check subject and partner behavior        
+Behavs = [behavior_labels_subject behavior_labels_partner];
 
 %End stage 1: Now have data we will use to make design matrix in stage 2
 %and the spiking data in the form it will be used for Stage 3
 
 %% Stage 2 Create regressors
 
-%update 2022-08-23 trying to see if code Camille already has works or to
-%what extent it needs to be changed.  I don't love doing it this way as
-%this is again goes back to having a massive script, but going to use it as
-%a starting point and then change it as needed.
+%TERMINOLOGY NOTES:
+%-Variable group = family of variables put together due to belong to the
+%same type of observation.  Currently have: subject behavior, partner
+%behavior, context, and kinematics
 
-%% Set options
+%-Variable = A single state that can be observed or key point that can be
+%measured.  For example: grooming, agression, block id, arm_x position.
+
+%-Regressor = A column of the design matrix.  Each variable can have
+%multiple regressors.  Examples: grooming could have a regressor for
+%particular delays before or after the onset/offset of grooming in addition
+%to having a regressor for stating whenever the animal is currently
+%grooming. arm_x could have both a tracking of the position of the arm as
+%well as a regressor for arm events when the arm is moved above a
+%particular threshold of movement.
+
+%-Regressor group =  Would refer to groups of
+%regressors across several variables put together for a particular analysis
+%that is different from the Variable group.  Examples: all regressor
+%relating to head and eye movement in kinematics may be grouped together in
+%an analysis that focuses on a subset a kinematics and could be call the
+%head-eye regressor group.  All behaviors deemed affiliative by either the
+%subject or partner could be grouped together for an affiliative regressor
+%group.
+
+%State-events refer to all non-kinematic, binary regressors.
+
+%update 2022-08-23 trying to see to what extent code Camille already wrote
+%needs to be changed.  I don't love doing it this way as
+%this is again goes back to having a massive script, but going to use it as
+%a starting point and then change it as needed...
+%This is really super janky and messy so probably just rewrite things so
+%there are consistent coding conventions throughout.
+
+%% Step 2.0 Set options for time event kernels
 
 %set up sampling rate (not sure this is useful, but it's used in code further down so i'll keep it for now).
-opts.Fs = 1;
+opts.Fs = temp_resolution;
 
 %Set up windows for time varying kernels. Multiplying factor is in seconds
 %(recall FS is samples/second ),so can adjust window accordingly
+
+%2022-08-23: need to check this is still correct.
+
 opts.mPreTime = round(2 * opts.Fs); %motor pre time
 opts.mPostTime = round(2 * opts.Fs); %motor post time
 motorIdx = [-(opts.mPreTime: -1 : 1) 0 (1:opts.mPostTime)]; %index for design matrix to cover pre- and post motor action
 
-opts.folds = 10; %number of folds for cross-validation
 
 
-%% Preprocessing, extract and format behavioral events
+%% Step 2.1 Get labels for each state-event variable group
 
-%Extract behavior info:
-behavior_labels_subject = cell2mat({labels{:,3}}'); %Extract unique behavior info
-behavior_labels_partner = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
-block_labels = cell2mat({labels{:,10}}'); %Extract block info
+%2022-08-23 rewrote this and borrowed from first GLM attempt because
+%previous code does not work.
 
-%Compute the %of timepoints with unidentified behavior
-%Important note to keep in mind: I still think that the timepoints where
-%there were no behaviors assigned should be excluded...
-no_behavs_timepoints = length(find(behavior_labels_subject == 28))/length(behavior_labels_subject);
-disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-fprintf('Percent timepoints without a behavior assigned: %s \n', num2str(no_behavs_timepoints));
-disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+%First get labels for all subject, partner, and context variables so we
+%know how many variables we have to start with
 
-%Create subject behavior regressors:
-subject_behav_reg = zeros(size(Vc,1), length(behav_categ)-1); %initialize
-for b = 1:length(behav_categ)-1
-    idx = find(behavior_labels_subject == b);
-    subject_behav_reg(idx,b) = 1;
-end
+%Observations x behavior label
+obs_statevents_subject = unique(cell2mat(labels(:,3)));
+%Need to make a column for each behavior that happens in the session.
+%Above code does assume there is no behavior that only occurs paired
+%with another behavior and that was removed when only one behavior per
+%moment was prioritized.  I think this is a reasonable assumption, so
+%will go forward with it.
 
-%Create partner behavior regressors:
-partner_behav_reg = zeros(size(Vc,1), length(behav_categ)-1); %initialize
-for b = 1:length(behav_categ)-1
-    idx = find(behavior_labels_partner == b);
-    partner_behav_reg(idx,b) = 1;
-end
+%For now just repeat.  Later have this be either structure or a cell
+%and have a function that adds to it as needed.
 
-%Create block regressor:
-block_reg = zeros(size(Vc,1), length(unique(block_labels))); %initialize
-for b = 1:length(unique(block_labels))
-    idx = find(block_labels == b);
-    block_reg(idx,b) = 1;
-end
+obs_statevents_partner = unique(cell2mat(labels_partner(:,3)));
 
-% %Create behavior change regressor (exclude for now because we cannot decode behavior shifts irrespective of the shift)
-% subject_behav_change_reg = zeros(size(Vc,1), 1); %initialize
-% subject_behav_change_reg(find(diff(behavior_labels_subject)~=0)+1) = 1;
+obs_context = 1:size(block_times,1); %For now just considering the three different blocks for context.
+
+obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner}, {obs_context}]; %Gives number of varibles in each group of states events considered
+
+
+%% Step 2.2 Create base regressors for each state-event variable and regressor mapping
+
+%For first try trying to save each variable group into it's own cell in
+%X_groups with all of the information before we combine or add additional
+%regressors for time event kernel
+
+%Update 2022-08-23 Reg_mapping may not work as inteded on on second thought but
+%leaving there for now.  
+
+%+1 for kinematics
+    X_groups = cell(1,length(obs_statevents)+1);  
+    
+    Reg_mapping = cell(1,length(obs_statevents)+1);
+    
+    for this_mat = 1:size(Behavs,2) %Currently this loop only works for the behaviors.  Will need to write a separate and exteneded loop for Context
+    
+    X_groups{this_mat} = zeros(length(Spike_rasters), length(obs_statevents{this_mat}));
+    
+    %Note, behavior numeric labels will be larger than this matrix (e.g.
+    %there are 22 behaviors but one of the labels is 29.)  Thus need to
+    %create/save mapping between numeric label in behavior_labels and the
+    %column of the design matrix.
+    
+    %First row is behavior label, 2nd row is original numeric label, 3rd
+    %row is column in design matrix (to start, if we add lags will be set
+    %of columns hence why this is a cell array)
+    
+    
+    Reg_mapping{this_mat} = cell(3,length(obs_statevents{this_mat}));
+    
+    
+    for this_label = 1:length(obs_statevents{this_mat})
+        
+        Reg_mapping{this_mat}{1,this_label} = behav_categ{obs_statevents{this_mat}(this_label)};
+        
+        Reg_mapping{this_mat}{2,this_label} = obs_statevents{this_mat}(this_label);
+        
+        Reg_mapping{this_mat}{3,this_label} = this_label; %Note will have to mess around with this if we introduce delays in regressors
+        
+        %Put ones into design matrix for indicated column whenever that behavior was present
+        %Update: can't just do this now that we have the potential for
+        %multiple behaviors at each time point.  Instead for each behavior
+        %will loop through the session and put a 1 in the design matrix
+        %each time that behavior occurred.  This is not efficient code, but
+        %for now this is fine.  Try to think of something clever later on.
+        
+        for i =1:length(Behavs)
+        X_groups{this_mat}(i,this_label) = sum(Behavs{i,this_mat}(:) == Reg_mapping{this_mat}{2,this_label}); %Sum is just there to convert back to double/account for multiple behaviors
+        %We are only checking one behavior at a time in this loop so it
+        %won't result in a value greater than 1.
+        end
+        
+    end
+
+    
+  
+    
+    end %End loop for setting this up for behaviors
+    
+    %Do the same thing for context which is only block id for now.  Can't
+    %be added easily to above loop or put into some general function since
+    %the information is not stored in that way.
+    
+    this_mat = 3;
+    
+    X_groups{this_mat} = zeros(length(Spike_rasters), length(obs_statevents{this_mat}));
+    
+    for this_label = 1:length(obs_statevents{this_mat}) 
+        
+        Reg_mapping{this_mat}{1,this_label} = block_times.Behavior{this_label};
+        
+        Reg_mapping{this_mat}{2,this_label} = obs_statevents{this_mat}(this_label);
+        
+        Reg_mapping{this_mat}{3,this_label} = this_label;
+        
+        %Need to populate each block using the info in block_times table
+        
+        X_groups{this_mat}(block_times.start_time_round(this_label):...
+            block_times.end_time_round(this_label)...
+            ,this_label) = 1;  %Put ones in the column for that block id based on block_times
+
+    end
+    
+    
+%% Step 2.3 First concatenation, get names and regressors
 
 %Combine behavioral events
-behavEvents=[subject_behav_reg, partner_behav_reg, block_reg];
+behavEvents=horzcat(X_groups{1:3});
 
-disp('Preprocessing - adding events done')
+%Get names via Reg_mapping    
+behavEventNames = horzcat(Reg_mapping{1}(1,:)...
+    ,append('partner.',Reg_mapping{2}(1,:)),...
+    Reg_mapping{3}(1,:));
 
-%% Set up event types
 
-%Get variable names
-behavEventNames = [behav_categ(1:end-1), append('partner.',behav_categ(1:end-1)),string(block_times{:,"Behavior"})'];
 
 %Set up event type here.
-behavEventTypes=ones(size(behavEventNames))*3;
+%Note: not creating delays for context variables for now.  Need to see if
+%this messes up the next part of the code.  If so I guess make context
+%"whole trial" and set something up in that code.  Update going to add
+%zeros to the end as this should maybe work and won't get indecies
+%otherwise
+
+behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*3 zeros(1,length(obs_context))];
 % For now I will assign all behavioral events as event type 3
 %Event Type 1 = Whole trial
 %Event Type 2 = from stimulus onset to the rest of the trial
 %Event Type 3 = from before movement onset to after movement onset (pre & post time)
-allEventsInfo = [behavEventNames; behavEventTypes]';
-
-disp('Preprocessing - Assigning event types done')
-
-%% Preprocessing - Selecting Analog Tracking
-
-moveR = ME_final;
-
-%% Setup Design Matrix - Regressor labels
-
-regLabels = behavEventNames';
-regLabels(length(allEventsInfo)+1) = {'Motion Energy L'};
-regLabels(length(allEventsInfo)+2) = {'Motion Energy R'};
-
-
-disp('Setup Design Matrix - Regressor labels done')
-
-%% Preprocessing - Grouping regressors for later cross-validation
-%For now only include behavior and motion energy
-
-regGroups = {'BehavioralEvents' 'SubjectBehavior' 'PartnerBehavior' 'block' 'Movements'};
-regGroups{2,1} = behavEventNames';
-regGroups{2,2} = behavEventNames(1:length(behav_categ)-1)';
-regGroups{2,3} = behavEventNames(length(behav_categ):end-3)';
-regGroups{2,4} = behavEventNames(end-2:end);
-regGroups{2,5} = {'Motion Energy L' 'Motion Energy R'} ;
-
-disp('Preprocessing - Grouping regressors for later cross-validation done')
 
 %% Setup Design Matrix - Behavioral Events
+
 
 
 %Creates task regressors with the time varying kernels as described in Churchland
 [behavR, behavIdx] = log_makeDesignMatrix(behavEvents, behavEventTypes, opts);
 
+%2022-08-23: Not going to do it now, but if needed/desired could make a
+%loop here to put info from behavIdx into Reg_mapping.  For now skipping
+%because I don't think we need it.
+
 %% Setup Design Matrix - Movement
-% Create movement events from analog traces
 
-%   moveR(:,1:15) = [zeros(1,15); abs(diff(moveR(:,1:15)))]; %Add zeros at the start to keep dimensions the same.
+%Add later this week and take code from previous attempts
 
-%Currently subtract 1st percentile to align with Churchland method (instead of min value).
-std_movR = (moveR - prctile(moveR,1))./ nanstd(moveR); %minimum values are at 0, signal in standard deviation units
+moveR = [];
+moveIdx = [];
 
-[moveMat, traceOut, moveIdx] = log_analogToDesign(std_movR, nanstd(std_movR)*2, motorIdx, behavEventNames);
-% moveMat = "digitized" (or binarized) movement regressors. One cell per movement variable
-% traceOut = original analog traces
-% moveIdx = indices of regressors to keep track of what movement variable a regressor belongs to.
-
-%moveR contains the movement events (movements above a certain
-%threshold), the original movement variables and ME.
-moveR = [moveMat, traceOut]; %moveR structure: Time X num mvmt regressors
-moveIdx = [moveIdx', (length(behavEventNames)+1:length(behavEventNames)+size(traceOut,2))];
-
-disp('Setup Design Matrix - Movements done')
-
-%% Remove nans
-%Code from Camill
-
-%2020-12-19 CT: Remove regressors with less than 10 events (as in
-%Musall et. al. 2019)
-low_events_idx= find(sum(behavR,1)<10);
-behavR(:,low_events_idx)=[];
-behavIdx(low_events_idx)=[];
 
 %% Combine Design Matrix
 
@@ -317,18 +399,51 @@ regIdx =[behavIdx; moveIdx'];
 disp('Design Matrix Setup Done')
 
 
-%% Center and Standardize Continuous Data
-%Center both analog (i.e. movement/tracking data) and neural data.
 
-% New approach: Find columns that don't just contain zero or one values:
-[~, columns]=find(fullR~=0 & fullR~=1);
-analoginds = unique(columns); clear columns
+%% Remove nans
 
-%standarize analog regressors
-fullR(:,analoginds) = (fullR(:,analoginds)- mean(fullR(:,analoginds),1))./std(fullR(:,analoginds));
+nan_per = length(nan_inds)/length(labels) * 100; %Amount of session lost, note nan_inds is calculated when kinematics are loaded
 
-%Churchland median centered the neuronal data, so we will do the same.
-Vc = (Vc - median(Vc,1));
+% kinematics(nan_inds,:) = [];
+% behavior_labels_subject_init(nan_inds) = [];
+% behavior_labels_partner_init(nan_inds) = [];
+% 
+% for br =1:length(BRs) %will need to do this for each brain region at each step when changing the data.
+%     
+%     Results(br).Spikes(nan_inds,:) = [];
+%     
+%     if smooth_fr
+%         
+%         Results(br).fr(nan_inds,:) = []; %note this won't work with the current place holder code.
+%         
+%     end
+%     
+% end
+% %2020-12-19 CT: Remove regressors with less than 10 events (as in
+% %Musall et. al. 2019)
+% low_events_idx= find(sum(behavR,1)<10);
+% behavR(:,low_events_idx)=[];
+% behavIdx(low_events_idx)=[];
+
+
+
+%% Unclear if will do this yet.  For now leave commented. 
+% % % Center and Standardize Continuous Data
+% % Center both analog (i.e. movement/tracking data) and neural data.
+% % 
+% % New approach: Find columns that don't just contain zero or one values:
+% % [~, columns]=find(fullR~=0 & fullR~=1);
+% % analoginds = unique(columns); clear columns
+% % 
+% % standarize analog regressors
+% % fullR(:,analoginds) = (fullR(:,analoginds)- mean(fullR(:,analoginds),1))./std(fullR(:,analoginds));
+% % 
+% % Churchland median centered the neuronal data, so we will do the same.
+% % Vc = (Vc - median(Vc,1));
+
+%% Stage 3 First steps
+%Practice prepping matrices that would be put into the GLM loop
+
 
 %% Old code that helps remove nans and unindentified behaviors from before
 

@@ -1,0 +1,13 @@
+%% Running Notes
+%Script for testing out function to generate simulated behavior for any
+%particular session based on the statistics of that session.
+
+%Currently thinking to "fit" p value for bernoulli for each behavior and
+%some term for how long each behavior tends to last.  All "coins"
+%for each behavior are flipped and winning behavior begins (set some random
+%way to pick between ties).  Then draw a sample for the duration of that
+%bout of the behavior.  Once bout is over, flip coins again to select new
+%behavior and repeat until the session is over.
+
+%% Load in data
+

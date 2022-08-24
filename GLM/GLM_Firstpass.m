@@ -136,23 +136,9 @@ for s = S_list
             
         end
         
-    %% TEMP BLOCK simulate fake kinematics data with nans
-    
-    x_arm = normrnd(0,1,1,length(Spikes_final));
-    y_arm = normrnd(0,1,1,length(Spikes_final));
-    
-    %determine number nans each variable will be via percentage.  Note will
-    %most likley have more nans than this overall as different variables
-    %will likely not have nans in the same place.
-    
-    num_nan = round(.10*length(Spikes_final));
-    
-    x_arm(randsample(length(x_arm),num_nan)) = NaN;
-    y_arm(randsample(length(y_arm),num_nan)) = NaN;
-    
-    Kinemat = [x_arm' y_arm'];
 
-    %% Clean behavior data - pick behavioral epochs to consider, remove nans from kinematics
+
+    %% Clean behavior data - pick behavioral epochs to consider
     %% Only take epochs where the monkey is behaving
    %Update 2022-08-06: only include epochs where the monkey/partner is doing an
    %indentifiable behavior
@@ -184,11 +170,9 @@ for s = S_list
    
    Spikes = Spikes_final(Behav_inds,:);
    Behavs = [behavior_labels_subject_init(Behav_inds) behavior_labels_partner_init(Behav_inds)]; %keep separate cells so it is clear which behavior is subject and which behavior is partner
-   Kinemat = Kinemat(Behav_inds,:);
+
    
-    %% Clear nans
-    
-    %2022-08-10 Add this later since not using Kinematics yet.  
+ 
 
     %% Get index label for different behaviors
     
