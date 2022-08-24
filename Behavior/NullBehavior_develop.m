@@ -9,6 +9,22 @@
 %bout of the behavior.  Once bout is over, flip coins again to select new
 %behavior and repeat until the session is over.
 
+%Update 2022-08-24: Fleshing out current plan, for now just get
+%distribution of the probability of behaviors occuring and distribution of
+%durations for each behavior.  Then pull samples randomly according to the
+%above plan until the entire session has behaviors.
+
+%If want to get fancier looks like we can use the matlab HMM toolbox to
+%"fit" a markov model (I imagine it will just take the empirical transition
+%probabilities) and use hmmgenerate to make a fake data set...on further
+%thought maybe should just use hmmgenerate after calculating the
+%information from above...maybe try both and see which data set looks
+%better.
+
+%Decide to lead with getting fancier right away.  Use hmmgenerate to make
+%the fake data set.  Looks good for now, can add a different method if
+%curious later.
+
 %% Load in data
 
 %Parameters for setting Path
@@ -48,10 +64,14 @@ savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Single
 end
 
 
-channel_flag = BRs(br;
+channel_flag = BRs(br);
 
 
 [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_Ron(filePath, temp_resolution, channel_flag, is_mac,is_ron, with_NC, isolatedOnly);
 
 %% Figure out any manipulation that need to be done before/in the function given the data that needs to be passed.
 
+the_labels = labels; %toggle this to whatever you want generated as fake labels
+the_names = behav_categ; %pass in the names for each numerical label
+
+[sim_behav] = GenSimBehavior(the_labels,the_names, temp_resolution);

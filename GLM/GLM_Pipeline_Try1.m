@@ -402,8 +402,10 @@ disp('Design Matrix Setup Done')
 
 
 %% Remove nans
+%2022-08-24 even though not yet using the kinematics leaving this in to
+%make sure there aren't any issues.
 
-nan_per = length(nan_inds)/length(labels) * 100; %Amount of session lost, note nan_inds is calculated when kinematics are loaded
+nan_per = sum(nan_inds)/size(fullR,1) * 100; %Amount of session lost, note nan_inds is calculated when kinematics are loaded
 
 fullR(nan_inds,:) = [];
 
@@ -422,11 +424,13 @@ end
 
 %2020-12-19 CT: Remove regressors with less than 10 events (as in
 %Musall et. al. 2019)
+%2022-08-24 ask Cam about this for the GLM.  We do lose several regressors.
+
 low_events_idx= find(sum(fullR,1)<10);
 fullR(:,low_events_idx)=[];
 regIdx(low_events_idx)=[];
 
-
+%Code is good up to this point, move on to setting up GLM loop
 
 %% Unclear if will do this yet.  For now leave commented. 
 % % % Center and Standardize Continuous Data

@@ -49,29 +49,29 @@ histogram(diff(shift_times),60)
 behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=28);
 behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=18);
 
-%Get transitions
+%Get transitions 
 x=behavior_labels_subject_select(1:end-1); y=behavior_labels_subject_select(2:end);
-shift_labels= [sscanf(sprintf('%d%d,',[x.';y.']),'%d,')];
+shift_labels= [sscanf(sprintf('%d%d,',[x.';y.']),'%d,')]; %This line concatenates the numeric label from the PRECEEDING state with the FOLLOWING state as a string then reformats them as numbers
 shift_times = (x-y)~=0;
 
-shift_categ_table= tabulate(shift_labels(shift_times));
-shift_categ_table=shift_categ_table(shift_categ_table(:,2)~=0,:);
+shift_categ_table= tabulate(shift_labels(shift_times)); %Tabulate puts the "name" of the transition (see above) in the first column, then gives the absolute occurance and percent in the following columns
+shift_categ_table=shift_categ_table(shift_categ_table(:,2)~=0,:); %Remove transitions that never happen
 total_transitions = sum(shift_categ_table(:,2));
 
-P = zeros(length(behav_categ));
+P = zeros(length(behav_categ)); %Count matrix of all possible behavioral transitions
 for b = 1:length(behav_categ)
     for b2 = 1:length(behav_categ)
         
-        transition = sscanf(sprintf('%d%d,',[b';b2']),'%d,');
-        idx = find(shift_categ_table(:,1) == transition);
+        transition = sscanf(sprintf('%d%d,',[b';b2']),'%d,'); %same concatenate trick from above
+        idx = find(shift_categ_table(:,1) == transition); %See if that numeric value of the transition exists in the table
         if ~isempty(idx)
-            P(b,b2) = shift_categ_table(idx, 2);
+            P(b,b2) = shift_categ_table(idx, 2); %If it does put the count of times it happens into P
         end
         
     end
 end
 
-row_non_zeros = intersect(find(any(P ~= 0)), find(any(P ~= 0,2))); 
+row_non_zeros = intersect(find(any(P ~= 0)), find(any(P ~= 0,2))); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
 P_final = P(row_non_zeros,row_non_zeros);
 
 figure; set(gcf,'Position',[150 250 1200 700])
