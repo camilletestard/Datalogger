@@ -41,8 +41,6 @@ for s =session_range %1:length(sessions)
     chan = 1;
 
     for channel_flag = ["vlPFC", "TEO"]
-        %channel_flag = "vlPFC";
-
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
@@ -59,63 +57,64 @@ for s =session_range %1:length(sessions)
 
         disp('Data Loaded')
 
-        %Raw data
         Spike_count_raster = Spike_rasters';
-        %Low-pass filter
-        %Spike_count_raster = lowpass(Spike_rasters',0.005,1);
-        %PCA
-        % [coeff,score,latent,tsquared,explained] = pca(Spike_rasters');
-        % Spike_count_raster = score(:,1:15);
 
-
-        %% Select behaviors to visualize
-
-        %Extract behavior labels and frequency
-        behavior_labels = cell2mat({labels{:,3}}');
-        behavior_labels(behavior_labels==21)=9; %Squeeze partner = threat to partner
-        behavior_labels(behavior_labels==22)=10; %Squeeze subject = threat to subject
-        behavior_labels(behavior_labels==19)=29; %Make proximity equal to rest
+        %Extract subejct and partner video
+        behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+        behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
         
-        behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
-
         %Extract block labels
         block_labels = cell2mat({labels{:,12}}');
         block_categ = string(block_times{:,1})';
 
-        % Select behaviors
+        behavior_labels = behavior_labels_partner_init;
+
+        %% Select behaviors to decode
 
         %Compute freq of behavior for the session
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 30;
-        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-
-        %Remove behaviors we're not interested in for now
+        behav = behav_freq_table(behav_freq_table(:,2)>=30,1);%Get behaviors with a min number of occurrences
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding Rowdy Room which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
+
+        % Then select non-reciprocal behaviors
+        behav = setdiff(behav, reciprocal_set);
 
         % OR select behaviors manually
-        %behav = unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
+        %behav = [4,5,17,23,25];%manually select behaviors of interest
+        %Select behaviors manually to ensure that the same
+        %behaviors are considered for the partner and subject comparisons.
+        %This list could change from session to session.. I'll have to
+        %think of a way to automatize this.
 
-        %Print behaviors selected
-        behavs_eval = behav_categ(behav);
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        fprintf('Behaviors evaluated are: %s \n', behavs_eval);
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-
-        %Only consider indices with behavior of interest
-        idx= find(ismember(behavior_labels,behav));
+        %Only keep the behaviors of interest
+        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
-        block_labels_final =  block_labels(idx);
-        behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+        behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
+        tabulate(removecats(categorical(behavior_labels_final)));
 
+        %check the amount of labels that differ in the partner vs. subject
+        %labels after selecting the behaviors of interest.
+        subject_behav_after_selection = behavior_labels_subject_init(idx);
+        partner_behav_after_selection = behavior_labels_partner_init(idx);
+        block_after_selection = block_labels(idx);
+
+        overlap_partner_subject_after_selection = length(find(partner_behav_after_selection == subject_behav_after_selection))/length(idx);
+        fprintf('Percent overlap between subject and partner labels AFTER selecting behaviors: %s \n', num2str(overlap_partner_subject_after_selection))
+        alone_block_obs = length(find(block_after_selection==3))/length(idx);
+        fprintf('Percent observations in "alone" block AFTER selecting behaviors: %s \n', num2str(alone_block_obs))
+
+        %Only consider windows where the behaviors of subject and
+        %partner do not overlap
+        diff_idx = find(partner_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
+        Spike_count_raster_final = Spike_count_raster_final(diff_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final_partner = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
+        block_after_selection_final = block_after_selection(diff_idx);
+
+   
         %% Run umap
 
         %Supervised
@@ -174,9 +173,8 @@ for s =session_range %1:length(sessions)
         rotate3d on
 
         savefig([savePath 'Umap_3Dprojection_' channel '.fig'])
-        %saveas(gcf,[savePath '/umap_ColorCodedByBlock_' channel 'Units.png'])
-       
-        chan=chan+1;
+
+         chan=chan+1;
 
     end %end of channel for loop
 
@@ -185,14 +183,14 @@ end %end of session for loop
 figure
 for s = 1:length(a_sessions)
     subplot(length(a_sessions),1,s)
-    gscatter(umap_result{a_sessions(s),3}(:,1), umap_result{a_sessions(s),3}(:,2), labels_plot{a_sessions(s)},[],[],10)
+    gscatter(umap_result{a_sessions(s),1}(:,1), umap_result{a_sessions(s),1}(:,2), labels_plot{a_sessions(s)},[],[],5)
     xlabel('UMAP 1'); ylabel('UMAP 2');
     set(gca,'xtick',[]); set(gca,'ytick',[])
 end
 
 for s = 1:length(h_sessions)
     subplot(length(h_sessions),1,s)
-    gscatter(umap_result{a_sessions(s),3}(:,1), umap_result{a_sessions(s),3}(:,2), labels_plot{a_sessions(s)},[],[],10)
+    gscatter(umap_result{a_sessions(s),1}(:,1), umap_result{a_sessions(s),1}(:,2), labels_plot{a_sessions(s)},[],[],10)
     xlabel('UMAP 1'); ylabel('UMAP 2');
     set(gca,'xtick',[]); set(gca,'ytick',[])
 end

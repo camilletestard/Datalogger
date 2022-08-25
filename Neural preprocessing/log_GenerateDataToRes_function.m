@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
 
 %Log GenerateDataToRes_function
 % Input data files: 
@@ -25,8 +25,9 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       conspecific)
 %       9th column binary code for social (1) or not (0).
 %       10th column indicates the block in which we are
-%       (Paired,monkey1; Paired monkey2 or Alone)
-%       11th column gives a corresponding numerical value to the block
+%       (Paired, "female" neighbor; Paired, "male" neighbor or "alone")
+%       11th column gives a corresponding numerical value to the block order.
+%       12th column is a numerical version of block ID.
 % 3. Label for partner behavior, same columns as subject labels
 % 4. Label for grooming, length of the session, with the following columns:
 %       1. Behavior label. If not grooming (7 groom give, 8 groom receive),
@@ -66,6 +67,7 @@ monkey = session_name_split{1};
 %Load behavioral data
 behavior_log = readtable('EVENTLOG_restructured.csv');% for subject
 behavior_log_partner = readtable('EVENTLOG_restructured_partner.csv');% for partner
+block_log = readtable('session_block_schedule.csv');% for block info
 
 %Load neural data
 if isolatedOnly==1
@@ -247,6 +249,19 @@ end
 
 length_recording = size(Spike_rasters,2);
 
+
+%% Smooth data
+
+if smooth
+    %sigma = 20;% 0.045 * opts.Fs; %og SDF window was 45 ms, so simply mutiply 45 ms by fs
+    gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
+    smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
+    smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
+    smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
+    Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
+    Spike_rasters = Spike_rasters_smooth;
+end
+
 %% Get behavior label vector for each time bin at specified resolution
 
 %Create behavior key
@@ -312,7 +327,7 @@ for s = 1:length_recording %for all secs in a session
             labels{s,5} = 1;
         end
         if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include proximity or RR
-            if any(labels{s,3}==grmpr) % if one of the behavior includes other monkey vocalize
+            if any(labels{s,3}==grmpr) % if one of the behavior includes groom present
                 labels{s,3}=grmpr; %Keep groom present
                 labels{s,4} = 'grmpr co-occur';
                 labels{s,5} = 4;
@@ -429,14 +444,41 @@ for s = 1:length_recording %for all secs in a session
     end
     %Add block information
     if s<=block_times{1,'end_time_round'}
-        labels_partner{s,10} = string(block_times{1,'Behavior'});
-        labels_partner{s,11} = 1;
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),2}); %identity of block (female neighbor, male neighbor or alone block)
+        labels{s,11} = 1; %block order
+
+        if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form of block identity
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+        end
+
     elseif s>block_times{1,'end_time_round'} && s<=block_times{2,'end_time_round'}
-        labels_partner{s,10} = string(block_times{2,'Behavior'});
-        labels_partner{s,11} = 2;
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),3});
+        labels{s,11} = 2;
+        
+         if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+         end
+
     elseif s>block_times{2,'end_time_round'}
-        labels_partner{s,10} = string(block_times{3,'Behavior'});
-        labels_partner{s,11} = 3;
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),4});
+        labels{s,11} = 3;
+        
+         if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+         end
+
     end
     %
 end

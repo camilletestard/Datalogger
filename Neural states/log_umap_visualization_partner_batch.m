@@ -13,12 +13,14 @@ session_range_with_partner=[1:3,11:13];
 %Set parameters
 with_partner =1;
 temp = 1; temp_resolution = 1;
-temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 1;%set the smoothing window size (sigma)
+
 
 %Select session range:
 if with_partner ==1
@@ -38,29 +40,37 @@ for s =session_range %1:length(sessions)
 
     chan = 1;
 
-    %for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO"]
 
-        
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
+
+        %Extract subejct and partner video
         behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
         behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
-        block_labels = cell2mat({labels{:,11}}'); %Extract block info
-
-        behavior_labels = behavior_labels_partner_init;
+        
+        %Extract block labels
+        block_labels = cell2mat({labels{:,12}}');
+        block_categ = string(block_times{:,1})';
 
         %% Select behaviors to decode
 
         %Compute freq of behavior for the session
-        behav_freq_table = tabulate(behavior_labels);
+        behav_freq_table = tabulate(behavior_labels_partner_init);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
@@ -79,11 +89,9 @@ for s =session_range %1:length(sessions)
         %think of a way to automatize this.
 
         %Only keep the behaviors of interest
-        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        idx = find(ismember(behavior_labels_partner_init,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
-        tabulate(removecats(categorical(behavior_labels_final)));
-
+       
         %check the amount of labels that differ in the partner vs. subject
         %labels after selecting the behaviors of interest.
         subject_behav_after_selection = behavior_labels_subject_init(idx);
@@ -99,42 +107,79 @@ for s =session_range %1:length(sessions)
         %partner do not overlap
         diff_idx = find(partner_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
         Spike_count_raster_final = Spike_count_raster_final(diff_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
+        behavior_labels_partner_final = partner_behav_after_selection(diff_idx);%Same as above but in behavior labels
+        behavior_labels_subject_final = subject_behav_after_selection(diff_idx);
         block_after_selection_final = block_after_selection(diff_idx);
 
    
         %% Run umap
 
         %Supervised
-        data = [Spike_count_raster_final, behavior_labels_final];
-        [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 10, 'min_dist', 0.5, 'label_column', 'end'); %Run umap to get 2d embedded states
+%         data = [Spike_count_raster_final, behavior_labels_final];
+%         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 50, 'min_dist', 0.5, 'n_components', 3,'label_column', 'end'); %Run umap to get 2d embedded states
 
         %Unsupervised
-        %[umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 10, 'min_dist', 0.5); %Run umap to get 2d embedded states
-        
+        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+        close
+
         channel = char(channel_flag);
-        %saveas(gcf,[savePath '/umap_unsupervised_' num2str(1000/temp_resolution) 'msec_' channel '.png'])
-        
-        %Order for later plotting
-        labels_plot{s} = categorical(behav_categ(behavior_labels_final));
-        ordered_labels = string(unique(labels_plot{s}));
-        labels_order = reordercats(labels_plot{s},ordered_labels);
-  
-        %Plot results color-coded by behavior
-        figure
-        gscatter(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2), labels_plot{s} ,[],[],10, 'MarkerFaceAlpha',0.7)
-        legend(ordered_labels,'Location','best')
-        xlabel('UMAP 1'); ylabel('UMAP 2');
-        set(gca,'xtick',[]); set(gca,'ytick',[])
-        title('Partner behavior')
-        saveas(gcf,[savePath '/umap_supervised_ColorCodedPartnerBehv_' channel 'Units.png'])
-        
-        close all
 
-        %clearvars -except temp chan savePath filePath temp_resolution is_mac
-        chan=chan+1;
+        %Set colormap
+        Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 1];[0 1 1];...
+            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0 0 0];...
+            [0 0 0];[0 0 0];[0.8 0.8 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
 
-    %end %end of channel for loop
+        Cmap_block = [[1 0 1];[0 0.6 0.8];[0.5 0 0]];
+
+        Cmap_time = copper(length(idx));
+
+        %% Plot UMAP projection in 3D space
+
+        figure; hold on; set(gcf,'Position',[150 250 1500 500]); pointsize = 10;
+
+        %Plot UMAP results color-coded by subject behavior
+        ax1=subplot(1,3,1);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),pointsize,Cmap(behavior_labels_subject_final,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Behavior subject')
+        set(gca,'FontSize',12);
+        
+        %Plot UMAP results color-coded by partner behavior
+        ax2=subplot(1,3,2);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),pointsize,Cmap(behavior_labels_partner_final,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Behavior partner')
+        set(gca,'FontSize',12);
+
+%         %Plot UMAP results color-coded by time
+%         ax2=subplot(1,3,2);
+%         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
+%         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+%         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+%         title('Time')
+%         set(gca,'FontSize',12);
+
+        %Color-coded by block
+        ax3=subplot(1,3,3);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),pointsize,Cmap_block(block_after_selection_final,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Block')
+        set(gca,'FontSize',12);
+      
+        sgtitle([channel ' units, UMAP, ' sessions(s).name])
+
+        hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
+        rotate3d on
+
+        savefig([savePath 'Umap_3Dprojection_' channel '.fig'])
+
+         chan=chan+1;
+
+    end %end of channel for loop
 
 end %end of session for loop
 

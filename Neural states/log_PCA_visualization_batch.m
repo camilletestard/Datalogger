@@ -13,13 +13,13 @@ session_range_with_partner=[1:3,11:13];
 %Set parameters
 with_partner =0;
 temp = 1; temp_resolution = 1;
-channel_flag = "TEO";
+channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1;%set the smoothing window size (sigma)
+sigma = 3;%set the smoothing window size (sigma)
 
 %Select session range:
 if with_partner ==1
@@ -39,7 +39,7 @@ for s =session_range %1:length(sessions)
 
     chan = 1;
 
-    for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO"]
         %channel_flag = "vlPFC";
 
         %% Get data with specified temporal resolution and channels
@@ -59,15 +59,15 @@ for s =session_range %1:length(sessions)
 
         Spike_count_raster = Spike_rasters';
 
- 
+
         %PCA
         [coeff,score,latent,tsquared,explained] = pca(Spike_count_raster);
         var_explained = cumsum(explained); idxl = find(var_explained>=80); dim = min(idxl);
         Spike_count_raster = score(:,1:15);
 
-%         %FA
-%         [lambda,psi,T,stats,F] = factoran(Spike_count_raster,3)
-%         Spike_count_raster = F;
+        %         %FA
+        %         [lambda,psi,T,stats,F] = factoran(Spike_count_raster,3)
+        %         Spike_count_raster = F;
 
 
         %% Select behaviors to decode
@@ -117,41 +117,50 @@ for s =session_range %1:length(sessions)
         %% Plot PCA
 
         %Set colormap
-
-        Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 0.65];[0 1 1];...
-            [0 0 1];[0.5 0 0];[1 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];...
-            [0 0 0];[0 0 0];[0.9 0.7 0.12];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.8 0.6 0];[0.8 0 0.8];...
-            [0 0 0];[0 0 0];[0.2 0.2 1]];
+        Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 1];[0 1 1];...
+            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0 0 0];...
+            [0 0 0];[0 0 0];[1 1 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
 
         Cmap_block = [[1 0 0];[0 1 0];[0 0 1]];
 
         Cmap_time = cool(length(idx));
-  
-        %Plot PCA results color-coded by behavior
-        figure; scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap(behavior_labels_final,:),'filled')
-        sum(explained(1:3))
-        xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
-        set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title([channel_flag ' units, PCA, color: behavior'])
-        set(gca,'FontSize',15);
+        
 
-        %Plot PCA results color-coded by time
-        figure; scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_time,'filled')
+        figure; hold on; set(gcf,'Position',[150 250 1500 500])
+
+        %Plot PCA results color-coded by behavior
+        ax1=subplot(1,3,1);
+        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap(behavior_labels_final,:),'filled')
         sum(explained(1:3))
         xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
-        set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title([channel_flag ' units, PCA, color: time'])
-        set(gca,'FontSize',15);
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Behavior')
+        set(gca,'FontSize',12);
+        %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
+        %pause(5)
+
+        %Plot UMAP results color-coded by time
+        ax2=subplot(1,3,2);
+        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_time,'filled')
+        xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Time')
+        set(gca,'FontSize',12);
 
         %Color-coded by block
-        figure; scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_block(block_labels_final,:),'filled')
+        ax3=subplot(1,3,3);
+        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_block(block_labels_final,:),'filled')
         xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
-        set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title([channel_flag ' units, PCA, color: block'])
-        set(gca,'FontSize',15);
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Block')
+        set(gca,'FontSize',12);
+        %saveas(gcf,[savePath '/umap_ColorCodedByBlock_' channel 'Units.png'])
 
-        pause(5)
-        close all
+        sgtitle([channel ' units, PCA'])
+
+        hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
+        rotate3d on
 
         %clearvars -except temp chan savePath filePath temp_resolution is_mac
         chan=chan+1;

@@ -31,10 +31,14 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %   every channel) is included (1) or not (0). If with_NC=2 then we only
 %   inlcude the noise cluster (not the other neurons).
 %   isolatedOnly: specifies if only the well isolated units are considered.
+%   smooth: is the data smoothed using function conv.
+%   sigma: size of smoothing
 
 % Camille Testard - Nov. 2021
 
 %% Load data
+
+
 cd(filePath)
 
 if is_mac
@@ -49,6 +53,7 @@ monkey = session_name_split{1};
 %Load behavioral data
 behavior_log = readtable('EVENTLOG_restructured.csv');% for subject
 labels_partner=[];
+block_log = readtable('session_block_schedule.csv');% for block info
 
 %Load neural data
 if isolatedOnly==1
@@ -301,14 +306,41 @@ for s = 1:length_recording %for all secs in a session
     end
     %Add block information
     if s<=block_times{1,'end_time_round'}
-        labels{s,10} = string(block_times{1,'Behavior'});
-        labels{s,11} = 1;
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),2}); %identity of block (female neighbor, male neighbor or alone block)
+        labels{s,11} = 1; %block order
+
+        if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form of block identity
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+        end
+
     elseif s>block_times{1,'end_time_round'} && s<=block_times{2,'end_time_round'}
-        labels{s,10} = string(block_times{2,'Behavior'});
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),3});
         labels{s,11} = 2;
+        
+         if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+         end
+
     elseif s>block_times{2,'end_time_round'}
-        labels{s,10} = string(block_times{3,'Behavior'});
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),4});
         labels{s,11} = 3;
+        
+         if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+         end
+
     end
 
 end
