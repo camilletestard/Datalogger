@@ -1,4 +1,4 @@
-function [sim_behav] = GenSimBehavior(labels,names, temp_resolution)
+function [sim_behav] = GenSimBehavior(labels,names, temp_resolution, plot_toggle)
 %GENSIMBEHAVIOR Generates a fake behavior sequence given the statistics of
 %the session.
 %   Detailed explanation to be expanded upon.  In short this is a way to
@@ -15,7 +15,9 @@ use_markov = 1; %Leaving this as a toggle in here since it isn't really somethin
 
 duration = size(labels,1);
 
-obs_behav = cell2mat(labels(:,3)); %Note assumes that column 3 is the correct column for the data
+obs_behav = labels;%cell2mat(labels(:,3)); %Note assumes that column 3 is the correct column for the data
+%Note: I think we should give the function the vector of labels we want simualted. Much
+%more flexible.
 
 numeric_labels = unique(obs_behav); %Need this for mapping between the output of the simulation to the correct numeric label to the correct English label
 
@@ -105,25 +107,26 @@ else
     
 end
 
-%Quick check figures
-%First check general probabilties match
-figure
-histogram(obs_behav)
-hold on
-histogram(sim_behav)
-title('Compare frequencies of behaviors between session and simulation')
-legend({'real', 'stim'})
+if plot_toggle
+    %Quick check figures
+    %First check general probabilties match
+    figure
+    histogram(obs_behav)
+    hold on
+    histogram(sim_behav)
+    title('Compare frequencies of behaviors between session and simulation')
+    legend({'real', 'stim'})
 
-figure %not a super helpful figure but can be used to eyeball before we grab things that Camille has already made.
-plot(obs_behav)
-hold on
-plot(sim_behav)
-title('Compare sequence of behaviors between session and simulations')
-yticks(numeric_labels)
-yticklabels(names(numeric_labels))
-legend({'real', 'stim'})
-hold off
-
+    figure %not a super helpful figure but can be used to eyeball before we grab things that Camille has already made.
+    plot(obs_behav)
+    hold on
+    plot(sim_behav)
+    title('Compare sequence of behaviors between session and simulations')
+    yticks(numeric_labels)
+    yticklabels(names(numeric_labels))
+    legend({'real', 'stim'})
+    hold off
+end
 
 end
 

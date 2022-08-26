@@ -19,7 +19,7 @@ unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 3;%set the smoothing window size (sigma)
+sigma = 5;%set the smoothing window size (sigma)
 
 %Select session range:
 if with_partner ==1
@@ -117,14 +117,14 @@ for s =session_range %1:length(sessions)
         %% Plot PCA
 
         %Set colormap
-        Cmap = [[0 0 0];[1 0.4 0.1];[0 0 0];[0 0.6 0.8];[0 0.7 0];[1 0 1];[0 1 1];...
+         Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0 0.4 0.5];[0 0.7 0];[1 0 1];[0 1 1];...
             [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0 0 0];...
-            [0 0 0];[0 0 0];[1 1 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0 0 0];[0 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
             [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
 
-        Cmap_block = [[1 0 0];[0 1 0];[0 0 1]];
+        Cmap_block = [[0.9 0.7 0.12];[0 0.6 0.8];[0.5 0 0]];
 
-        Cmap_time = cool(length(idx));
+        Cmap_time = copper(length(idx));
         
 
         figure; hold on; set(gcf,'Position',[150 250 1500 500])
@@ -157,7 +157,7 @@ for s =session_range %1:length(sessions)
         set(gca,'FontSize',12);
         %saveas(gcf,[savePath '/umap_ColorCodedByBlock_' channel 'Units.png'])
 
-        sgtitle([channel ' units, PCA'])
+        sgtitle([channel_flag ' units, PCA'])
 
         hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
         rotate3d on

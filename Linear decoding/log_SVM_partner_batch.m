@@ -18,7 +18,6 @@ session_range_with_partner=[1:3,11:13];
 %Set parameters
 with_partner =1;
 temp = 1; temp_resolution = 1;
-temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -27,6 +26,11 @@ isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated 
 num_iter = 50;%Number of SVM iterations
 min_occurrences = 30;%Minimum number of occurrence per behavior
 alone_block=1; %1: during alone block; 0:during paired blocks; anything else: all blocks.
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 3;%set the smoothing window size (sigma)
+null=1;%Set whether we want the null 
+simplify=0;%lump similar behavioral categories together to increase sample size.
+
 
 %Select session range:
 if with_partner ==1
@@ -51,9 +55,15 @@ for s =session_range %1:length(sessions)
         
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
         disp('Data Loaded')
@@ -93,12 +103,11 @@ for s =session_range %1:length(sessions)
             block_labels=block_labels(block_labels~= alone_block_id,:);
         end
 
-        behavior_labels = behavior_labels_partner_init;
 
         %% Select behaviors to decode
 
         %Compute freq of behavior for the session
-        behav_freq_table = tabulate(behavior_labels);
+        behav_freq_table = tabulate(behavior_labels_partner_init);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
@@ -123,11 +132,9 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
         %Only keep the behaviors of interest
-        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        idx = find(ismember(behavior_labels_partner_init,behav)); %find the indices of the behaviors considered
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
-        tabulate(removecats(categorical(behavior_labels_final)));
-
+       
         %check the amount of labels that differ in the partner vs. subject
         %labels after selecting the behaviors of interest.
         subject_behav_after_selection = behavior_labels_subject_init(idx);
@@ -143,7 +150,8 @@ for s =session_range %1:length(sessions)
         %partner do not overlap
         diff_idx = find(partner_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
         Spike_count_raster_final = Spike_count_raster_final(diff_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels_final(diff_idx,:);%Same as above but in behavior labels
+        behavior_labels_final = partner_behav_after_selection(diff_idx,:);%Same as above but in behavior labels
+        behavior_labels_final_subject = subject_behav_after_selection(diff_idx,:);
         block_after_selection_final = block_after_selection(diff_idx);
         behav = unique(behavior_labels_final);
 
@@ -167,6 +175,11 @@ for s =session_range %1:length(sessions)
         %             behavior_labels_final = behavior_labels_final(alone_idx,:);%Same as above but in behavior labels
         %             tabulate(behavior_labels_final);
 
+        if null
+            %Simulate fake labels
+            [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution);
+            behavior_labels_final = sim_behav;
+        end
 
         %% Run SVM over multiple iterations
 

@@ -23,8 +23,11 @@ temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
-min_occurrence =10;
-cohend_cutoff=0; p_cutoff=0.01;%Set thresholds
+min_occurrence =30;
+cohend_cutoff=0.3; p_cutoff=0.01;%Set thresholds
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 1;%set the smoothing window size (sigma)
+null=0;%Set whether we want the null 
 
 %Initialize session batch variables:
 n_behav = 28;
@@ -54,11 +57,16 @@ for s =session_range %1:length(sessions)
 
     %% Load data
 
-    %Get data with specified temporal resolution and channels
     if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma);
     else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
+            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma);
     end
 
     session_length = size(Spike_rasters,2); % get session length
@@ -66,7 +74,12 @@ for s =session_range %1:length(sessions)
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
-    
+
+    if null
+        %Simulate fake labels
+        [sim_behav] = GenSimBehavior(behavior_labels,behav_categ, temp_resolution);
+        behavior_labels = sim_behav;
+    end
 
     %% Set parameters
     unqLabels = 1:max(behavior_labels)-1; %Get unique behavior labels (exclude rest)
