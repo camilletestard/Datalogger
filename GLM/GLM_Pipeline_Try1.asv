@@ -498,7 +498,7 @@ regIdx(rejIdx) = [];
 %rank matrix.
 
 
-kfolds = 1; 
+kfolds = 10; 
 for br = 1:2%length(BRs) For now not running all as this seems silly
     
     Y = Results(br).Spikes;
