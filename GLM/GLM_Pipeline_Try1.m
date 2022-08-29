@@ -21,6 +21,15 @@
 %time for Parma...have to see.  For now need to get this to work while
 %keeping track of regressors then switch to getting GLM loop to work.
 
+%2022-08-28: Note that need to have ridgeregression folder in this repo on
+%the path for some of the functions needed to make the design matrix.
+%Will also need for qr checks.  We can add a line to auto add this to the
+%path later if needed.
+
+%2022-08-29 Use smoothed firing rate instead of spiking; adjust
+%accordingly.  Use the new load in function from Camille and use is_mac to
+%toggle file path.
+
 %% Stage 1 Get data loaded in and set up loops
 
 
@@ -30,7 +39,7 @@
 %functions
 
 %Parameters for setting Path
-is_mac = 0; %For loading the data
+is_mac = 0; %For loading the data %2022-08-29 Use this to replace is_ron
 is_ron = 1; %For setting path
 
 
@@ -48,7 +57,7 @@ BRs = ["TEO", "vlPFC", "all"]; %Channels considered (sets brain region TEO vlPFC
 with_NC =1; %0: Noise cluster (NC) is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well-isolated units
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec %%Note this will change if we introduce smoothing
-smooth_fr = 0; %Toggle to smooth the spike rasters (currently not setting up this code as may require working with ms neural data and then downsampling to get back)
+smooth_fr = 0; %Toggle to use smooth spike rasters (currently not setting up this code as may require working with ms neural data and then downsampling to get back)
 
 
 
@@ -352,7 +361,7 @@ behavEvents=horzcat(X_groups{1:3});
 %Get names via Reg_mapping    
 behavEventNames = horzcat(Reg_mapping{1}(1,:)...
     ,append('partner.',Reg_mapping{2}(1,:)),...
-    Reg_mapping{3}(1,:));
+    Reg_mapping{3}(1,:)); %2022-08-29: Cam added more info to block (gender pairing in not alone)
 
 
 
@@ -430,9 +439,15 @@ low_events_idx= find(sum(fullR,1)<10);
 fullR(:,low_events_idx)=[];
 regIdx(low_events_idx)=[];
 
+
 %Code is good up to this point, move on to setting up GLM loop
 
+
 %% Unclear if will do this yet.  For now leave commented. 
+
+%2022-08-29: Firing rate:  switch to taking out
+%mean. Don't standardize
+
 % % % Center and Standardize Continuous Data
 % % Center both analog (i.e. movement/tracking data) and neural data.
 % % 
@@ -446,10 +461,117 @@ regIdx(low_events_idx)=[];
 % % Churchland median centered the neuronal data, so we will do the same.
 % % Vc = (Vc - median(Vc,1));
 
-%% Stage 3 First steps
-%Practice prepping matrices that would be put into the GLM loop
+
+%% Stage 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Run QR check on full design matrix.  Save copy of matrix without any changes
+
+[rejIdx, median_val, min_val, max_val,] = log_run_QR(fullR, 1); %Have this spit out all of the numbers for the first round
+%Then surpress plotting and extra numbers for the subsequent rounds
+%Recall values of zero mean things are co-linear/redunant according ot the
+%QR check.
+%2022-08-28: looks like we remove about 30 regressors in the current set up
+
+%Save an unaltered copy
+fullR_hold = fullR;
+%Remove regressors rejected by the QR check
+fullR(:,rejIdx) = [];
+regIdx(rejIdx) = [];
 
 
+%% Run first loop (main model for each brain region)
+%2022-08-28 Update: First pass works, roughly 1/3 of the neurons throw
+%warnings when fit though.  May need to use more advanced fitting algorithm
+%but for now keep this due it convenience of getting all of the stats out
+%in one go.  Now need to work on cross validation loop.
+
+%Repeat whatever is to be done for each brain region
+for br = 1:2%length(BRs) For now not running all as this seems silly
+    
+    Y = Results(br).Spikes;
+    
+    if smooth_fr %Handle this before we get here, just swap the data depending on what needs to be used.
+        
+        Y = Results(br).fr;
+        
+    end
+    
+    Results(br).Data{1} = fullR; %make a cell in the data field of each struct that hold the design matrix used for that analysis
+    
+    X = fullR;
+    
+    %2022-08-28 %First just fit the model to make sure that runs/see how long it takes
+    %Then set up cross validation loop: 10 Folds, 80-20 split
+    %Update: doesn't take super long to run per neuron but with cross
+    %validation could take a bit to run all the analyses for each brain
+    %region for each session.
+    
+    %2022-08-29 Update: I think the cross validation will make the Stats
+    %objects from the mdl much less useful as many of those can simply be
+    %averaged over...maybe come up with something clever later but for
+    %now take "average" Y-hat (i.e. take the prediction from all of the
+    %separate 20% of the data) and take average LL as these for sure can be
+    %used...further I think it will be best to make this into a function
+    %that does the cross validation and fitting and spits out the needed
+    %info at the end that can be loaded into the Results struct.
+    
+    problem_neuron = zeros(1,size(Y,2)); %Save which neurons had a warning thrown.
+        
+    for n = 1:size(Y,2) %For each neuron, fit a glm
+        display(['Working on neuron #' num2str(n)])
+        
+        %2022-08-28: Added ability to save any warnings thrown by fitglm
+       
+        if smooth_fr
+            lastwarn('','') %reset warning.
+            mdl = fitglm(X,Y(:,n),'linear','Distribution','gaussian'); %If smoothing happens use gaussian instead of poisson
+            
+            test1 = lastwarn;
+            if ~isempty(test1)
+                
+                problem_neuron(1,n) = 1; %change the zero to a 1 if a warning is found
+                
+            end
+        else
+            lastwarn('','') %reset warning.
+            mdl = fitglm(X,Y(:,n),'linear','Distribution','poisson');
+            
+            test1 = lastwarn;
+            if ~isempty(test1)
+                
+                problem_neuron(1,n) = 1; %change the zero to a 1 if a warning is found
+            end
+        end
+        
+        Results(br).Stats.perneuron{1, n} = mdl;
+        
+        Y_hat = mdl.feval(X);
+        
+        %After cross validation put each cross validated guess together and
+        %save ad the final Y_hat in Results
+        
+        Results(br).Y_hat{1,n} = Y_hat;
+        
+        
+    end
+    Results(br).Warnings{1} = problem_neuron;
+end
+
+
+%% Run second loop: Any shuffling we want to do
+%Separating into two loops for easy of debugging.
+for br = 1:length(BRs)
+    
+    Y = Results(br).Spikes;
+    
+    if smooth_fr %Handle this before we get here, just swap the data depending on what needs to be used.
+        
+        Y = Results(br).fr;
+        
+    end
+
+    
+end
 %% Old code that helps remove nans and unindentified behaviors from before
 
 % %% Step 1.4 Remove Nans
