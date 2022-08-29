@@ -106,8 +106,19 @@ for s =session_range(2:end) %1:length(sessions)
         behav_freq_table = tabulate(behavior_labels);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
-        % Select grooming manually
-        behav =[7,8] ;%unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
+        % Select behaviors with a minimum # of occurrences
+        min_occurrences = 10;
+        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
+
+        %Remove behaviors we're not interested in for now
+        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding Rowdy Room which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
+
+        % OR select behaviors manually
+        %behav =[7] ;%unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -121,13 +132,6 @@ for s =session_range(2:end) %1:length(sessions)
         behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
         block_labels_final =  block_labels(idx);
         behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
-
-        %Choose grooming category to represent
-        groom_categ= {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'}; %label grooming categ
-        sum(groom_labels_all==2)
-        categ =3;
-        groom_labels_final = groom_labels_all(idx,categ+1);
-        groom_categ_label = {'Not Reciprocated', 'Reciprocated'};
 
         %% Run umap
 
@@ -149,17 +153,15 @@ for s =session_range(2:end) %1:length(sessions)
 
         Cmap_block = [[0.9 0.7 0.12];[0 0.6 0.8];[0.5 0 0]];
 
-        %Cmap_time = copper(size(Spike_count_raster,1));
         Cmap_time = copper(length(idx));
-
-        Cmap_groom = [[0 1 0];[1 0 0]];
+%         Cmap_time(2954,:)=[0 0.8 0];
 
         %% Plot UMAP projection in 3D space
 
         figure; hold on; set(gcf,'Position',[150 250 1500 500])
 
         %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,4,1);
+        ax1=subplot(1,3,1);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -169,24 +171,15 @@ for s =session_range(2:end) %1:length(sessions)
         %pause(5)
 
         %Plot UMAP results color-coded by time
-        ax2=subplot(1,4,2);
-        %scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time(idx,:),'filled')
+        ax2=subplot(1,3,2);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
         title('Time')
         set(gca,'FontSize',12);
 
-        %Color-coded by groom-context
-        ax3=subplot(1,4,3);
-        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_groom(groom_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Block')
-        set(gca,'FontSize',12);
-
         %Color-coded by block
-        ax4=subplot(1,4,4);
+        ax3=subplot(1,3,3);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -195,7 +188,7 @@ for s =session_range(2:end) %1:length(sessions)
       
         sgtitle([channel ' units, UMAP, ' sessions(s).name])
 
-        hlink = linkprop([ax1,ax2,ax3,ax4],{'CameraPosition','CameraUpVector'});
+        hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
         rotate3d on
 
         savefig([savePath 'Umap_3Dprojection_' channel '.fig'])

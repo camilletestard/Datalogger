@@ -18,14 +18,18 @@ session_range_with_partner=[1:3,11:13];
 
 
 %Set parameters
-with_partner =0;
+with_partner =1;
 temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
-unq_behav=0; %If only consider epochs where only 1 behavior happens
+unq_behav=1; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 50;%Number of SVM iterations
+num_iter = 100;%Number of SVM iterations
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 1;%set the smoothing window size (sigma)
+null=0;%Set whether we want the null 
+simplify=0;%lump similar behavioral categories together to increase sample size.
 
 %Select session range:
 if with_partner ==1
@@ -49,35 +53,55 @@ for s =session_range %1:length(sessions)
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
         disp('Data Loaded')
 
         %Raw data
-        %Spike_count_raster = Spike_rasters';
+        Spike_count_raster = Spike_rasters';
 
         %Low-pass filter data
         %Spike_count_raster = lowpass(Spike_rasters',0.05,1);
 
-        %Smoothed data
-%         sigma = 5;% 0.045 * opts.Fs; %og SDF window was 45 ms, so simply mutiply 45 ms by fs
-%         gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
-%         smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
-%         smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
-%         smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
-%         Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
-%         Spike_count_raster = Spike_rasters_smooth';
-
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+%         behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
+%         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
+%         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+
         co_occurrence = cell2mat({labels{:,5}}');
 
+        if null
+            %Simulate fake labels
+            [sim_behav] = GenSimBehavior(behavior_labels,behav_categ, temp_resolution);
+            behavior_labels = sim_behav;
+        end
+
         if unq_behav==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
-            idx_single = find(co_occurrence==1 | co_occurrence==2 | co_occurrence==3); %(no co-occurrence, or with RR or with proximity)
+            idx_single = find(co_occurrence<4); %(no co-occurrence, or with RR or with proximity)
             Spike_count_raster = Spike_count_raster(idx_single,:);
             behavior_labels = behavior_labels(idx_single,:);
+        end
+
+        if simplify
+            %Simplify behavioral catagories
+            %Lump all aggressive interactions together
+            behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
+            behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
+            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
+            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
+
+            %Lump all travel together
+            behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
+            behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
         end
 
         %% Select behaviors to decode
@@ -89,9 +113,12 @@ for s =session_range %1:length(sessions)
         % Select behaviors with a minimum # of occurrences
         min_occurrences = 30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
+
+        % Remove behaviors that are ill-defined
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Vocalization')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
 
@@ -184,27 +211,27 @@ for s =session_range %1:length(sessions)
     cd(savePath)
 
     %% Plot confusion matrices
-% % % % %     vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
-% % % % %     D{s} = vlpfc-TEO;
-% % % % %     CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
-% % % % %     subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
-% % % % %     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
-% % % % %     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
-% % % % %     subplot(2,2,4); h = heatmap(D{s},'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
+%     vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
+%     D{s} = vlpfc-TEO;
+%     CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
+%     subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
+%     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
+%     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
+%     subplot(2,2,4); h = heatmap(D{s},'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
 
-% % % % %     if randomsample ==0 && unq_behav==1
-% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
-% % % % %     elseif randomsample ==1 && unq_behav==1
-% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_confmat.png'])
-% % % % %     elseif randomsample ==0 && unq_behav==0
-% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_confmat.png'])
-% % % % %     elseif randomsample ==1 && unq_behav==0
-% % % % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_confmat.png'])
-% % % % %     end
-% % % % % 
-% % % % %     close all
+%     if randomsample ==0 && unq_behav==1
+%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
+%     elseif randomsample ==1 && unq_behav==1
+%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_confmat.png'])
+%     elseif randomsample ==0 && unq_behav==0
+%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_confmat.png'])
+%     elseif randomsample ==1 && unq_behav==0
+%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_confmat.png'])
+%     end
 
-    %Plot result
+    %close all
+
+    %% Plot session result
 
 %     rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
 %     result_hitrate = array2table(mean_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
@@ -252,7 +279,7 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 %load('SVM_results_subjectBehav.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
@@ -261,6 +288,12 @@ subplot(2,1,1);hold on;
 cmap = hsv(size(mean_hitrate,2));
 for s = a_sessions
     y = mean_hitrate{s};
+    std_dev = sd_hitrate{s};
+    errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
+end
+
+for s = a_sessions
+    y = mean_hitrate_shuffled{s};
     std_dev = sd_hitrate{s};
     errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
 end
@@ -277,6 +310,11 @@ subplot(2,1,2);hold on;
 cmap = hsv(size(mean_hitrate,2));
 for s = h_sessions
     y = mean_hitrate{s};
+    std_dev = sd_hitrate{s};
+    errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
+end
+for s = a_sessions
+    y = mean_hitrate_shuffled{s};
     std_dev = sd_hitrate{s};
     errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
 end
