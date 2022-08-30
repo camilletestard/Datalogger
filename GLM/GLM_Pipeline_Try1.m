@@ -30,6 +30,10 @@
 %accordingly.  Use the new load in function from Camille and use is_mac to
 %toggle file path.
 
+%2022-08-30 Note: Due to difference in the QR check we WILL have different
+%number of regressors for different models; so all comparisons will have
+%to have that adjustment.  Not a deal breaker but important to note.
+
 %% Stage 1 Get data loaded in and set up loops
 
 
@@ -57,7 +61,7 @@ BRs = ["TEO", "vlPFC", "all"]; %Channels considered (sets brain region TEO vlPFC
 with_NC =1; %0: Noise cluster (NC) is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well-isolated units
 temp_resolution = 1; %Temporal resolution of firing rate. 1sec %%Note this will change if we introduce smoothing
-smooth_fr = 0; %Toggle to use smooth spike rasters (currently not setting up this code as may require working with ms neural data and then downsampling to get back)
+smooth_fr = 1; %Toggle to use smooth spike rasters (currently not setting up this code as may require working with ms neural data and then downsampling to get back)
 
 
 
@@ -118,8 +122,19 @@ end
         
         if smooth_fr
             
-            "Code for smoothing the firing rate goes here.  Replaces spikes with smoothed firing rate"
-            Results(br).fr = "The end result of the smoothing process";
+            %2022-08-29 temp solution is to just copy and paste smoothing
+            %code here.  I'm not exactly sure which of the loading
+            %functions is the right one and need to review again what the
+            %differences are.  For now do this and deal with the difference
+            %later tonight after sure the rest of the code runs.
+            sigma = 5;
+            gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
+            smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
+            smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
+            smoothing_kernel = smoothing_kernel * 1; %Rescale to get correct firing rate
+            Spike_rasters_smooth = conv2(Spike_rasters, smoothing_kernel,'same');
+            Spike_rasters = Spike_rasters_smooth;
+            Results(br).fr = Spike_rasters_smooth';
             
         end
     
@@ -251,6 +266,10 @@ motorIdx = [-(opts.mPreTime: -1 : 1) 0 (1:opts.mPostTime)]; %index for design ma
 %First get labels for all subject, partner, and context variables so we
 %know how many variables we have to start with
 
+%Update 2022-08-29 need to remove proximity here as well!
+
+prox_ind = find(behav_categ == 'Proximity');
+
 %Observations x behavior label
 obs_statevents_subject = unique(cell2mat(labels(:,3)));
 %Need to make a column for each behavior that happens in the session.
@@ -262,7 +281,12 @@ obs_statevents_subject = unique(cell2mat(labels(:,3)));
 %For now just repeat.  Later have this be either structure or a cell
 %and have a function that adds to it as needed.
 
+
+obs_statevents_subject( obs_statevents_subject == prox_ind) = []; %Remove proximity as an observed event
+
 obs_statevents_partner = unique(cell2mat(labels_partner(:,3)));
+
+obs_statevents_partner( obs_statevents_partner == prox_ind) = []; %Remove proximity as an observed event
 
 obs_context = 1:size(block_times,1); %For now just considering the three different blocks for context.
 
@@ -292,12 +316,15 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner}, {obs_conte
     %create/save mapping between numeric label in behavior_labels and the
     %column of the design matrix.
     
-    %First row is behavior label, 2nd row is original numeric label, 3rd
-    %row is column in design matrix (to start, if we add lags will be set
-    %of columns hence why this is a cell array)
+    %First row is behavior label, 2nd row is original numeric label, update
+    %2022-08-30 don't add 3 row for now.  This will be index in matrix
+    %after nan check then will add subsequent rows which will hold the
+    %indecies for the regressors associated with each variable in each
+    %experiment after the QR check.  Also at the end going to make
+    %Reg_mapping a table so it is easier to navigate.
     
     
-    Reg_mapping{this_mat} = cell(3,length(obs_statevents{this_mat}));
+    Reg_mapping{this_mat} = cell(2,length(obs_statevents{this_mat}));
     
     
     for this_label = 1:length(obs_statevents{this_mat})
@@ -306,14 +333,14 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner}, {obs_conte
         
         Reg_mapping{this_mat}{2,this_label} = obs_statevents{this_mat}(this_label);
         
-        Reg_mapping{this_mat}{3,this_label} = this_label; %Note will have to mess around with this if we introduce delays in regressors
-        
-        %Put ones into design matrix for indicated column whenever that behavior was present
-        %Update: can't just do this now that we have the potential for
-        %multiple behaviors at each time point.  Instead for each behavior
-        %will loop through the session and put a 1 in the design matrix
-        %each time that behavior occurred.  This is not efficient code, but
-        %for now this is fine.  Try to think of something clever later on.
+%         Reg_mapping{this_mat}{3,this_label} = this_label; %Note will have to mess around with this if we introduce delays in regressors
+%         
+%         %Put ones into design matrix for indicated column whenever that behavior was present
+%         %Update: can't just do this now that we have the potential for
+%         %multiple behaviors at each time point.  Instead for each behavior
+%         %will loop through the session and put a 1 in the design matrix
+%         %each time that behavior occurred.  This is not efficient code, but
+%         %for now this is fine.  Try to think of something clever later on.
         
         for i =1:length(Behavs)
         X_groups{this_mat}(i,this_label) = sum(Behavs{i,this_mat}(:) == Reg_mapping{this_mat}{2,this_label}); %Sum is just there to convert back to double/account for multiple behaviors
@@ -342,7 +369,7 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner}, {obs_conte
         
         Reg_mapping{this_mat}{2,this_label} = obs_statevents{this_mat}(this_label);
         
-        Reg_mapping{this_mat}{3,this_label} = this_label;
+%         Reg_mapping{this_mat}{3,this_label} = this_label;
         
         %Need to populate each block using the info in block_times table
         
@@ -352,7 +379,7 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner}, {obs_conte
 
     end
     
-    
+    Reg_mapping{2}(1,:) = append('partner.',Reg_mapping{2}(1,:)); %Add this now to prevent confusion later.
 %% Step 2.3 First concatenation, get names and regressors
 
 %Combine behavioral events
@@ -360,7 +387,7 @@ behavEvents=horzcat(X_groups{1:3});
 
 %Get names via Reg_mapping    
 behavEventNames = horzcat(Reg_mapping{1}(1,:)...
-    ,append('partner.',Reg_mapping{2}(1,:)),...
+    ,Reg_mapping{2}(1,:),...
     Reg_mapping{3}(1,:)); %2022-08-29: Cam added more info to block (gender pairing in not alone)
 
 
@@ -389,6 +416,7 @@ behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*3 zeros(1,
 %loop here to put info from behavIdx into Reg_mapping.  For now skipping
 %because I don't think we need it.
 
+
 %% Setup Design Matrix - Movement
 
 %Add later this week and take code from previous attempts.  For now focus
@@ -398,7 +426,7 @@ moveR = [];
 moveIdx = [];
 
 
-%% Combine Design Matrix
+%% Combine Design Matrix; get mapping to groups
 
 %Combine Design Matrix
 fullR=[behavR, moveR];
@@ -406,7 +434,29 @@ fullR=[behavR, moveR];
 %Collect all indecies together.
 regIdx =[behavIdx; moveIdx']; %check why moveIdx is transposed..........
 
-disp('Design Matrix Setup Done')
+%Collect all mappings together
+
+Reg_mapping = horzcat(Reg_mapping{:});
+% 
+% %2022-08-30: Very inelegant solution, but for the sake of keeping track of
+% %how the regressors map to the variables keep looping through this as we
+% %remove/change regIdx and updating or dropping variables as needed.  This
+% %first step puts all of the indices of the regIdx with their respective
+% %variables  before we remove any.  Use all_vars and length of unique regIdx
+% %here to make sure there are no issues at the beginning, then switch to
+% %using the length of Reg_mapping as we may have to remove variables as we
+% %go if all their regressors are removed.
+% 
+% all_vars =unique(regIdx);
+% for vars = 1:length(all_vars)
+%     
+%     Reg_mapping{3,vars} = find(regIdx == all_vars(vars));
+%    
+%     
+% end
+
+
+disp('Design Matrix base Setup Done')
 
 
 
@@ -440,8 +490,6 @@ fullR(:,low_events_idx)=[];
 regIdx(low_events_idx)=[];
 
 
-%Code is good up to this point, move on to setting up GLM loop
-
 
 %% Unclear if will do this yet.  For now leave commented. 
 
@@ -466,18 +514,58 @@ regIdx(low_events_idx)=[];
 
 %% Run QR check on full design matrix.  Save copy of matrix without any changes
 
+%Save an unaltered copy
+fullR_hold = fullR;
+regIdx_hold = regIdx;
+
 [rejIdx, median_val, min_val, max_val,] = log_run_QR(fullR, 1); %Have this spit out all of the numbers for the first round
 %Then surpress plotting and extra numbers for the subsequent rounds
 %Recall values of zero mean things are co-linear/redunant according ot the
 %QR check.
 %2022-08-28: looks like we remove about 30 regressors in the current set up
 
-%Save an unaltered copy
-fullR_hold = fullR;
+%2022-08-29: Need to fix this part
+
+%2022-08-30: Updated above so there are no values in row three.  Set it as
+%blank for all variables then fill in the regressors they have in the
+%design matrix after the nan check for low events.  Fill in a forth row
+%with the regressors indices after the QR check for the full matrix. Keep
+%adding rows for each experiment after the QR check and then make a table
+%at the end so things are clear.
+
+%2022-08-30 This works and leaves empty vectors for the variables that are
+%gone from the low event check.  Saving empty vars in rows based on when
+%they are taken out for diagnostic purposes right now.
+
+all_vars =unique(regIdx);
+for vars = 1:length(all_vars)
+    
+    Reg_mapping{3,all_vars(vars)} = find(regIdx == all_vars(vars));
+   
+    
+    
+end
+
+Empty_vars(1,:) = cellfun(@isempty, Reg_mapping(3,:));
+
 %Remove regressors rejected by the QR check
 fullR(:,rejIdx) = [];
 regIdx(rejIdx) = [];
 
+all_vars =unique(regIdx);
+for vars = 1:length(all_vars)
+    
+    Reg_mapping{4,all_vars(vars)} = find(regIdx == all_vars(vars));
+   
+    
+    
+end
+
+Empty_vars(2,:) = cellfun(@isempty, Reg_mapping(4,:));
+
+%Update 2022-08-30: Great, this all works and Reg_mapping as the intended
+%information.  Now we can grab regressors by variable name and picking the
+%correct row post QR check.
 
 %% Run first loop (main model for each brain region)
 %2022-08-28 Update: First pass works, roughly 1/3 of the neurons throw
@@ -512,9 +600,154 @@ for br = 1:2%length(BRs) For now not running all as this seems silly
     Results(br).Data{1} = fullR; %make a cell in the data field of each struct that hold the design matrix used for that analysis
     
     X = fullR;
+   
+   %2022-08-29 for now putting in as fields under Results(br).model
+   [Y_hat,Betas,CIs,R2_per,LL_per,pvalues,pn] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
+   
+   Results(br).model(1).name = 'Full';
+   
+   Results(br).model(1).Y_hat = Y_hat; %Estimated spike rate for all neurons
+   Results(br).model(1).Betas = Betas; %Beta values for each neuron (avg over cv)
+   Results(br).model(1).CIs = CIs; %Confidence intervals for each beta for each neuron (avg over cv)
+   Results(br).model(1).R2_per = R2_per; %Adjusted R^2 for each neuron (avg over cv)
+   Results(br).model(1).LL_per = LL_per; %Loglikelihood for the fit of each neuron (avg over cv)
+   Results(br).model(1).pvals = pvalues; %pvalue for each regressor for each neuron (currently average over cv but will switch to fisher's method ASAP)
+   Results(br).model(1).pn = pn; %Bool vector with true values for neurons that throw a warning during the fit at any point.
+   
+ end
+
+
+
+
+%% Set up shuffling sets (i.e. what models we want to test)
+
+%2022-08-29: For now only have these to shuffle.  Can add/remove as needed
+
+model_names = {'Full','Subj_shuff', 'Part_shuff', 'Context_shuff'}; %Full is a place holder from above; 
+
+%2022-08-30: Create lists of variable names to be shuffled in each "model"
+%/analysis.  For now just do this manually.  Can set up something clever
+%later if needed.
+
+shuffling_vars = cell(length(model_names),1);
+
+%Since we are shuffling by variable group
+%Take subsections of the named variables based on the individual X_groups we made earlier
+
+shuffling_vars{2} = {Reg_mapping{1,1:size(X_groups{1},2)}}; %Subject is always first group
+
+shiftamt = length(shuffling_vars{2});
+
+shuffling_vars{3} = {Reg_mapping{1,shiftamt+1:... %Partner is always second group, so index limits are just shifted by variables in first group
+    shiftamt+size(X_groups{2},2)}};
+
+shiftamt = shiftamt+length(shuffling_vars{3});
+
+shuffling_vars{4} = {Reg_mapping{1,shiftamt+1:...
+    shiftamt+size(X_groups{3},2)}};
+
+%% Make shuffled design matrices, rerun QR check
+%2022-08-30 Make sure partner and subject aren't accidentally the same.
+X_shuff = cell(1,length(model_names));
+regIdx_shuff = cell(1,length(model_names));
+
+for shuff = 2:length(model_names)
+    %Get all regressors to shuffle
     
-    [out1, out2] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
+    shuffle_inds = [];
     
+    for var = 1:length(shuffling_vars{shuff}) %If variable is empty it won't be addeed to shuffle_ind as we are just concatenating an empty array
+        
+        var_ind = find(ismember(Reg_mapping(1,:), shuffling_vars{shuff}(var)));
+        
+        shuffle_inds = [shuffle_inds Reg_mapping{3,var}'];
+        
+    end
+    
+    %Do shuffle and save into this cell array, then perform QR check
+    X_temp = fullR_hold; %First put in pre QR check matrix
+    X_temp(:,shuffle_inds) = X_temp(randperm(size(fullR_hold,1)),shuffle_inds); %Change the shuffled inds to the shuffled version
+    regIdx_temp = regIdx_hold;
+    
+    [rejIdx, ~, ~, ~,] = log_run_QR(X_temp, 0); %No plotting this time so we aren't bombarded with figures.
+    
+    %Remove regressors rejected by the QR check
+    X_temp(:,rejIdx) = [];
+    regIdx_temp(rejIdx) = [];
+    
+    X_shuff{shuff} = X_temp;
+    regIdx_shuff{shuff} = regIdx_temp;
+    
+    %Again loop through all of variables to update Reg_mapping
+    
+    Reg_map_ind = size(Reg_mapping,1)+1; %Add a new row each time.
+    all_vars =unique(regIdx_shuff{shuff});
+    
+    for vars = 1:length(all_vars)
+
+        Reg_mapping{Reg_map_ind,all_vars(vars)} = find(regIdx_shuff{shuff} == all_vars(vars));
+
+
+
+    end
+    
+    
+    
+    
+end
+
+%% Run second loop: Shuffled analyses
+
+for br = 1:length(BRs)-1 %don't do all
+    
+    Y = Results(br).Spikes;
+
+    if smooth_fr %Handle this before we get here, just swap the data depending on what needs to be used.
+
+        Y = Results(br).fr;
+
+    end
+
+    
+    for exper = 2:length(model_names)
+        display(['Working on model #' num2str(exper)])
+        display('') %just add a quick space to make this more visually apparent as it goes by.
+        X = X_shuff{exper};
+        
+ 
+         Results(br).Data{exper} = X;
+        
+          %2022-08-29 for now putting in as fields under Results(br).model
+         [Y_hat,Betas,CIs,R2_per,LL_per,pvalues,pn] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
+
+         Results(br).model(exper).name = model_names{exper};
+
+         Results(br).model(exper).Y_hat = Y_hat; %Estimated spike rate for all neurons
+         Results(br).model(exper).Betas = Betas; %Beta values for each neuron (avg over cv)
+         Results(br).model(exper).CIs = CIs; %Confidence intervals for each beta for each neuron (avg over cv)
+         Results(br).model(exper).R2_per = R2_per; %Adjusted R^2 for each neuron (avg over cv)
+         Results(br).model(exper).LL_per = LL_per; %Loglikelihood for the fit of each neuron (avg over cv)
+         Results(br).model(exper).pvals = pvalues; %pvalue for each regressor for each neuron (currently average over cv but will switch to fisher's method ASAP)
+         Results(br).model(exper).pn = pn; %Bool vector with true values for neurons that throw a warning during the fit at any point.
+
+        
+        
+    end
+    
+  
+    
+end
+
+'Stop at this line to take a look'
+
+%% Do comparisons between Full and shuffled models
+%Put this in Results.Stats instead of what we did before.
+%% Save final Results
+%save(['YOUR PLACE TO SAVE COULD BE HERE!!!!!'],'Results')
+end %Session loop end 
+%% Old code sections
+%%  1 Runs 1st loop with cross validation
+
 %2022-08-29: Commenting out for now so I can work on the function to do this I wrote    
 %     %2022-08-28 %First just fit the model to make sure that runs/see how long it takes
 %     %Then set up cross validation loop: 10 Folds, 80-20 split
@@ -571,24 +804,7 @@ for br = 1:2%length(BRs) For now not running all as this seems silly
 %         
 %     end
 %     Results(br).Warnings{1} = problem_neuron;
- end
-
-
-%% Run second loop: Any shuffling we want to do
-%Separating into two loops for easy of debugging.
-for br = 1:length(BRs)
-    
-    Y = Results(br).Spikes;
-    
-    if smooth_fr %Handle this before we get here, just swap the data depending on what needs to be used.
-        
-        Y = Results(br).fr;
-        
-    end
-
-    
-end
-%% Old code that helps remove nans and unindentified behaviors from before
+%% 2 that helps remove nans and unindentified behaviors from before
 
 % %% Step 1.4 Remove Nans
 % 
@@ -699,7 +915,4 @@ end
 % end
 
 
-end %Session loop end 
-%(note: will have to slot Stage 3 in just before this.
-%But it is good to first check all of the data is preprocessed and grouped correctly
-%before we try to do the GLM analyses)
+

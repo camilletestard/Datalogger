@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = GLM_CrossVal(X,Y,kfolds,is_smooth)
+function [Y_hat,Betas,CIs,Rsquared_per,LL_per,pvalues_per,problem_neurons] = GLM_CrossVal(X,Y,kfolds,is_smooth)
 %GLM_CROSSVAL Custom code to run the cross validation on our glm data
 %   Detailed explanation to come.  For now writing this since the built in
 %   function for matlab doesn't seem particularly useful and the other
@@ -25,7 +25,7 @@ CIs = NaN(size(X,2)+1,size(Y,2),2); %Average CI for each regressor, for each neu
 Rsquared_per = NaN(1,size(Y,2));%Average R^2 for EACH NEURON MODEL averaged over CV
 %For now doing adjusted R^2, but can change this in the CV loop
 LL_per = NaN(1,size(Y,2));
-pvalues_per = NaN(size(X,2),size(Y,2),kfolds); %For now just save a pvalue from each fold and later add code to this to combine using Fisher's method
+pvalues_per = NaN(size(X,2)+1,size(Y,2),kfolds);
 Y_hat = NaN(size(Y)); %Prediction for all time points for each neuron, concatenated over CV
 
 rng(1) %For reproducability across runs
@@ -99,7 +99,7 @@ lastwarn('','') %empty warning tracker before each model fit
         
         if is_smooth %Use Gaussian 
         
-            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx),'linear','Distribution','gaussian'); 
+            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx),'linear','Distribution','normal'); 
             warning_thrown = lastwarn;
         else %Use Poisson
             
@@ -136,6 +136,11 @@ lastwarn('','') %empty warning tracker before each model fit
     CIs(:,n,1) = mean(horzcat(cBeta{2,:}(:,1)),2);
     CIs(:,n,2) = mean(horzcat(cBeta{2,:}(:,2)),2);
     
+  
+    
+    pvalues_per(:,n) = mean(cPvalues,2);   %CHANGE THIS TO FISHERS METHOD!!!!!
+    %USING AVERAGE FOR NOW FOR CONVENIENCE
+    
     Rsquared_per(n) = mean(cR2,2);
     LL_per(n) = mean(cLL,2);
     Y_hat(:,n) = Y_cur_hat;
@@ -144,8 +149,6 @@ lastwarn('','') %empty warning tracker before each model fit
     
     
 end
-%% Collect results across all neurons
-outputArg1 = X;
-outputArg2 = Y;
+%% Results are collected sufficently above I think, so just put those as the output arguments.
 end
 
