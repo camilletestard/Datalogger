@@ -22,7 +22,7 @@ smooth= 1; %smooth the data
 sigma = 1;%set the smoothing window size (sigma)
 var_explained_threshold=90;
 num_iter = 100; UnitDatapoints = 10;
-min_occurrences = 200;
+min_occurrences = 1000;
 simplify=1;
 
 %Select session range:
@@ -34,19 +34,20 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
+if simplify
+    dim = nan(length(session_range),4,2,UnitDatapoints,num_iter);
+else
+    dim = nan(length(session_range),2,8,UnitDatapoints,num_iter);
+end
+
 s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/UMAP_results/'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Dimensionality_results/'];
 
     chan = 1;
-    if simplify
-        dim = nan(2,4,UnitDatapoints,num_iter);
-    else
-        dim = nan(2,8,UnitDatapoints,num_iter);
-    end
 
     for channel_flag = ["vlPFC", "TEO"]
         %channel_flag = "vlPFC";
@@ -70,7 +71,7 @@ for s =session_range %1:length(sessions)
         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
-         if simplify
+        if simplify
             %Simplify behavioral catagories
             %Lump all aggressive interactions together
             behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
@@ -87,41 +88,53 @@ for s =session_range %1:length(sessions)
 
             %Lump all grooming together
             behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Groom sollicitation"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Self-groom"))=find(behav_categ=="Groom partner");
+            %             behavior_labels(behavior_labels==find(behav_categ=="Groom sollicitation"))=find(behav_categ=="Groom partner");
+            %             behavior_labels(behavior_labels==find(behav_categ=="Self-groom"))=find(behav_categ=="Groom partner");
 
-            behav = [1,5,7,29];
-         else
+            behav = [1,5,7,18,29];
+        else
             behav = [4,5,7,8,9,10,24,29];
-         end
+        end
 
-         behav_freq_table = tabulate(behavior_labels);
+        if simplify
+
+            %Lump all grooming together
+%             behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
+%                         behavior_labels(behavior_labels==find(behav_categ=="Groom sollicitation"))=find(behav_categ=="Groom partner");
+%                         behavior_labels(behavior_labels==find(behav_categ=="Self-groom"))=find(behav_categ=="Groom partner");
+
+            %Lump all that is not grooming together
+            behavior_labels(ismember(behavior_labels,find(behav_categ~="Groom partner")))=find(behav_categ=="Rest");
+
+            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Rest")];
+        else
+            behav = [4,5,7,8,9,10,24,29];
+        end
+
+        behav_freq_table = tabulate(behavior_labels);
 
         %% Compute dimensionality over increasing numbers of units, over multiple iterations
-       
-        for b = 1:length(behav)
-            if b<length(behav)
-            disp(['Behavior: ' behav_categ(behav(b))])
-            end
 
-            u = 1; unit_num_range = round(linspace(5,min(unit_count),UnitDatapoints));
+        for b = 1:length(behav)
+
+            disp(['Behavior: ' behav_categ(behav(b))])
+
+            u = 1; unit_num_range = round(linspace(5,size(Spike_count_raster,2),UnitDatapoints));
+            %u = 1; unit_num_range = round(linspace(5,min(unit_count),UnitDatapoints));
             for unit_num = unit_num_range
 
                 disp(['Unit num: ' num2str(unit_num)])
 
                 for iter = 1:num_iter
 
-                    if b<length(behav)+1
-                        %Select time points to run PCA
-                        idx= find(ismember(behavior_labels,behav(b)));
-                        idx_beh = idx(randsample(1:length(idx),min_occurrences));
-                    else
-                        idx_beh = 1:size(Spike_count_raster,1);
-                    end
-
+                    %Select time points to run PCA
+                    idx= find(ismember(behavior_labels,behav(b)));
+                    idx_beh = idx(randsample(1:length(idx),min_occurrences));
 
                     %Select unit to run PCA
-                    Input_matrix = Spike_count_raster(idx_beh,randsample(unit_count(chan), unit_num));
+                    Input_matrix = Spike_count_raster(idx_beh,randsample(size(Spike_count_raster,2), unit_num));
+
+                    %figure; hold on; hist(corr(Input_matrix))
 
                     %PCA
                     [coeff,score,~,~,explained] = pca(Input_matrix);
@@ -129,10 +142,10 @@ for s =session_range %1:length(sessions)
                     %Get dimensionality
                     var_explained = cumsum(explained);
                     idxl = find(var_explained>=var_explained_threshold);
-                    dim(chan,b,u,iter) = min(idxl);
+                    dim(s,chan,b,u,iter) = min(idxl);
 
                 end % end of interation loop
-            u=u+1;
+                u=u+1;
             end %end of unit loop
 
         end %end of behavior loop
@@ -144,43 +157,120 @@ for s =session_range %1:length(sessions)
     %% Plot results for the session
 
     Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
-            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
-            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
+        [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
+        [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+        [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
 
-    figure; hold on; set(gcf,'Position',[150 250 1000 400])
-
-    subplot(1,2,1); hold on
-    for beh = 1:length(behav)
-        mean_dim_vlpfc = squeeze(mean(dim(1,beh,:,:),4));
-        sd_dim_vlpfc = squeeze(std(dim(1,beh,:,:),0,4));
-
-        errorbar(mean_dim_vlpfc, sd_dim_vlpfc,'-s','MarkerSize',10, ...
-            'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
-        legend({behav_categ(beh)},'Location','best')
-        xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]); 
-        xticklabels(unit_num_range); ylim([0 35])
-        ax = gca;
-        ax.FontSize = 14;
-        ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
-    end
-    title('vlPFC')
-
-    subplot(1,2,2); hold on
-    for beh = 1:length(behav)
-        mean_dim_teo = squeeze(mean(dim(2,beh,:,:),4));
-        sd_dim_teo = squeeze(std(dim(2,beh,:,:),0,4));
-
-        errorbar(mean_dim_teo, sd_dim_teo,'-s','MarkerSize',10, ...
-            'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
-        legend({behav_categ(beh)},'Location','best')
-        xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
-        xticklabels(unit_num_range); ylim([0 35])
-        ax = gca;
-        ax.FontSize = 14;
-        ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
-    end
-    title('TEO')
-    
+%     figure; hold on; set(gcf,'Position',[150 250 1000 400])
+% 
+%     subplot(1,2,1); hold on
+%     for beh = 1:length(behav)
+%         mean_dim_vlpfc = squeeze(mean(dim(s,1,beh,:,:),5));
+%         sd_dim_vlpfc = squeeze(std(dim(s,1,beh,:,:),0,5));
+% 
+%         errorbar(mean_dim_vlpfc, sd_dim_vlpfc,'-s','MarkerSize',10, ...
+%             'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+%         %         legend({behav_categ(beh)},'Location','best')
+%         xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+%         xticklabels(unit_num_range); ylim([0 35])
+%         ax = gca;
+%         ax.FontSize = 14;
+%         ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+%     end
+%     title('vlPFC')
+% 
+%     subplot(1,2,2); hold on
+%     for beh = 1:length(behav)
+%         mean_dim_teo = squeeze(mean(dim(s,2,beh,:,:),5));
+%         sd_dim_teo = squeeze(std(dim(s,2,beh,:,:),0,5));
+% 
+%         errorbar(mean_dim_teo, sd_dim_teo,'-s','MarkerSize',10, ...
+%             'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+%         %         legend({behav_categ(beh)},'Location','best')
+%         xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+%         xticklabels(unit_num_range); ylim([0 35])
+%         ax = gca;
+%         ax.FontSize = 14;
+%         ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+%     end
+%     title('TEO')
+%     saveas(gcf,[savePath '/DimensionalityPerBehav.png'])
+% 
+%     close all
 
 end%end of session loop
+
+cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Dimensionality_results/']);
+save('Dimensionality_2Classes.mat', "dim","behav","a_sessions","h_sessions","behav_categ","Cmap")
+
+%% Plot results across sessions
+dim_amos = squeeze(mean(dim(a_sessions,:,:,:,:),1));
+dim_hooke = squeeze(mean(dim(h_sessions,:,:,:,:),1));
+
+figure; hold on; set(gcf,'Position',[150 250 1000 800]); upperlim=35;
+
+%Amos
+subplot(2,2,1); hold on
+for beh = 1:length(behav)
+    mean_dim_vlpfc = squeeze(mean(dim_amos(1,beh,:,:),4));
+    sd_dim_vlpfc = squeeze(std(dim_amos(1,beh,:,:),0,4));
+
+    errorbar(mean_dim_vlpfc, sd_dim_vlpfc,'-s','MarkerSize',10, ...
+        'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+    %         legend({behav_categ(beh)},'Location','best')
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+    xticklabels(unit_num_range); ylim([0 upperlim])
+    ax = gca;
+    ax.FontSize = 14;
+    ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+end
+title('Amos, vlPFC')
+
+subplot(2,2,2); hold on
+for beh = 1:length(behav)
+    mean_dim_teo = squeeze(mean(dim_amos(2,beh,:,:),4));
+    sd_dim_teo = squeeze(std(dim_amos(2,beh,:,:),0,4));
+
+    errorbar(mean_dim_teo, sd_dim_teo,'-s','MarkerSize',10, ...
+        'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+    %         legend({behav_categ(beh)},'Location','best')
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+    xticklabels(unit_num_range); ylim([0 upperlim])
+    ax = gca;
+    ax.FontSize = 14;
+    ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+end
+title('Amos, TEO')
+
+%Hooke
+subplot(2,2,3); hold on
+for beh = 1:length(behav)
+    mean_dim_vlpfc = squeeze(mean(dim_hooke(1,beh,:,:),4));
+    sd_dim_vlpfc = squeeze(std(dim_hooke(1,beh,:,:),0,4));
+
+    errorbar(mean_dim_vlpfc, sd_dim_vlpfc,'-s','MarkerSize',10, ...
+        'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+    %         legend({behav_categ(beh)},'Location','best')
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+    xticklabels(unit_num_range); ylim([0 upperlim])
+    ax = gca;
+    ax.FontSize = 14;
+    ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+end
+title('Hooke, vlPFC')
+
+subplot(2,2,4); hold on
+for beh = 1:length(behav)
+    mean_dim_teo = squeeze(mean(dim_hooke(2,beh,:,:),4));
+    sd_dim_teo = squeeze(std(dim_hooke(2,beh,:,:),0,4));
+
+    errorbar(mean_dim_teo, sd_dim_teo,'-s','MarkerSize',10, ...
+        'MarkerEdgeColor','k','MarkerFaceColor',Cmap(behav(beh),:))
+    %         legend({behav_categ(beh)},'Location','best')
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]);
+    xticklabels(unit_num_range); ylim([0 upperlim])
+    ax = gca;
+    ax.FontSize = 14;
+    ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+end
+title('Hooke, TEO')

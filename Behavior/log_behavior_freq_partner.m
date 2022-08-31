@@ -1,7 +1,7 @@
-%% Log_transition_prob
-%This script finds behavioral transtions, computes a transition matrix
-%and plots a transition probability graph.
-%Testard C. Feb 2022
+%% Log_behavior_freq_partner
+%This script computes the duration and proportion of the partner's behaviors across
+%sessions
+%Testard C. August 2022
 
 %Set session list
 is_mac = 1;

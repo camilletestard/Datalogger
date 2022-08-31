@@ -124,7 +124,7 @@ for s =session_range %1:length(sessions)
     disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
     %% Set parameters
-    unqLabels = 1:length(behav_categ)-1; %Get unique behavior labels (exclude rest)
+    unqLabels = 1:length(behav_cate-1; %Get unique behavior labels (exclude rest)
     n_neurons(s) = size(Spike_rasters,1); %Get number of neurons
     n_behav = length(unqLabels); %Get number of unique behavior labels
 
@@ -200,7 +200,7 @@ for s =session_range %1:length(sessions)
     %% Plot heatmaps
 
     AxesLabels_sorted = behavs_eval(orderIdx);
-    AxesLabels = behavs_eval;
+    AxesLabels = behavs_eval(1:end-1);
     caxis_upper = 1.5;
     caxis_lower = -1.5;
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
@@ -251,7 +251,7 @@ for s =session_range %1:length(sessions)
         xticklabels(AxesLabels_sorted(nancol))
         set(gca,'FontSize',15);
         title('Distribution of effect size per partner behavior')
-        saveas(gcf, [savePath '/Distribution_cohend_per_PARTNER_behavior.png']);  close all
+        saveas(gcf, [savePath '/Distribution_cohend_per_PARTNER_behavior.png']); %pause(2); close all
 
         %Plot the proportion of selective neurons per behavior
         figure; hold on; set(gcf,'Position',[150 250 1000 500]);
@@ -262,7 +262,7 @@ for s =session_range %1:length(sessions)
         xticklabels(AxesLabels(idx_sort))
         set(gca,'FontSize',15);
         title('Proportion of units selective per partner behavior')
-        saveas(gcf, [savePath '/Proportion_units_selective_per_PARTNER_behav.png']);  close all
+        saveas(gcf, [savePath '/Proportion_units_selective_per_PARTNER_behav.png']); %pause(2); close all
 
         % Variance in single neuron selectivity
         mean_cohend_per_neuron = nanmean(cohend_thresh,2);
@@ -280,13 +280,13 @@ for s =session_range %1:length(sessions)
         text(10,-1.5,'Decreased firing relative to baseline','FontSize',14)
         set(gca,'FontSize',15);
         title('Distribution of effect size across all units, PARTNER')
-        saveas(gcf, [savePath '/Distribution_cohend_all_units_PARTNER.png']); close all
+        saveas(gcf, [savePath '/Distribution_cohend_all_units_PARTNER.png']); pause(2); close all
 
         %Number of behaviors a single neuron is selective for
         figure; histogram(num_selective_behav_per_neuron{s})
         xlabel('Number of behavior a given neuron is selective to')
         title('Distribution of the number of behaviors single units are selective for')
-        saveas(gcf, [savePath '/Distribution_number_selective_PARTNER_behavior_per_unit.png']); close all
+        saveas(gcf, [savePath '/Distribution_number_selective_PARTNER_behavior_per_unit.png']); %pause(2); close all
 
         % % %%%%%%%%%%%%%%%%%%%%%%%%
         % % %Single neuron selectivity:
