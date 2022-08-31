@@ -1,7 +1,7 @@
-%% Log_transition_prob
-%This script finds behavioral transtions, computes a transition matrix
-%and plots a transition probability graph.
-%Testard C. Feb 2022
+%% Log_behavior_freq_subject
+%This script computes the duration and proportion of behaviors across
+%sessions
+%Testard C. August 2022
 
 %Set session list
 is_mac = 1;
@@ -68,7 +68,8 @@ for s =session_range %1:length(sessions)
     unq_behavior_labels(unq_behavior_labels==find(matches(behav_categ,'Squeeze Subject')))=find(matches(behav_categ,'Threat to subject')); %set proximity to rest
 
     behavior_labels = unq_behavior_labels;%(unq_behavior_labels~=length(behav_categ));
-    behav = unique(behavior_labels);
+    behav = [1,2,4,5,6,7,8,9,10,12,14,15,17,18,23,24,25,27,28,29];
+    behav_categ_final = behav_categ(behav);
 
     %Get block info
     block_lbl = cell2mat({labels{:,12}}');
@@ -76,34 +77,25 @@ for s =session_range %1:length(sessions)
     block_categ = string({labels{:,10}}');
     block_categ = block_categ;%(unq_behavior_labels~=length(behav_categ));
 
-    for beh = 1:length(behav_categ)
+    for beh = 1:length(behav)
         for bl = 1:3
-            beh_stats(s, beh, bl)=length(find(behavior_labels == beh & block_lbl==bl));
+            beh_stats(s, beh, bl)=length(find(behavior_labels == behav(beh) & block_lbl==bl));
         end
     end
 
-%     cats = reordercats(categorical(behav_categ),{'Rest','Getting groomed','Groom partner',...
-%         'Self-groom','Scratch','Foraging','Threat to partner','Threat to subject',...
-%         'Other monkeys vocalize','Drinking','Approach','Rowdy Room','Groom sollicitation',...
-%         'Travel','Leave','Mounting','Aggression','Masturbating','Vocalization','Submission',...
-%         'Yawning','Swinging','Head Bobbing','Object Manipulation','Lip smack',...
-%         'Butt sniff','Squeeze partner','Squeeze Subject','Proximity'});
-%     figure; hold on; set(gcf,'Position',[150 250 700 300])
-%     bar(cats,squeeze(beh_stats(s,:,:)), 'stacked')
-%     legend('Paired, F neighbor', 'Paired, M neighbor','Alone')
-%     ylabel('seconds')
-%     set(gca,'FontSize',12);
 
 
 end %end of session loop
+
+cd('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Behavior_results/')
 
 beh_dur_amos = squeeze(nansum(beh_stats(a_sessions,:,:),1));
 beh_dur_hooke = squeeze(nansum(beh_stats(h_sessions,:,:),1));
 
 
-figure; hold on; set(gcf,'Position',[150 250 700 500])
+figure; hold on; set(gcf,'Position',[150 250 600 500])
 [~, idx_sorted_amos]=sort(sum(beh_dur_amos,2),'descend');
-cats = reordercats(categorical(behav_categ),string(behav_categ(idx_sorted_amos)));
+cats = reordercats(categorical(behav_categ_final),string(behav_categ_final(idx_sorted_amos)));
 subplot(2,1,1)
 bar(cats,beh_dur_amos, 'stacked')
 legend('Paired, F neighbor', 'Paired, M neighbor','Alone')
@@ -112,33 +104,34 @@ set(gca,'FontSize',12);
 title('Duration of behavior by block, Monkey A')
 
 [~, idx_sorted_hooke]=sort(sum(beh_dur_hooke,2),'descend');
-cats = reordercats(categorical(behav_categ),string(behav_categ(idx_sorted_amos)));
+cats = reordercats(categorical(behav_categ_final),string(behav_categ_final(idx_sorted_amos)));
 subplot(2,1,2)
 bar(cats,beh_dur_hooke, 'stacked')
 legend('Paired, F neighbor', 'Paired, M neighbor','Alone')
 ylabel('seconds'); ylim([0 20000]);
 set(gca,'FontSize',12);
 title('Duration of behavior by block, Monkey H')
+saveas(gcf,'Duration_per_behav.pdf')
 
 %Plot proportion 
 
 beh_prop_amos=beh_dur_amos./sum(sum(beh_dur_amos,2))*100;
 beh_prop_hooke=beh_dur_hooke./sum(sum(beh_dur_hooke,2))*100;
 
-figure; hold on; set(gcf,'Position',[150 250 700 500])
-cats = reordercats(categorical(behav_categ),string(behav_categ(idx_sorted_amos)));
+figure; hold on; set(gcf,'Position',[150 250 600 500])
+cats = reordercats(categorical(behav_categ_final),string(behav_categ_final(idx_sorted_amos)));
 subplot(2,1,1)
 bar(cats,beh_prop_amos, 'stacked')
 legend('Paired, F neighbor', 'Paired, M neighbor','Alone')
-ylabel('% Time'); ylim([0 100]);
+ylabel('% Time'); ylim([0 50]);
 set(gca,'FontSize',12);
 title('% of behavior by block, Monkey A')
 
-cats = reordercats(categorical(behav_categ),string(behav_categ(idx_sorted_amos)));
+cats = reordercats(categorical(behav_categ_final),string(behav_categ_final(idx_sorted_amos)));
 subplot(2,1,2)
 bar(cats,beh_prop_hooke, 'stacked')
 legend('Paired, F neighbor', 'Paired, M neighbor','Alone')
-ylabel('% Time'); ylim([0 100]);
+ylabel('% Time'); ylim([0 50]);
 set(gca,'FontSize',12);
 title('% of behavior by block, Monkey H')
-
+saveas(gcf,'Proportion_per_behav.pdf')

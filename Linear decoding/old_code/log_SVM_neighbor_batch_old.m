@@ -29,7 +29,7 @@ min_occurrences = 30;%Minimum number of occurrence per behavior
 alone_block=0; %1: during alone block; 0:during paired blocks; anything else: all blocks.
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
-null=0; plot_toggle=0; %Set whether we want the null. Suppress plots when generating simulated labels
+null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
 
 %Select session range:
@@ -58,56 +58,79 @@ for s =session_range %1:length(sessions)
         
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
         elseif with_partner ==2
-            [Spike_rasters, labels, labels_partner, labels_neighbor, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_neighbor(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma);
+            [Spike_rasters, labels, labels_partner, labels_neighbor, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_neighbor(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
         end
 
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
         behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-        behavior_labels_neighbor_init = cell2mat({labels_neighbor{:,3}}'); %Extract unique behavior info for partner
-        behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
-        behavior_labels_neighbor_init(behavior_labels_neighbor_init==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
-
+        behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
+        behavior_labels_neighbor_init = cell2mat({labels_neighbor{:,3}}');
         block_labels = cell2mat({labels{:,11}}'); %Extract block info
-        alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
+        alone_block_id = find(strcmp(block_times{:,1},"Alone.block"));
 
-
-        %Only consider paired blocks
+        %SANITY CHECK: Compute overlap between partner behavior and subject behavior
+        perc_overlap_subject_partner = length(find(behavior_labels_subject_init == behavior_labels_partner_init))/length(behavior_labels_subject_init);
+        perc_overlap_subject_neighbor = length(find(behavior_labels_subject_init == behavior_labels_neighbor_init))/length(behavior_labels_subject_init);
+        perc_overlap_partner_neighbor = length(find(behavior_labels_partner_init == behavior_labels_neighbor_init))/length(behavior_labels_subject_init);   
+    
+        %Only consider pair or alone blocks
         if alone_block==1
-            behavior_labels_subject_init = behavior_labels_subject_init(block_labels== alone_block_id);
-            behavior_labels_neighbor_init = behavior_labels_neighbor_init(block_labels== alone_block_id);
-            Spike_count_raster = Spike_count_raster(block_labels== alone_block_id,:);
-            block_labels=block_labels(block_labels== alone_block_id,:);
+            behav_freq_table = tabulate(behavior_labels_subject_init(block_labels== alone_block_id));
+            [~, max_beh]= max(behav_freq_table(:,2));
+
+            idx = find(block_labels== alone_block_id & behavior_labels_subject_init==max_beh);
+            behavior_labels_subject_init = behavior_labels_subject_init(idx);
+            behavior_labels_partner_init = behavior_labels_partner_init(idx);
+            behavior_labels_neighbor_init = behavior_labels_neighbor_init(idx);
+            Spike_count_raster = Spike_count_raster(idx,:);
+            block_labels=block_labels(idx);
+
         elseif alone_block==0
             behavior_labels_subject_init = behavior_labels_subject_init(block_labels~= alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels~= alone_block_id);
             behavior_labels_neighbor_init = behavior_labels_neighbor_init(block_labels~= alone_block_id);
             Spike_count_raster = Spike_count_raster(block_labels~= alone_block_id,:);
             block_labels=block_labels(block_labels~= alone_block_id,:);
+
+        elseif alone_block==3
+            idx = find(behavior_labels_subject_init==7);
+            behavior_labels_subject_init = behavior_labels_subject_init(idx);
+            behavior_labels_partner_init = behavior_labels_partner_init(idx);
+            behavior_labels_neighbor_init = behavior_labels_neighbor_init(idx);
+            Spike_count_raster = Spike_count_raster(idx,:);
+            block_labels=block_labels(idx);
+
         end
 
 
+        behavior_labels = behavior_labels_neighbor_init;
+
         %% Select behaviors to decode
 
-        %Only consider epochs where subject is resting
-        idx = find(ismember(behavior_labels_subject_init,7) &...
-            ~ismember(behavior_labels_neighbor_init,length(behav_categ))); %find the indices where the subject is resting and the partner is not
-        Spike_count_raster_temp = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_neighbor = behavior_labels_neighbor_init(idx);
-        behavior_labels_subject = behavior_labels_subject_init(idx);
-        behav = unique(behavior_labels_neighbor);
-        
         %Compute freq of behavior for the session
-        behav_freq_table = tabulate(behavior_labels_neighbor);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
+        behav_freq_table = tabulate(behavior_labels);
+        %behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences=30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
+%         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+%         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
+
+        % Then select non-reciprocal behaviors
+        behav = setdiff(behav, reciprocal_set);
+
+        % OR select behaviors manually
+        %behav = [4,5,17,23,25];%manually select behaviors of interest
+        %Select behaviors manually to ensure that the same
+        %behaviors are considered for the partner and subject comparisons.
+        %This list could change from session to session.. I'll have to
+        %think of a way to automatize this.
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -115,20 +138,58 @@ for s =session_range %1:length(sessions)
         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-        
-        %Select the correct indices.
-        idx_beh = find(ismember(behavior_labels_neighbor,behav));
-        subject_behav_after_selection = behavior_labels_subject(idx_beh);
-        neighbor_behav_after_selection = behavior_labels_neighbor(idx_beh);
-        block_after_selection = block_labels(idx_beh);
-        
-        Spike_count_raster_final = Spike_count_raster_temp(idx_beh,:);
-        behavior_labels_final = neighbor_behav_after_selection;
+        %Only keep the behaviors of interest
+        idx = find(ismember(behavior_labels,behav)); %find the indices of the behaviors considered
+        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
+        tabulate(removecats(categorical(behavior_labels_final)));
 
-        overlap_partner_subject_after_selection = length(find(neighbor_behav_after_selection == subject_behav_after_selection))/length(idx);
-        fprintf('Percent overlap between subject and partner labels AFTER selecting behaviors: %s \n', num2str(overlap_partner_subject_after_selection))
+    
+        %check the amount of labels that differ in the partner vs. subject
+        %labels after selecting the behaviors of interest.
+        subject_behav_after_selection = behavior_labels_subject_init(idx);
+        partner_behav_after_selection = behavior_labels_partner_init(idx);
+        neighbor_behav_after_selection = behavior_labels_neighbor_init(idx);
+        block_after_selection = block_labels(idx);
+
+
+        overlap_neighbor_subject_after_selection = length(find(neighbor_behav_after_selection == subject_behav_after_selection))/length(idx);
+        fprintf('Percent overlap between subject and neighbor labels AFTER selecting behaviors: %s \n', num2str(overlap_neighbor_subject_after_selection))
+        
+        overlap_neighbor_partner_after_selection = length(find(neighbor_behav_after_selection == partner_behav_after_selection))/length(idx);
+        fprintf('Percent overlap between partner and neighbor labels AFTER selecting behaviors: %s \n', num2str(overlap_neighbor_partner_after_selection))
+
         alone_block_obs = length(find(block_after_selection==3))/length(idx);
         fprintf('Percent observations in "alone" block AFTER selecting behaviors: %s \n', num2str(alone_block_obs))
+
+        %Only consider windows where the behaviors of subject and
+        %partner do not overlap
+        diff_idx = find(neighbor_behav_after_selection ~= subject_behav_after_selection); %find the indices where subject and partner behavior do not overlap
+        Spike_count_raster_final = Spike_count_raster_final(diff_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final = behavior_labels_final(diff_idx);%Same as above but in behavior labels
+        subject_behav_after_selection = subject_behav_after_selection(diff_idx);
+        block_after_selection_final = block_after_selection(diff_idx);
+        behav = unique(behavior_labels_final);
+
+        tabulate(removecats(categorical(behavior_labels_final)));
+        tabulate(block_after_selection_final)
+        crosstab(removecats(categorical(behavior_labels_final)), block_after_selection_final)
+        %Note: not all behaviors are equally happening across blocks. It's
+        %possible that what we decode is actually block ID and not the
+        %behavior itself...
+
+        %Display which behaviors will be decoded
+        behavs_eval = behav_categ(behav);
+        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        fprintf('Behaviors evaluated are: %s \n', behavs_eval);
+        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+
+        %             %Only consider behaviors during the alone block
+        %             block_after_selection_overlap_out = block_after_selection(diff_idx);
+        %             alone_idx = find(block_after_selection_overlap_out==3);
+        %             Spike_count_raster_final = Spike_count_raster_final(alone_idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        %             behavior_labels_final = behavior_labels_final(alone_idx,:);%Same as above but in behavior labels
+        %             tabulate(behavior_labels_final);
 
 
         %% Run SVM over multiple iterations
@@ -136,15 +197,12 @@ for s =session_range %1:length(sessions)
         disp('Start running SVM...')
         for iter = 1:num_iter
 
-            if null
-                %Simulate fake labels
-                [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution,plot_toggle);
-                Labels= sim_behav;
-            else
-                Labels = behavior_labels_final;
-            end
+            %             clearvars -except savePath behav_categ behavior_labels_final behavior_labels_shifted Spike_count_raster_final...
+            %                 Spike_count_raster_shifted num_iter iter hitrate hitrate_shuffled C C_shuffled temp_resolution...
+            %                 channel_flag filePath chan temp mean_hitrate sd_hitrate mean_hitrate_shuffled C_table behavs_eval behav is_mac min_occurrences
 
             %Balance number of trials per class
+            Labels = behavior_labels_final;
             Input_matrix = Spike_count_raster_final;
 
             uniqueLabels = unique(Labels); %IDentify unique labels (useful when not numbers)
@@ -160,7 +218,7 @@ for s =session_range %1:length(sessions)
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
+            minNumTrials = min_occurrences;%min(num_trials); %find the minimum one %CT change to have 30 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class

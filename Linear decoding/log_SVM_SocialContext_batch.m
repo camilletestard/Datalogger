@@ -26,7 +26,11 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 50;%Number of SVM iterations
+num_iter = 100;%Number of SVM iterations
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 1;%set the smoothing window size (sigma)
+null=0;%Set whether we want the null 
+simplify=0; %lump similar behavioral categories together
 
 %Select session range:
 if with_partner ==1
@@ -49,9 +53,15 @@ for s =session_range %1:length(sessions)
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
         disp('Data Loaded')
