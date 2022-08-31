@@ -1,10 +1,10 @@
-function [Y_hat,Betas,CIs,Rsquared_per,LL_per,pvalues_per,problem_neurons] = GLM_CrossVal(X,Y,kfolds,is_smooth)
-%GLM_CROSSVAL Custom code to run the cross validation on our glm data
-%   Detailed explanation to come.  For now writing this since the built in
-%   function for matlab doesn't seem particularly useful and the other
-%   function we have from T and T 2022 makes certain assumptions about the
-%   format of the data we don't want to deal with.  Designed to work with
-%   any of our glm set ups
+function [Y_hat,Betas,CIs,Rsquared_per,LL_per,pvalues_per,problem_neurons] = GLM_CrossVal_Regularized(X,Y,kfolds,is_smooth)
+%GLM_CROSSVAL Custom code to run the cross validation on our glm data with
+%regularization
+%  Same as other function but starting by trying to use lassoglm with alpha
+%  set close to zero so that it effectively acts like ridge regression.
+%  Made it own function since this will require a fair amount of edits to
+%  the code.
 
 %INPUTS:
 %X - design matrix for these models
@@ -58,50 +58,12 @@ foldCnt = floor(size(Y,1)/kfolds);
 %delays.
 
 if kfolds >1
-
-    good = false;
-    counter = 0;
-    problem_reg = [];
-    while ~good && counter <= 100
-        counter = counter+1;
-        display(['Making sure subsampled design matrix for all folds is full rank. Try #' num2str(counter)])
+       
         randIdx = randperm(size(Y,1)); %Get randperm of indecies for whole session
         %Need to due permentation instead of just a partition since we have the
         %block design (i.e. don't want fits that are only block 1 or block 2)
-        X_check = cell(1,kfolds);
-        rank_check = false(1,kfolds);
-
-        for iFolds = 1:kfolds
-            dataIdx = true(1,size(Y,1)); %Start with using all of the session (i.e. all true indecies)
-
-
-            dataIdx(randIdx(((iFolds - 1)*foldCnt) + (1:foldCnt))) = false;
-
-            X_check{1,iFolds} = X(dataIdx,:); %Put the design matrix with these random inds into X_check
-            
-            %used qr check here to figure out which regressor is the issue
-            %and see if it is consistent some subset of regressors
-            rejReg = log_run_QR(X_check{iFolds},0);
-
-            rank_check(iFolds) = ~any(rejReg); %Make sure that the subset matrix is full rank
-            
-            if ~rank_check(iFolds)
-                
-                problem_reg = [problem_reg find(rejReg)]; %Just keep appending to this vector than do a histogram after a set amount of tries.
-                
-            end
-
-        end
-        %find(rank_check == 0)%update it is not consistently one particular
-        %fold, so nothing to fix there.  Often getting 90% of these good
-        %though which is very annoying
-        sum(rank_check)/kfolds
-        good = all(rank_check); %If all are full rank, set good to true.  Otherwise redo loop
-
-    end
-    if counter >99
-        the_info = histogram(problem_reg,'BinMethod','integers')
-    end
+    
+   
 end
 %% Loop over each neuron
 
@@ -121,6 +83,7 @@ cLL = NaN(1,kfolds); %Save the LL value for each neurons fit.
 Y_cur_hat = NaN(size(Y_cur)); %Predicted fits that will be filled in with each fold.
 lastwarn('','') %empty warning tracker before each model fit
 % Run cross validation loop
+
     for iFolds = 1:kfolds
         display(['CV fold #' num2str(iFolds)])
         dataIdx = true(1,size(Y_cur,1)); %Start with using all of the session (i.e. all true indecies)
@@ -131,13 +94,20 @@ lastwarn('','') %empty warning tracker before each model fit
         dataIdx(randIdx(((iFolds - 1)*foldCnt) + (1:foldCnt))) = false;
         end
         
-        if is_smooth %Use Gaussian 
+      
         
-            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx),'linear','Distribution','normal'); 
+        if is_smooth %Use Gaussian 
+            
+            %Annoyingly think we mave to do cross validation inside of
+            %cross validation to get correct level of regularization for
+            %each fold.
+            mdl = lassoglm(X(dataIdx,:),Y_cur(dataIdx),'normal','CV',10); 
             warning_thrown = lastwarn;
+            
+           
         else %Use Poisson
             
-            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx), 'linear','Distribution','poisson');
+            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx), 'poisson','CV',10);
             warning_thrown = lastwarn; 
         end
         
@@ -188,4 +158,3 @@ lastwarn('','') %empty warning tracker before each model fit
 end
 %% Results are collected sufficently above I think, so just put those as the output arguments.
 end
-

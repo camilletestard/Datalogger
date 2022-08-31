@@ -34,6 +34,10 @@
 %number of regressors for different models; so all comparisons will have
 %to have that adjustment.  Not a deal breaker but important to note.
 
+%2022-08-30 Another important update: without the cross validation the
+%fitting of the data is absurdly high (assuredly because we are
+%overfitting) so need to fix this to get meaningful results and don't read
+%into the shuffling not having a huge effect yet.
 %% Stage 1 Get data loaded in and set up loops
 
 
@@ -150,7 +154,7 @@ end
 fake_x = normrnd(0,1,size(labels,1),1);
 fake_y = normrnd(0,1,size(labels,1),1);
 
-nan_per = .1; %Set percent (as decimal) of nans each individual fake regressor gets
+nan_per = 0; %Set percent (as decimal) of nans each individual fake regressor gets
 fake_x(randsample(length(fake_x),round(.1*length(fake_x))),1) = NaN;
 fake_y(randsample(length(fake_y),round(.1*length(fake_y))),1) = NaN;
 
@@ -158,9 +162,9 @@ kinematics = [fake_x fake_y];
 
 nan_counts = sum(isnan(kinematics),2);
 
-figure()
-histogram(nan_counts) %Shows number of nans and their overlap (all numbers greater than 1)
-    
+% figure()
+% histogram(nan_counts) %Shows number of nans and their overlap (all numbers greater than 1)
+%     
 
 %If needed put code for interpolating over short runs of nans from T and T
 %2022 here.  For now, leaving out.
@@ -168,9 +172,12 @@ histogram(nan_counts) %Shows number of nans and their overlap (all numbers great
 nan_inds = nan_counts > 0;  %Naturally anything that has a count greater than 0 is a time point that has an NaN
 
 %% Step 1.3 Set Proximity to  non-identified behavior
+%Update 2022-08-30 switching to only considering 1 behavior happening at
+%any moment to see if this resolves rank issues in our design matrix during
+%cross validation.
 
- behavior_labels_subject = labels(:,2); %Extract all behavior info for subject
-        behavior_labels_partner = labels_partner(:,2); %Extract all behavior info for partner
+ behavior_labels_subject = labels(:,3); %Extract all behavior info for subject
+        behavior_labels_partner = labels_partner(:,3); %Extract all behavior info for partner
 
         % Set proximity as rest
         prox_ind = find(behav_categ=="Proximity");
@@ -266,9 +273,10 @@ motorIdx = [-(opts.mPreTime: -1 : 1) 0 (1:opts.mPostTime)]; %index for design ma
 %First get labels for all subject, partner, and context variables so we
 %know how many variables we have to start with
 
-%Update 2022-08-29 need to remove proximity here as well!
+%Update 2022-08-29 need to remove proximity here!
 
 prox_ind = find(behav_categ == 'Proximity');
+
 
 %Observations x behavior label
 obs_statevents_subject = unique(cell2mat(labels(:,3)));
@@ -286,7 +294,42 @@ obs_statevents_subject( obs_statevents_subject == prox_ind) = []; %Remove proxim
 
 obs_statevents_partner = unique(cell2mat(labels_partner(:,3)));
 
+%Update 2022-08-30 removing partner groom other as this is redundant with
+%getting groomed for the subject...okay know partner drinking is causing
+%the issue.  Again just try removing these for now so we can at least run
+%the cross validation without the delays (maybe with if this is the source
+%of all the issues)...it feels like this problem just keeps cropping up
+%with new behaviors each time I eliminate one, but curious to see how far
+%this goes, particularly since they are all partner behaviors...okay now I
+%am just done as it selected rest which seems like it should definitely not
+%be redundant with any behaviors...on second thought.  Let's also just
+%change the beginning so there is only one behavior per moment as that
+%might fix a lot of this too...This did not fix the issue and there still
+%are problems on some runs.  I think this demands just using the
+%regularization to deal with this issue even if that means having to go
+%back
+
+
+%...this also speaks to need to add regularization to the regression in the hopes that should resolve the rank
+%collapsing issues for the design matrix.
+
+pgp_ind = find(behav_categ == "Groom partner");
+pgg_ind = find(behav_categ == "Getting groomed");
+pfor_ind = find(behav_categ == "Foraging");
+pdr_ind = find(behav_categ =="Drinking");
+papp_ind = find(behav_categ =="Approach");
+pagg_ind = find(behav_categ == "Aggression");
+
 obs_statevents_partner( obs_statevents_partner == prox_ind) = []; %Remove proximity as an observed event
+obs_statevents_partner(obs_statevents_partner == pgp_ind) = []; %Remove partner giving grooming as this is redundant with subject receiving.
+obs_statevents_partner(obs_statevents_partner == pgg_ind) = []; %Remove because vice versa for getting groomed
+
+%Removing all below due to rank issues.
+obs_statevents_partner(obs_statevents_partner == pfor_ind) = []; 
+% obs_statevents_partner(obs_statevents_partner == pdr_ind) = []; 
+% obs_statevents_partner(obs_statevents_partner == papp_ind) = [];
+obs_statevents_partner(obs_statevents_partner == pagg_ind) = [];
+
 
 obs_context = 1:size(block_times,1); %For now just considering the three different blocks for context.
 
@@ -399,7 +442,9 @@ behavEventNames = horzcat(Reg_mapping{1}(1,:)...
 %zeros to the end as this should maybe work and won't get indecies
 %otherwise
 
-behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*3 zeros(1,length(obs_context))];
+%2022-08-30 update: TEST************************************************
+%Not doing any delays to see how this interacts with the full rank problem
+behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*0 zeros(1,length(obs_context))];
 % For now I will assign all behavioral events as event type 3
 %Event Type 1 = Whole trial
 %Event Type 2 = from stimulus onset to the rest of the trial
@@ -506,9 +551,14 @@ regIdx(low_events_idx)=[];
 % % standarize analog regressors
 % % fullR(:,analoginds) = (fullR(:,analoginds)- mean(fullR(:,analoginds),1))./std(fullR(:,analoginds));
 % % 
-% % Churchland median centered the neuronal data, so we will do the same.
-% % Vc = (Vc - median(Vc,1));
 
+if smooth_fr
+    for br = 1:length(BRs)
+        
+        Results(br).fr = Results(br).fr - mean(Results(br).fr,1);
+
+    end
+end
 
 %% Stage 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -586,7 +636,7 @@ Empty_vars(2,:) = cellfun(@isempty, Reg_mapping(4,:));
 %rank matrix.
 
 
-kfolds = 1; 
+kfolds = 10; 
 for br = 1:2%length(BRs) For now not running all as this seems silly
     
     Y = Results(br).Spikes;
@@ -623,11 +673,11 @@ for br = 1:2%length(BRs) For now not running all as this seems silly
 
 %2022-08-29: For now only have these to shuffle.  Can add/remove as needed
 
-model_names = {'Full','Subj_shuff', 'Part_shuff', 'Context_shuff'}; %Full is a place holder from above; 
+model_names = {'Full','Subj_shuff', 'Part_shuff', 'Context_shuff', 'all_shuffled'}; %Full is a place holder from above; 
 
 %2022-08-30: Create lists of variable names to be shuffled in each "model"
 %/analysis.  For now just do this manually.  Can set up something clever
-%later if needed.
+%later if needed...Added shuffling everything as a null model/sanity check
 
 shuffling_vars = cell(length(model_names),1);
 
@@ -646,14 +696,22 @@ shiftamt = shiftamt+length(shuffling_vars{3});
 shuffling_vars{4} = {Reg_mapping{1,shiftamt+1:...
     shiftamt+size(X_groups{3},2)}};
 
+shuffling_vars{5} = {Reg_mapping{1,:}};
+
 %% Make shuffled design matrices, rerun QR check
+%2022-08-30 Make sure partner and subject aren't accidentally the same.
+%Double checked and they are not exactly the same and think initial weird
+%result may be due to the overfitting from not really cross validating.
+%To be safe though making sure to shuffle the rng so they are more
+%different (corr2 shows they are .6 correlated in last run so that also
+%could be an issue)
 
 X_shuff = cell(1,length(model_names));
 regIdx_shuff = cell(1,length(model_names));
 
 for shuff = 2:length(model_names)
     %Get all regressors to shuffle
-    
+    rng('shuffle') %Just because getting odd results with partner and subject looking similar
     shuffle_inds = [];
     
     for var = 1:length(shuffling_vars{shuff}) %If variable is empty it won't be addeed to shuffle_ind as we are just concatenating an empty array
@@ -698,7 +756,7 @@ end
 
 %% Run second loop: Shuffled analyses
 
-for br = 1:length(BRs)
+for br = 1:length(BRs)-1 %don't do all
     
     Y = Results(br).Spikes;
 
@@ -710,8 +768,8 @@ for br = 1:length(BRs)
 
     
     for exper = 2:length(model_names)
-        display(['Working on model #' num2str(exper)])
-        display('') %just add a quick space to make this more visually apparent as it goes b
+         fprintf(['Working on model #' num2str(exper) '\n'])
+        
         X = X_shuff{exper};
         
  
@@ -738,13 +796,84 @@ for br = 1:length(BRs)
     
 end
 
-'Stop at this line to take a look'
 
-%% Do comparisons between Full and shuffled models
-%Put this in Results.Stats instead of what we did before.
+
+%% Get Overall Statistics
+
+%2022-08-30: Think this is again a case of overfitting but just to note how
+%bad this is, even the shuffled data - which does tank the distribution of
+%well fit neurons some how manages to have an okay overall R^2 in this
+%analayis.  So either this analysis is being implemented wrong or the power
+%of overfitting is even stronger than I thought it was.
+
+%For now just calculate R^2 as we did for T and T 2022
+%I think we need to adjust the R^2 for the varying amount of regressors
+%(parameters) between the models, but add this in a bit.
+
+%Get distribution of p values for each variable as well
+
+
+%Turn Reg_mapping into a table for ease of use later on
+%NOTE******FOR NOW NEED TO MANUALLY EDIT NAMES OF COLUMNS FOR EXPERIMENTS**
+%Later figure out how to automate this.
+Reg_table = cell2table(Reg_mapping','VariableNames',{'Variable Name', 'Observation Label','Reg preQR', 'Reg in Fullmdl',...
+    'Reg in SubShuff','Reg in PartShuff','Reg in ContShuff', 'Reg in AllShuff'});
+
+
+%For convenience of getting regressor values for full matrix in this loop
+X_shuff{1} = fullR; %Need that info to due adjusted R^2 or other things that require knowing the degrees of freedom.
+
+for br = 1:length(BRs)-1 %Not doing all for now
+    
+    for md = 1:length(model_names)
+        %First get overall R2 between data and prediction.
+        
+        if smooth_fr
+            Results(br).model(md).R2_overall = corr2(Results(br).fr,Results(br).model(md).Y_hat).^2; %Add subtraction of observations over regressor numbers (using 
+        else
+           Results(br).model(md).R2_overall = corr2(Results(br).Spikes,Results(br).model(md).Y_hat).^2;
+        end
+        
+        %Next get p_values organized by variable 
+        
+    end
+
+end
+
+
+
+%% Do cross model comparisons
+%Again for now just doing what we did in T and T 2022: delta R^2
+%Putting this in stats in first branch of Results as this is a comparison
+%across models
+
+for br=1:length(BRs)-1
+    
+    for diff = 2:length(model_names)
+        %just doing this for now to see the results quickly at the end
+        temp =  Results(br).model(1).R2_overall - Results(br).model(diff).R2_overall;
+        Results(br).Stats(diff).deltaR2 = temp;
+        
+    end
+    
+end
+
+
+
 %% Save final Results
-%save(['YOUR PLACE TO SAVE COULD BE HERE!!!!!'],'Results')
+%save(['YOUR PLACE TO SAVE COULD BE HERE!!!!!'],'Results', 'Reg_table')
 end %Session loop end 
+
+
+
+
+
+
+
+
+
+
+
 %% Old code sections
 %%  1 Runs 1st loop with cross validation
 

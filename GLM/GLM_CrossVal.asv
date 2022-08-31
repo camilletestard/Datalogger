@@ -64,7 +64,7 @@ if kfolds >1
     problem_reg = [];
     while ~good && counter <= 100
         counter = counter+1;
-        display(['Making sure subsampled design matrix for all folds is full rank. Try #' num2str(counter)])
+        display(['Making sure design matrid for all folds is full rank. Try #' num2str(counter)])
         randIdx = randperm(size(Y,1)); %Get randperm of indecies for whole session
         %Need to due permentation instead of just a partition since we have the
         %block design (i.e. don't want fits that are only block 1 or block 2)
