@@ -100,7 +100,7 @@ end
             %functions is the right one and need to review again what the
             %differences are.  For now do this and deal with the difference
             %later tonight after sure the rest of the code runs.
-            sigma = 5;
+            sigma = 2;
             gauss_range = -3*sigma:3*sigma; %calculate 3 stds out, use same resolution for convenience
             smoothing_kernel = normpdf(gauss_range,0,sigma); %Set up Gaussian kernel
             smoothing_kernel = smoothing_kernel/sum(smoothing_kernel);
@@ -148,36 +148,36 @@ nan_inds = nan_counts > 0;  %Naturally anything that has a count greater than 0 
 %Change this so it doesn't occur.
 %Change this so you can have more than one behavior in a frame.
 
- behavior_labels_subject = labels(:,3); %Extract all behavior info for subject
-        behavior_labels_partner = labels_partner(:,3); %Extract all behavior info for partner
+ behavior_labels_subject = labels(:,2); %Extract all behavior info for subject
+        behavior_labels_partner = labels_partner(:,2); %Extract all behavior info for partner
 
-        % Set proximity as rest
-        prox_ind = find(behav_categ=="Proximity");
-        %Not exactly sure the best way to do this...not sure how to do this
-        %as a cellfun.  For now just going to do a for loop  to move on.
-        
-        
-   %NOTE: ASSUMES THAT REST/UNIDENTIFIED IS ALWAYS MAX NUMERIC LABEL
-        
-        for i = 1:length(behavior_labels_partner)
-            
-             check_inds = behavior_labels_subject{i,:} == prox_ind;
-            
-            if any(check_inds)
-            
-                behavior_labels_subject{i}(check_inds) = length(behav_categ);
-            
-            end
-            
-            check_inds = behavior_labels_partner{i,:} == prox_ind;
-            
-            if any(check_inds)
-            
-                behavior_labels_partner{i}(check_inds) = length(behav_categ);
-            
-            end
-            
-        end
+%         % Set proximity as rest
+%         prox_ind = find(behav_categ=="Proximity");
+%         %Not exactly sure the best way to do this...not sure how to do this
+%         %as a cellfun.  For now just going to do a for loop  to move on.
+%         
+%         
+%    %NOTE: ASSUMES THAT REST/UNIDENTIFIED IS ALWAYS MAX NUMERIC LABEL
+%         
+%         for i = 1:length(behavior_labels_partner)
+%             
+%              check_inds = behavior_labels_subject{i,:} == prox_ind;
+%             
+%             if any(check_inds)
+%             
+%                 behavior_labels_subject{i}(check_inds) = length(behav_categ);
+%             
+%             end
+%             
+%             check_inds = behavior_labels_partner{i,:} == prox_ind;
+%             
+%             if any(check_inds)
+%             
+%                 behavior_labels_partner{i}(check_inds) = length(behav_categ);
+%             
+%             end
+%             
+%         end
 
 %Temporary joining of those cells so I can easily check subject and partner behavior        
 Behavs = [behavior_labels_subject behavior_labels_partner];
@@ -214,12 +214,6 @@ Behavs = [behavior_labels_subject behavior_labels_partner];
 
 %State-events refer to all non-kinematic, binary regressors.
 
-%update 2022-08-23 trying to see to what extent code Camille already wrote
-%needs to be changed.  I don't love doing it this way as
-%this is again goes back to having a massive script, but going to use it as
-%a starting point and then change it as needed...
-%This is really super janky and messy so probably just rewrite things so
-%there are consistent coding conventions throughout.
 
 %% Step 2.0 Set options for time event kernels
 
@@ -234,7 +228,7 @@ opts.Fs = temp_resolution;
 opts.mPreTime = round(2 * opts.Fs); %motor pre time
 opts.mPostTime = round(2 * opts.Fs); %motor post time
 motorIdx = [-(opts.mPreTime: -1 : 1) 0 (1:opts.mPostTime)]; %index for design matrix to cover pre- and post motor action
-
+opts.folds = 10; %2022-08-31 since now using T and T 2022 code this needs to be in opts
 
 
 %% Step 2.1 Get labels for each state-event variable group
@@ -243,9 +237,6 @@ motorIdx = [-(opts.mPreTime: -1 : 1) 0 (1:opts.mPostTime)]; %index for design ma
 %First get labels for all subject, partner, and context variables so we
 %know how many variables we have to start with
 
-%Update 2022-08-29 need to remove proximity here!
-
-prox_ind = find(behav_categ == 'Proximity');
 
 
 %Observations x behavior label
@@ -259,55 +250,10 @@ obs_statevents_subject = unique(cell2mat(labels(:,3)));
 %For now just repeat.  Later have this be either structure or a cell
 %and have a function that adds to it as needed.
 
-
-obs_statevents_subject( obs_statevents_subject == prox_ind) = []; %Remove proximity as an observed event
-
 obs_statevents_partner = unique(cell2mat(labels_partner(:,3)));
+obs_statevents_partner = setdiff(obs_statevents_partner,reciprocal_set);
+%Remove repricoal behaviors according to load in function
 
-%Update 2022-08-30 removing partner groom other as this is redundant with
-%getting groomed for the subject...okay know partner drinking is causing
-%the issue.  Again just try removing these for now so we can at least run
-%the cross validation without the delays (maybe with if this is the source
-%of all the issues)...it feels like this problem just keeps cropping up
-%with new behaviors each time I eliminate one, but curious to see how far
-%this goes, particularly since they are all partner behaviors...okay now I
-%am just done as it selected rest which seems like it should definitely not
-%be redundant with any behaviors...on second thought.  Let's also just
-%change the beginning so there is only one behavior per moment as that
-%might fix a lot of this too...This did not fix the issue and there still
-%are problems on some runs.
-%Update: below combination looks like it consistently works at least when
-%there are no delays.  Trying delays now...delays still does not work.
-%Okay.  Let's see it run with the delays taken out so we at least have that
-%and then I can go in and try the lassoglm function and if that fails/isn't good try
-%to pull from the regularization function Pillow has.
-
-
-
-
-%...this also speaks to need to add regularization to the regression in the hopes that should resolve the rank
-%collapsing issues for the design matrix...I think this demands just using the
-%regularization to deal with this issue even if that means having to go
-%back in and change the code/how we get the results out.
-
-pgp_ind = find(behav_categ == "Groom partner");
-pgg_ind = find(behav_categ == "Getting groomed");
-pfor_ind = find(behav_categ == "Foraging");
-pdr_ind = find(behav_categ =="Drinking");
-papp_ind = find(behav_categ =="Approach");
-pagg_ind = find(behav_categ == "Aggression");
-pttp_ind = find(behav_categ=="Threat to partner");
-
-obs_statevents_partner( obs_statevents_partner == prox_ind) = []; %Remove proximity as an observed event
-obs_statevents_partner(obs_statevents_partner == pgp_ind) = []; %Remove partner giving grooming as this is redundant with subject receiving.
-obs_statevents_partner(obs_statevents_partner == pgg_ind) = []; %Remove because vice versa for getting groomed
-
-%Removing all below due to rank issues.
-obs_statevents_partner(obs_statevents_partner == pfor_ind) = []; 
-obs_statevents_partner(obs_statevents_partner == pdr_ind) = []; 
-% obs_statevents_partner(obs_statevents_partner == papp_ind) = [];
-obs_statevents_partner(obs_statevents_partner == pagg_ind) = [];
-obs_statevents_partner(obs_statevents_partner == pttp_ind) = [];
 
 obs_context = 1:size(block_times,1); %For now just considering the three different blocks for context.
 
@@ -316,19 +262,13 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner} ,{obs_conte
 %
 %% Step 2.2 Create base regressors for each state-event variable and regressor mapping
 
-%For first try trying to save each variable group into it's own cell in
-%X_groups with all of the information before we combine or add additional
-%regressors for time event kernel
-
-%Update 2022-08-23 Reg_mapping may not work as inteded on on second thought but
-%leaving there for now.  
 
 %+1 for kinematics
     X_groups = cell(1,length(obs_statevents)+1);  
     
     Reg_mapping = cell(1,length(obs_statevents)+1);
     
-    for this_mat = 1:size(Behavs,2) %Currently this loop only works for the behaviors.  Will need to write a separate and exteneded loop for Context
+    for this_mat = 1:size(Behavs,2) %This loop is geared toward behaviors or variable groups where more than one event can occur at each time point
     
     X_groups{this_mat} = zeros(length(Spike_rasters), length(obs_statevents{this_mat}));
     
@@ -374,7 +314,7 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner} ,{obs_conte
     
   
     
-    end %End loop for setting this up for behaviors
+    end %End loop for setting up variable groups with multiple staets
     
     %Do the same thing for context which is only block id for now.  Can't
     %be added easily to above loop or put into some general function since
@@ -401,7 +341,7 @@ obs_statevents = [{obs_statevents_subject}, {obs_statevents_partner} ,{obs_conte
     end
     
     Reg_mapping{2}(1,:) = append('partner.',Reg_mapping{2}(1,:)); %Add this now to prevent confusion later.
-%% Step 2.3 First concatenation, get names and regressors
+%% Step 2.3 Setup Design Matrix - Behavioral Events
 
 %Combine behavioral events
 behavEvents=horzcat(X_groups{1:3});
@@ -414,33 +354,22 @@ behavEventNames = horzcat(Reg_mapping{1}(1,:)...
 
 
 %Set up event type here.
-%Note: not creating delays for context variables for now.  Need to see if
-%this messes up the next part of the code.  If so I guess make context
-%"whole trial" and set something up in that code.  Update going to add
-%zeros to the end as this should maybe work and won't get indecies
-%otherwise
-
-%2022-08-30 update: TEST************************************************
-%Not doing any delays to see how this interacts with the full rank problem
-behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*0 zeros(1,length(obs_context))];
+behavEventTypes= [ones(1,length(behavEventNames)-length(obs_context))*3 zeros(1,length(obs_context))];
 % For now I will assign all behavioral events as event type 3
 %Event Type 1 = Whole trial
 %Event Type 2 = from stimulus onset to the rest of the trial
 %Event Type 3 = from before movement onset to after movement onset (pre & post time)
 
-%% Setup Design Matrix - Behavioral Events
+
 
 
 
 %Creates task regressors with the time varying kernels as described in Churchland
 [behavR, behavIdx] = log_makeDesignMatrix(behavEvents, behavEventTypes, opts);
 
-%2022-08-23: Not going to do it now, but if needed/desired could make a
-%loop here to put info from behavIdx into Reg_mapping.  For now skipping
-%because I don't think we need it.
 
 
-%% Setup Design Matrix - Movement
+%% Step 2.4 Setup Design Matrix - Movement
 
 %Add later this week and take code from previous attempts.  For now focus
 %on getting GLM loop working (stage 3).
@@ -449,7 +378,7 @@ moveR = [];
 moveIdx = [];
 
 
-%% Combine Design Matrix; get mapping to groups
+%% Step 2.5 Combine Design Matrix; get mapping to groups
 
 %Combine Design Matrix
 fullR=[behavR, moveR];
@@ -460,32 +389,14 @@ regIdx =[behavIdx; moveIdx']; %check why moveIdx is transposed..........
 %Collect all mappings together
 
 Reg_mapping = horzcat(Reg_mapping{:});
-% 
-% %2022-08-30: Very inelegant solution, but for the sake of keeping track of
-% %how the regressors map to the variables keep looping through this as we
-% %remove/change regIdx and updating or dropping variables as needed.  This
-% %first step puts all of the indices of the regIdx with their respective
-% %variables  before we remove any.  Use all_vars and length of unique regIdx
-% %here to make sure there are no issues at the beginning, then switch to
-% %using the length of Reg_mapping as we may have to remove variables as we
-% %go if all their regressors are removed.
-% 
-% all_vars =unique(regIdx);
-% for vars = 1:length(all_vars)
-%     
-%     Reg_mapping{3,vars} = find(regIdx == all_vars(vars));
-%    
-%     
-% end
 
 
 disp('Design Matrix base Setup Done')
 
 
 
-%% Remove nans
-%2022-08-24 even though not yet using the kinematics leaving this in to
-%make sure there aren't any issues.
+%% Step 2.6 Remove nans
+
 
 nan_per = sum(nan_inds)/size(fullR,1) * 100; %Amount of session lost, note nan_inds is calculated when kinematics are loaded
 
@@ -506,7 +417,6 @@ end
 
 %2020-12-19 CT: Remove regressors with less than 10 events (as in
 %Musall et. al. 2019)
-%2022-08-24 ask Cam about this for the GLM.  We do lose several regressors.
 
 low_events_idx= find(sum(fullR,1)<10);
 fullR(:,low_events_idx)=[];
@@ -514,7 +424,7 @@ regIdx(low_events_idx)=[];
 
 
 
-%% Unclear if will do this yet.  For now leave commented. 
+%% Step 2. 7 Standardize and/or center
 
 %2022-08-29: Firing rate:  switch to taking out
 %mean. Don't standardize
@@ -546,35 +456,16 @@ end
 fullR_hold = fullR;
 regIdx_hold = regIdx;
 
-[rejIdx, median_val, min_val, max_val,] = log_run_QR(fullR, 1); %Have this spit out all of the numbers for the first round
-%Then surpress plotting and extra numbers for the subsequent rounds
-%Recall values of zero mean things are co-linear/redunant according ot the
-%QR check.
-%2022-08-28: looks like we remove about 30 regressors in the current set up
+[rejIdx, median_val, min_val, max_val,] = log_run_QR(fullR, 1); %Have this spit out all of the numbers for full model
 
-%2022-08-29: Need to fix this part
-
-%2022-08-30: Updated above so there are no values in row three.  Set it as
-%blank for all variables then fill in the regressors they have in the
-%design matrix after the nan check for low events.  Fill in a forth row
-%with the regressors indices after the QR check for the full matrix. Keep
-%adding rows for each experiment after the QR check and then make a table
-%at the end so things are clear.
-
-%2022-08-30 This works and leaves empty vectors for the variables that are
-%gone from the low event check.  Saving empty vars in rows based on when
-%they are taken out for diagnostic purposes right now.
 
 all_vars =unique(regIdx);
 for vars = 1:length(all_vars)
     
     Reg_mapping{3,all_vars(vars)} = find(regIdx == all_vars(vars));
    
-    
-    
 end
 
-Empty_vars(1,:) = cellfun(@isempty, Reg_mapping(3,:));
 
 %Remove regressors rejected by the QR check
 fullR(:,rejIdx) = [];
@@ -589,17 +480,23 @@ for vars = 1:length(all_vars)
     
 end
 
-Empty_vars(2,:) = cellfun(@isempty, Reg_mapping(4,:));
 
-%Update 2022-08-30: Great, this all works and Reg_mapping as the intended
-%information.  Now we can grab regressors by variable name and picking the
-%correct row post QR check.
 
 %% Run first loop (main model for each brain region)
 
 %2022-08-31: Change this to work with Churchland functions
+%We technically could change the function to just take Reg_mapping as it
+%has all of the information needed.  But for the sake of not complicating
+%things just take the needed information from Reg_mapping.  Unless this
+%becomes a pain then I'm just going to edit the code to take Reg_mapping
+%instead. Update: this was actually a remarkably easy change.  Need to
+%double check that everything is working as intended
 
-kfolds = 10; 
+%2022-08-31
+
+regLabels = Reg_mapping(1,:); %This is always all the labels in the full design matrix
+usedLabels = Reg_mapping(1,:); %This is also always all the labels since we use a shuffling paradigm.  Helpfully though if we want to do subsets we can do it the same way we handle the shuffling loop set up below
+
 for br = 1:2%length(BRs) For now not running all as this seems silly
     
     Y = Results(br).Spikes;
@@ -614,20 +511,31 @@ for br = 1:2%length(BRs) For now not running all as this seems silly
     
     X = fullR;
    
-   %2022-08-29 for now putting in as fields under Results(br).model
-   %2022-08-31 (late night of 08-30 actually) trying regulariztion glm
-   %fit with lassoglm
-   [Y_hat,Betas,CIs,R2_per,LL_per,pvalues,pn] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
+   %2022-08-31 replace GLM with just ridge regression from T and T 2022.
+   %Adjust fields in results accordingly...looks like a pretty straight
+   %subsititution so far.  NOTE requires the ridge regression folder in
+   %this repo to be on path so it has access to all the needed functions.
+   %And just copied over the mml function to that folder now.
    
+   [Y_hat, Betas, ~, Idx, Ridge, Labels] = log_crossValModel(X, Y, regLabels, regIdx, regLabels, opts.folds);
    Results(br).model(1).name = 'Full';
    
-   Results(br).model(1).Y_hat = Y_hat; %Estimated spike rate for all neurons
-   Results(br).model(1).Betas = Betas; %Beta values for each neuron (avg over cv)
-   Results(br).model(1).CIs = CIs; %Confidence intervals for each beta for each neuron (avg over cv)
-   Results(br).model(1).R2_per = R2_per; %Adjusted R^2 for each neuron (avg over cv)
-   Results(br).model(1).LL_per = LL_per; %Loglikelihood for the fit of each neuron (avg over cv)
-   Results(br).model(1).pvals = pvalues; %pvalue for each regressor for each neuron (currently average over cv but will switch to fisher's method ASAP)
-   Results(br).model(1).pn = pn; %Bool vector with true values for neurons that throw a warning during the fit at any point.
+   Results(br).model(1).Y_hat = Y_hat'; %Estimated spike rate for all neurons, transpose because of how the above function works.
+   Results(br).model(1).Betas = Betas; %Beta values for each neuron (cells for each cross validation fold...could average these I suppose, leaving alone for now)
+
+   Results(br).model(1).R2_overall = corr2(Y_hat',Y).^2; %With the above function easier to get the overall here.
+   %Change later portion where we get the overall to get the per neuron for each model and then the diff
+
+   %To do: figure out a way to get the below information from the above
+   %function.  Will need some customization for sure since the easiest
+   %place to get the CI is to have the fisher information during the
+   %optimization process.  Regardless, there has to be some way to estimate
+   %the CI around the betas for each fold and conduct some significance
+   %tests so we can have the below.
+%    Results(br).model(1).CIs = CIs; %Confidence intervals for each beta
+%    for each neuron (avg over cv) % We don't have this
+%    Results(br).model(1).pvals = pvalues; %pvalue for each regressor for each neuron (currently average over cv but will switch to fisher's method ASAP)
+
    
  end
 
@@ -735,24 +643,22 @@ for br = 1:length(BRs)-1 %don't do all
     for exper = 2:length(model_names)
          fprintf(['Working on model #' num2str(exper) '\n'])
         
-        X = X_shuff{exper};
-        
+         X = X_shuff{exper};
+         
  
          Results(br).Data{exper} = X;
         
-          %2022-08-29 for now putting in as fields under Results(br).model
-         [Y_hat,Betas,CIs,R2_per,LL_per,pvalues,pn] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
+         [Y_hat, Betas, ~, Idx, Ridge, Labels] = log_crossValModel(X, Y, regLabels, regIdx_shuff{exper}, regLabels, opts.folds);
+         
 
          Results(br).model(exper).name = model_names{exper};
+         Results(br).model(exper).Y_hat = Y_hat'; %Estimated spike rate for all neurons, transpose because of how the above function works.
+         Results(br).model(exper).Betas = Betas; %Beta values for each neuron (cells for each cross validation fold...could average these I suppose, leaving alone for now)
+         Results(br).model(exper).R2_overall = corr2(Y_hat',Y).^2; %Get overall R^2 here
 
-         Results(br).model(exper).Y_hat = Y_hat; %Estimated spike rate for all neurons
-         Results(br).model(exper).Betas = Betas; %Beta values for each neuron (avg over cv)
-         Results(br).model(exper).CIs = CIs; %Confidence intervals for each beta for each neuron (avg over cv)
-         Results(br).model(exper).R2_per = R2_per; %Adjusted R^2 for each neuron (avg over cv)
-         Results(br).model(exper).LL_per = LL_per; %Loglikelihood for the fit of each neuron (avg over cv)
-         Results(br).model(exper).pvals = pvalues; %pvalue for each regressor for each neuron (currently average over cv but will switch to fisher's method ASAP)
-         Results(br).model(exper).pn = pn; %Bool vector with true values for neurons that throw a warning during the fit at any point.
+         
 
+   
         
         
     end
@@ -763,27 +669,20 @@ end
 
 
 
-%% Get Overall Statistics
-
-%2022-08-30: Think this is again a case of overfitting but just to note how
-%bad this is, even the shuffled data - which does tank the distribution of
-%well fit neurons some how manages to have an okay overall R^2 in this
-%analayis.  So either this analysis is being implemented wrong or the power
-%of overfitting is even stronger than I thought it was.
-
-%For now just calculate R^2 as we did for T and T 2022
-%I think we need to adjust the R^2 for the varying amount of regressors
-%(parameters) between the models, but add this in a bit.
-
-%Get distribution of p values for each variable as well
-
+%% Get Additional Statistics
 
 %Turn Reg_mapping into a table for ease of use later on
 %NOTE******FOR NOW NEED TO MANUALLY EDIT NAMES OF COLUMNS FOR EXPERIMENTS**
-%Later figure out how to automate this.
+%Later figure out how to automate this.  Update have an idea using the
+%append function just need to figure out how to make the whole cell array
+%before passing it to this...leave alone for now 
+
 Reg_table = cell2table(Reg_mapping','VariableNames',{'Variable Name', 'Observation Label','Reg preQR', 'Reg in Fullmdl',...
     'Reg in SubShuff','Reg in PartShuff','Reg in ContShuff', 'Reg in AllShuff'});
 
+%2022-08-31: Changed this code to calculate the per neuron R2 for all
+%neurons for each model.  This is simply the diagonal of the correlation
+%matrix between the predicted data and the real data.
 
 %For convenience of getting regressor values for full matrix in this loop
 X_shuff{1} = fullR; %Need that info to due adjusted R^2 or other things that require knowing the degrees of freedom.
@@ -794,9 +693,9 @@ for br = 1:length(BRs)-1 %Not doing all for now
         %First get overall R2 between data and prediction.
         
         if smooth_fr
-            Results(br).model(md).R2_overall = corr2(Results(br).fr,Results(br).model(md).Y_hat).^2; %Add subtraction of observations over regressor numbers (using 
+            Results(br).model(md).R2_per = diag(corr(Results(br).fr,Results(br).model(md).Y_hat)).^2; 
         else
-           Results(br).model(md).R2_overall = corr2(Results(br).Spikes,Results(br).model(md).Y_hat).^2;
+           Results(br).model(md).R2_per = diag(corr(Results(br).Spikes,Results(br).model(md).Y_hat)).^2;
         end
         
         %Next get p_values organized by variable 
