@@ -155,8 +155,8 @@ fake_x = normrnd(0,1,size(labels,1),1);
 fake_y = normrnd(0,1,size(labels,1),1);
 
 nan_per = 0; %Set percent (as decimal) of nans each individual fake regressor gets
-fake_x(randsample(length(fake_x),round(.1*length(fake_x))),1) = NaN;
-fake_y(randsample(length(fake_y),round(.1*length(fake_y))),1) = NaN;
+fake_x(randsample(length(fake_x),round(nan_per*length(fake_x))),1) = NaN;
+fake_y(randsample(length(fake_y),round(nan_per*length(fake_y))),1) = NaN;
 
 kinematics = [fake_x fake_y];
 
