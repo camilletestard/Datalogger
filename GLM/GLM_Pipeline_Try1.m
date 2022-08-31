@@ -660,6 +660,8 @@ for br = 1:2%length(BRs) For now not running all as this seems silly
     X = fullR;
    
    %2022-08-29 for now putting in as fields under Results(br).model
+   %2022-08-31 (late night of 08-30 actually) trying regulariztion glm
+   %fit with lassoglm
    [Y_hat,Betas,CIs,R2_per,LL_per,pvalues,pn] = GLM_CrossVal(X,Y,kfolds,smooth_fr);
    
    Results(br).model(1).name = 'Full';

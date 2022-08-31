@@ -36,26 +36,7 @@ Y_hat = NaN(size(Y)); %Prediction for all time points for each neuron, concatena
 %Divide these into approximately kfolds groups (up to a rounding)
 foldCnt = floor(size(Y,1)/kfolds);
 
-%% Check each fold of the design matrix is full rank
-%If not, keep redoing the permutaion until they are.
 
-%Update 2022-08-30: It is clear that this won't work as it seems need over
-%95% of the data to be in the fold to guarantee that the train design
-%matrix is full rank.  For now, solve this by seeing what regressors they
-%are.  Just read an article explaining Pillow's point about regularization
-%though.  It can prevent rank issues by introducing an additional term that
-%will change the approximately zero singular values in the matrix to a
-%non-zero factor and allow for the Moore-Penrose Inverse.  See this link
-%for quick details: https://calculatedcontent.com/2018/09/21/rank-collapse-in-deep-learning/
-%Further update: Looks like even with NO delays variable 26 almost always
-%caues an issue in at least one of the folds and sometimes variable 25
-%does.  These are partner variables so maybe we can just do without for
-%now?  These are groom partner which make sense to be redunant with getting
-%groomed in subject and foraging which is a surprise but eh.
-
-%Removing partner grooming subject did not fix overall problem (with the
-%delays) but does seem like it may have fixed the problem when there are no
-%delays.
 
 if kfolds >1
        
@@ -65,6 +46,12 @@ if kfolds >1
     
    
 end
+
+%Update 2022-08-31: losing confidence in lassoglm.  May instead go for
+%Pillow code with regularization which should be ridge regression
+%regularization.  Either way we don't get the p-value for regressors (i.e.
+%significance test for the betas) or a confidence interval around the betas
+%to test this.
 %% Loop over each neuron
 
 %Update 2022-08-29 might want to save more stuff than this, but I think
@@ -101,13 +88,16 @@ lastwarn('','') %empty warning tracker before each model fit
             %Annoyingly think we mave to do cross validation inside of
             %cross validation to get correct level of regularization for
             %each fold.
-            mdl = lassoglm(X(dataIdx,:),Y_cur(dataIdx),'normal','CV',10); 
+            %Have to Standardize movements before we get into this loop
+            %don't want to standardize event data.
+            
+            [B,mdl] = lassoglm(X(dataIdx,:),Y_cur(dataIdx),'normal','CV',5,'Alpha',.1,'Standardize',false); 
             warning_thrown = lastwarn;
             
            
         else %Use Poisson
             
-            mdl = fitglm(X(dataIdx,:),Y_cur(dataIdx), 'poisson','CV',10);
+            [B,mdl]  = fitglm(X(dataIdx,:),Y_cur(dataIdx), 'poisson','CV',10);
             warning_thrown = lastwarn; 
         end
         
