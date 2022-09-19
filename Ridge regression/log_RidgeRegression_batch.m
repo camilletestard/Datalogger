@@ -33,7 +33,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=2;
+s=1;
 for s =session_range([1,3:length(session_range)]) %1:length(sessions)
 
     %Set path

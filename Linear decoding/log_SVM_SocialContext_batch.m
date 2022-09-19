@@ -90,8 +90,10 @@ for s =session_range %1:length(sessions)
 
         %% Select behaviors to decode
 
-        % Select behaviors which occur in multiple blocks
-        behav =[find(matches(behav_categ,'Groom partner')), find(matches(behav_categ,'Getting groomed'))]; %manually select behaviors of interest
+        for behav = [5, 7, 8, 9, 10, ]
+        
+            % Select behaviors which occur in multiple blocks
+        %behav =[find(matches(behav_categ,'Groom partner')), find(matches(behav_categ,'Getting groomed'))]; %manually select behaviors of interest
         %behav =[find(matches(behav_categ,'Threat to subject')), find(matches(behav_categ,'Threat to partner'))];
         %behav = find(matches(behav_categ,'Rest'));
 

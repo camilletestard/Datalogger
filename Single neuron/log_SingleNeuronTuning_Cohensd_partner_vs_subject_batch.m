@@ -14,8 +14,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =1;
@@ -23,15 +23,19 @@ temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
-plot_toggle = 0; %Plot individual session plots
+plot_toggle = 1; %Plot individual session plots
+min_occurrence =30;
+cohend_cutoff=0.3; p_cutoff=0.01;%Set thresholds
+smooth= 1; % 1: smooth the data; 0: do not smooth
+sigma = 1;%set the smoothing window size (sigma)
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 %Initialize variables:
@@ -55,7 +59,7 @@ prop_subject_but_notSubject = nan(max(session_range), nbeh);
 prop_same_direction = nan(max(session_range), nbeh);
 
 s=1;
-for s =session_range %1:length(sessions)
+for s =session_range(3:6) %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
@@ -65,13 +69,18 @@ for s =session_range %1:length(sessions)
 
     %Get data with specified temporal resolution and channels
     if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma);
     else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
+            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma);
     end
 
     session_length = size(Spike_rasters,2); % get session length
-    Spike_count_raster = Spike_rasters';
 
     %Extract behavior labels for subject and partner
     behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
@@ -79,11 +88,20 @@ for s =session_range %1:length(sessions)
     behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
     behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
 
+    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+
+    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+
+    block_labels = cell2mat({labels{:,11}}'); %Extract block info
+    alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
+
     %% Get baseline firing from epochs where the partner rests idle.
 
     %Estimate "baseline" neural firing distribution.
-    %idx_rest= setdiff(find(behavior_labels_subject_init ==length(behav_categ)), idx_partner);%Get idx of "rest" epochs.
     idx_rest = intersect(find(behavior_labels_subject_init ==length(behav_categ)), find(behavior_labels_partner_init ==length(behav_categ)));
+%     idx_rest = find(behavior_labels_subject_init ==length(behav_categ));
     baseline_firing = Spike_rasters(:,idx_rest);
     mean_baseline = mean(baseline_firing,2);
     std_baseline = std(Spike_rasters(:,idx_rest),0,2);
@@ -95,16 +113,15 @@ for s =session_range %1:length(sessions)
     % Get indices where either:
     % 1. The subject is behaving and the partner is resting
     idx_sub = find(ismember(behavior_labels_subject_init,behav));
-    idx_part = find(ismember(behavior_labels_partner_init,behav)); %find the indices of the behaviors considered
-    idx_subject = setdiff(idx_sub, idx_part);
-    idx_partner = setdiff(idx_part, idx_sub);
-    idx = [idx_subject; idx_partner];
+    idx_part = find(ismember(behavior_labels_partner_init,behav) &...
+        ~ismember(behavior_labels_subject_init,behav));% &...
+        %block_labels~=alone_block_id); %find the indices of the behaviors considered
 
-    Spike_count_raster_partner = Spike_count_raster(idx_partner,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-    behavior_labels_partner = behavior_labels_partner_init(idx_partner);%Same as above but in behavior labels
+    Spike_rasters_partner = Spike_rasters(:,idx_part);%Only keep timepoints where the behaviors of interest occur in spiking data
+    behavior_labels_partner = behavior_labels_partner_init(idx_part);%Same as above but in behavior labels
 
-    Spike_count_raster_subject = Spike_count_raster(idx_subject,:);
-    behavior_labels_subject = behavior_labels_subject_init(idx_subject);
+    Spike_rasters_subject = Spike_rasters(:,idx_sub);
+    behavior_labels_subject = behavior_labels_subject_init(idx_sub);
 
     %Check what the subject is doing during partner behavior.
 %     behavior_labels_subject_during_partner_behav = behavior_labels_subject_init(idx_partner);
@@ -143,7 +160,7 @@ for s =session_range %1:length(sessions)
 
             if n_per_behav(b,1)>10 & n_per_behav(b,2)>10
 
-                if length(idx)<length(idx_rest)
+                if length(idxs)<length(idx_rest) & length(idxp)<length(idx_rest) 
                     idx_rand{1} = randsample(1:length(idx_rest),length(idxs));
                     idx_rand{2} = randsample(1:length(idx_rest),length(idxp));
                 else
@@ -152,8 +169,8 @@ for s =session_range %1:length(sessions)
                 end
 
                 %For subject
-                mean_beh(n,b,1)=mean(Spike_rasters(n, idxs),2);
-                std_beh(n,b,1)=std(Spike_rasters(n, idxs),0,2);
+                mean_beh(n,b,1)=mean(Spike_rasters_subject(n, idxs),2);
+                std_beh(n,b,1)=std(Spike_rasters_subject(n, idxs),0,2);
 
                 mean_beh_shuffle(n,b,1)=mean(baseline_firing(n, idx_rand{1}),2);
                 std_beh_shuffle(n,b,1)=std(baseline_firing(n, idx_rand{1}),0,2);
@@ -161,12 +178,12 @@ for s =session_range %1:length(sessions)
                 cohend(n,b,1) = (mean_beh(n,b,1)-mean_baseline(n)) ./ sqrt( (std_beh(n,b,1).^2 + std_baseline(n).^2) / 2);
                 cohend_shuffle(n,b,1) = (mean_beh_shuffle(n,b,1)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b,1).^2 + std_baseline(n).^2) / 2);
 
-                [~, p(n,b,1)] = ttest2(Spike_rasters(n, idxs), baseline_firing(n,:));
+                [~, p(n,b,1)] = ttest2(Spike_rasters_subject(n, idxs), baseline_firing(n,:));
                 [~, p_rand(n,b,1)] = ttest2(baseline_firing(n, idx_rand{1}), baseline_firing(n,:));
 
                 %For partner
-                mean_beh(n,b,2)=mean(Spike_rasters(n, idxp),2);
-                std_beh(n,b,2)=std(Spike_rasters(n, idxp),0,2);
+                mean_beh(n,b,2)=mean(Spike_rasters_partner(n, idxp),2);
+                std_beh(n,b,2)=std(Spike_rasters_partner(n, idxp),0,2);
 
                 mean_beh_shuffle(n,b,2)=mean(baseline_firing(n, idx_rand{2}),2);
                 std_beh_shuffle(n,b,2)=std(baseline_firing(n, idx_rand{2}),0,2);
@@ -174,12 +191,12 @@ for s =session_range %1:length(sessions)
                 cohend(n,b,2) = (mean_beh(n,b,2)-mean_baseline(n)) ./ sqrt( (std_beh(n,b,2).^2 + std_baseline(n).^2) / 2);
                 cohend_shuffle(n,b,2) = (mean_beh_shuffle(n,b,2)-mean_baseline(n)) ./ sqrt( (std_beh_shuffle(n,b,2).^2 + std_baseline(n).^2) / 2);
 
-                [~, p(n,b,2)] = ttest2(Spike_rasters(n, idxp), baseline_firing(n,:));
+                [~, p(n,b,2)] = ttest2(Spike_rasters_partner(n, idxp), baseline_firing(n,:));
                 [~, p_rand(n,b,2)] = ttest2(baseline_firing(n, idx_rand{2}), baseline_firing(n,:));
 
                 %Comparing partner and subject
                 cohend(n,b,3) = (mean_beh(n,b,1)-mean_beh(n,b,2)) ./ sqrt( (std_beh(n,b,1).^2 + std_beh(n,b,2).^2) / 2);
-                [~, p(n,b,3)] = ttest2(Spike_rasters(n, idxp), Spike_rasters(n, idxs));
+                [~, p(n,b,3)] = ttest2(Spike_rasters_partner(n, idxp), Spike_rasters_subject(n, idxs));
 
             end
 
@@ -194,6 +211,8 @@ for s =session_range %1:length(sessions)
     cohend_thresh = h.*cohend; cohend_thresh(cohend_thresh==0)=nan;
     cohend_shuffle_thresh = h_shuffle.*cohend_shuffle; cohend_shuffle_thresh(cohend_shuffle_thresh==0)=nan;
 
+    save_results{s,1}= cohend; save_results{s,2}= cohend_thresh;
+
     %% Plot heatmaps
     AxesLabels = behav_categ(behav);
     caxis_upper = 1.5;
@@ -207,19 +226,25 @@ for s =session_range %1:length(sessions)
 
     if plot_toggle
         figure; hold on; set(gcf,'Position',[150 250 1000 400]);
-        subplot(1,4,1); hp=heatmap(cohend_thresh(:,:,1), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
-        subplot(1,4,2); hp=heatmap(cohend_thresh(:,:,2), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
-        subplot(1,4,3); hp=heatmap([cohend_thresh(:,:,1)-cohend_thresh(:,:,2)], 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject - Partner')
-        subplot(1,4,4); hp=heatmap(cohend_thresh(:,:,3), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject vs. partner')
+        subplot(1,2,1); hp=heatmap(cohend_thresh(:,:,1), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
+        subplot(1,2,2); hp=heatmap(cohend_thresh(:,:,2), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
+       
+%         subplot(1,4,1); hp=heatmap(cohend_thresh(:,:,1), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
+%         subplot(1,4,2); hp=heatmap(cohend_thresh(:,:,2), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
+%         subplot(1,4,3); hp=heatmap([cohend_thresh(:,:,1)-cohend_thresh(:,:,2)], 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject - Partner')
+%         subplot(1,4,4); hp=heatmap(cohend_thresh(:,:,3), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject vs. partner')
         sgtitle(['p<' num2str(cutoff)])
-        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER.png']);  pause(3);
+        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER.pdf']);  %pause(3);
 
         figure; hold on; set(gcf,'Position',[150 250 1000 400]);
-        subplot(1,3,1); hp=heatmap(sign(cohend_thresh(:,:,1)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
-        subplot(1,3,2); hp=heatmap(sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
-        subplot(1,3,3); hp=heatmap(sign(cohend_thresh(:,:,1))-sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject - Partner')
+        subplot(1,2,1); hp=heatmap(sign(cohend_thresh(:,:,1)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
+        subplot(1,2,2); hp=heatmap(sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
+ 
+%         subplot(1,3,1); hp=heatmap(sign(cohend_thresh(:,:,1)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject')
+%         subplot(1,3,2); hp=heatmap(sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Partner')
+%         subplot(1,3,3); hp=heatmap(sign(cohend_thresh(:,:,1))-sign(cohend_thresh(:,:,2)), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title('Subject - Partner')
         sgtitle(['Binarized heatmap, p<' num2str(cutoff)])
-        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER_binarized.pdf']); pause(3);
+        saveas(gcf, [savePath '/Cohend_heatmap_all_units_SUBJECT_VS_PARTNER_binarized.pdf']); %pause(3);
 
         close all
     end
@@ -238,7 +263,7 @@ for s =session_range %1:length(sessions)
     %Plot venn diagrams
     [row_sub, col_sub] = find(~isnan(cohend_thresh(:,:,1)));
     [row_part, col_part] = find(~isnan(cohend_thresh(:,:,2)));
-    %figure; set(gcf,'Position',[150 250 1000 300]);
+    figure; set(gcf,'Position',[150 250 1000 300]);
     for c = 1:length(behav)
         num_either_partner_or_subject(s,c) = length(unique([row_sub(col_sub==c); row_part(col_part==c)]));
         num_neither(s,c) = n_neurons(s) - num_either_partner_or_subject(s,c);
@@ -254,17 +279,17 @@ for s =session_range %1:length(sessions)
         num_subject_but_notSubject(s,c) = length(setdiff(row_sub(col_sub==c), row_part(col_part==c)));
         prop_subject_but_notSubject(s,c) = num_subject_but_notSubject(s,c)/n_neurons(s);
 
-%         subplot(1,length(behav),c)
-%         A = row_sub(col_sub==c);
-%         B = row_part(col_part==c);
-%         setListData = {A, B};
-%         setLabels = ['Subject';'Partner'];
-%         vennEulerDiagram(setListData, 'TitleText', behav_categ(behav(c)));
-%         clear A B C
+        subplot(1,length(behav),c)
+        A = row_sub(col_sub==c);
+        B = row_part(col_part==c);
+        setListData = {A, B};
+        setLabels = ['Subject';'Partner'];
+        vennEulerDiagram(setListData, 'TitleText', behav_categ(behav(c)));
+        clear A B C
     end
     prop_same_direction(s,:) = sum( (sign(cohend_thresh(:,:,1)) .* sign(cohend_thresh(:,:,2)))==1 )...
         ./ num_partner_and_subject(s,:) ;
-%     saveas(gcf, [savePath '/Venn_diagram_behavior.png']); pause(3); close all
+     saveas(gcf, [savePath '/Venn_diagram_subject_Vs_partner.png']);  close all
 
     if plot_toggle
         %Plot the distribution of effect sizes for each behavior
@@ -286,7 +311,7 @@ for s =session_range %1:length(sessions)
         %xticks(1:n_behav)
         xticklabels(AxesLabels(idx_sort))
         set(gca,'FontSize',15);
-        saveas(gcf, [savePath '/Distribution_cohend_partner_vs_subject.png']); pause(3); close all
+        saveas(gcf, [savePath '/Distribution_cohend_partner_vs_subject.pdf']); close all
 
         % %     %Plot the proportion of selective neurons per behavior
         % %     figure; hold on; set(gcf,'Position',[150 250 1000 500]);
@@ -334,6 +359,23 @@ end
 
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
+
+%Plot heatmap comparing subject and partner with ALL units
+all_sessions_data = cell2mat(save_results(:,1));
+data_subject = squeeze(all_sessions_data(:,:,1)); data_partner = squeeze(all_sessions_data(:,:,2));
+[~, sortIdx]= sort(nanmedian(data_subject,1));
+data_subject_sorted = data_subject(:,sortIdx); data_partner_sorted = data_partner(:,sortIdx); 
+AxesLabels_sorted = AxesLabels(sortIdx);
+figure; set(gcf,'Position',[150 250 1000 500]);
+subplot(1,2,1); 
+hp=heatmap(data_subject_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Subject'])
+ax = gca;
+ax.FontSize = 14;
+
+subplot(1,2,2);
+hp=heatmap(data_partner_sorted, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted; caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Partner'])
+ax = gca;
+ax.FontSize = 14;
 
 
 %Plot distribution of effect size per behavior across all sessions, separated by monkey
@@ -415,10 +457,10 @@ mean(nanmean(prop_same_direction(h_sessions,:)))
 
 X = [mean(nanmean(prop_same_direction)), 1-mean(nanmean(prop_same_direction))];
 explode = [1 1];
-pie(X,explode)
+figure; pie(X,explode)
 ax = gca;
 ax.FontSize = 16;
-lgd = legend({'Same response', 'Different response'});
+lgd = legend({'Same response', 'Different response'}, 'Location','best');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bar plot number of neurons selective for partner, subject, both, neither
@@ -438,7 +480,7 @@ sp1 = scatter(ones(1,length(a_sessions))*2,nanmean(prop_selective_per_behav_part
 sp1 = scatter(ones(1,length(a_sessions))*3,nanmean(prop_selective_per_behav_subject(a_sessions,:),2), 'filled','r');
 sp1 = scatter(ones(1,length(a_sessions))*4,nanmean(prop_partner_and_subject(a_sessions,:),2), 'filled','b');
 
-ylabel('Proportion of units'); ylim([0 0.7]); 
+ylabel('Proportion of units'); ylim([0 1]); 
 xticks([0.8 1 2 3 4 4.2]);xticklabels({'','neither','partner','subject','both',''})
 ax = gca;
 ax.FontSize = 16;
@@ -456,44 +498,11 @@ sp1 = scatter(ones(1,length(h_sessions))*2,nanmean(prop_selective_per_behav_part
 sp1 = scatter(ones(1,length(h_sessions))*3,nanmean(prop_selective_per_behav_subject(h_sessions,:),2), 'filled','r');
 sp1 = scatter(ones(1,length(h_sessions))*4,nanmean(prop_partner_and_subject(h_sessions,:),2), 'filled','b');
 
-ylim([0 0.7]); xticks([0.8 1 2 3 4 4.2]);xticklabels({'','neither','partner','subject','both',''})
+ylim([0 1]); xticks([0.8 1 2 3 4 4.2]);xticklabels({'','neither','partner','subject','both',''})
 ax = gca;
 ax.FontSize = 16;
 title('Monkey H')
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-figure;  set(gcf,'Position',[150 250 1000 800]);
-subplot(2,1,1);hold on;
-[~, idx_sort]=sort(nanmean(prop_selective_per_behav));
-for s = a_sessions
-    prop_selective_per_behav(s,prop_selective_per_behav(s,:)==0)=nan;
-    scatter(1:length(idx_sort),prop_selective_per_behav(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
-end
-legend({sessions(a_sessions).name},'Location','eastoutside')
-ylim([0 1]); xlim([0 n_behav+1])
-ylabel(['Proportion of selective units'])
-yline(0,'LineStyle','--')
-xticks(1:n_behav)
-xticklabels(AxesLabels(idx_sort))
-set(gca,'FontSize',15);
-title('Proportion of selective units per behavior, Monkey A')
-
-subplot(2,1,2);hold on;
-for s = h_sessions
-    prop_selective_per_behav(s,prop_selective_per_behav(s,:)==0)=nan;
-    scatter(1:length(idx_sort),prop_selective_per_behav(s,idx_sort),60,'filled','MarkerFaceAlpha',.7)
-end
-legend({sessions(h_sessions).name},'Location','eastoutside')
-ylim([0 1]); xlim([0 n_behav+1])
-ylabel(['Proportion of selective units'])
-yline(0,'LineStyle','--')
-xticks(1:n_behav)
-xticklabels(AxesLabels(idx_sort))
-set(gca,'FontSize',15);
-title('Proportion of selective units per behavior, Monkey H')
-saveas(gcf, [savePath '/Proportion_selective_units_per_behavior_PARTNER.png']); pause(2); close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Plot number of behaviors a single neuron is selective for across all sessions, separated by monkey
@@ -516,5 +525,5 @@ legend({sessions(h_sessions).name},'Location','eastoutside')
 xlabel('Number of behaviors a given neuron is selective for')
 set(gca,'FontSize',15);
 title('Distribution of the number of behaviors single units are selective for, Monkey H')
-saveas(gcf, [savePath '/Number_selective_behavior_per_unit_PARTNER.png']); pause(2); close all
+saveas(gcf, [savePath '/Number_selective_behavior_per_unit_PARTNER.png']); %pause(2); close all
 

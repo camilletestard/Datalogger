@@ -3,7 +3,7 @@
 #neural data analysis. It also plots behavior during a session.
 # Certain red flags to keep in mind:
 #Camille Testard - November 2021
-
+                  
 #Load libraries:
 library(timeline)
 library(ggplot2)
@@ -45,7 +45,7 @@ behavs = behavs[-match(to_remove, behavs)] #only keep behaviors
 new_log=data.frame(); b=1
 for (b in 1:length(behavs)){ #For all behaviors
   
-  data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
+    data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior
   
   interim=split(data,data$Start.end) #Split the data by behavior start and behavior end
@@ -85,10 +85,11 @@ new_log_final$Behavior=factor(new_log_final$Behavior,
                               levels=c("Aggression","Proximity", "HIP","Foraging", "Vocalization","SS","Groom Give", "Masturbating","Mounting",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
-                                       "Swinging", "Head Bobbing", "Object manipulation","watch.neighbor"))
+                                       "Swinging", "Head Bobbing", "Object Manipulation","watch.neighbor"))
 
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
+max(new_log_final$duration.s)
 
 if (length(which(new_log_final$duration.s<=0))>0){stop("NEGATIVE OR 0 DURATION")}
 
@@ -115,7 +116,7 @@ behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ym
   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
   geom_vline(xintercept = block_end[1])+
   geom_vline(xintercept = block_end[2])+
-  scale_fill_viridis(option="turbo", discrete = TRUE)+
+  #scale_fill_viridis(option="turbo", discrete = TRUE)+
   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
   xlab('Time since start of recording (in s)')+
   theme(axis.text.y= element_blank(),
@@ -125,9 +126,9 @@ behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ym
 #Save plot
 if (length(grep('partner',file))>0) {
   setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',m.monkey,date,'/Behavior_results/',sep=""))
-  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep="")) }else
+  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep="")) }else
   {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
-    ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".png", sep=""))}
+    ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep=""))}
 
 #Add block limits
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)

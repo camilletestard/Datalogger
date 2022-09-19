@@ -48,7 +48,8 @@ for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Partner_behav'];
+    %savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Partner_behav'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/partner_vs_subject'];
 
     %% Load data
 
@@ -72,8 +73,15 @@ for s =session_range %1:length(sessions)
     %Extract behavioral labels
     behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
     behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
+    
     behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
     behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+
+    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+
+    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
 
     block_labels = cell2mat({labels{:,11}}'); %Extract block info
     alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
@@ -81,8 +89,8 @@ for s =session_range %1:length(sessions)
     %% Get baseline firing from epochs where the subject rests idle.
 
     %Estimate "baseline" neural firing distribution.
-    %idx_rest=find(behavior_labels==length(behav_categ));%Get idx of "rest" epochs.
-    idx_rest = intersect(find(behavior_labels_subject_init ==length(behav_categ)), find(behavior_labels_partner_init ==length(behav_categ)));
+    %idx_rest = intersect(find(behavior_labels_subject_init ==length(behav_categ)), find(behavior_labels_partner_init ==length(behav_categ)));
+    idx_rest = find(behavior_labels_subject_init ==length(behav_categ));
     baseline_firing = Spike_rasters(:,idx_rest);
     mean_baseline = mean(baseline_firing,2);
     std_baseline = std(Spike_rasters(:,idx_rest),0,2);
@@ -98,11 +106,14 @@ for s =session_range %1:length(sessions)
     %% Select non-reciprocal behaviors and time points where the behavior differs between partner and subject
 
     % Select non-reciprocal behaviors
-    behav = 1:length(behav_categ)-1; %exclude rest
+    %behav = 1:length(behav_categ)-1; %exclude rest
+    behav = [4,5,18,24];
     %behav = setdiff(behav, reciprocal_set);
 
     % Only keep the behaviors of interest
-    idx = find(ismember(behavior_labels_partner_init,behav) & ismember(behavior_labels_subject_init,length(behav_categ))); %find the indices of the behaviors considered
+    idx = find(ismember(behavior_labels_partner_init,behav) &...
+        ~ismember(behavior_labels_subject_init,behav) &...
+        block_labels~=alone_block_id); %find the indices of the behaviors considered
     Spike_raster_final = Spike_rasters(:,idx);%Only keep timepoints where the behaviors of interest occur in spiking data
    
     %Only consider windows where the behaviors of subject and
@@ -199,8 +210,8 @@ for s =session_range %1:length(sessions)
 
     %% Plot heatmaps
 
-    AxesLabels_sorted = behavs_eval(orderIdx);
-    AxesLabels = behavs_eval;
+    AxesLabels_sorted = behav_categ(orderIdx);
+    AxesLabels = behav_categ;
     caxis_upper = 1.5;
     caxis_lower = -1.5;
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
@@ -212,14 +223,14 @@ for s =session_range %1:length(sessions)
         hp=heatmap(cohend_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
         ax = gca;
         ax.FontSize = 14;
-        saveas(gcf, [savePath '/Cohend_heatmap_sorted_partner.png']); close all
+        saveas(gcf, [savePath '/Cohend_heatmap_sorted_partner.pdf']); close all
 
         %Plot ordered heatmap thresholded
         figure; %set(gcf,'Position',[150 250 1000 500]);
         hp=heatmap(cohend_thresh_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap, p<' num2str(p_cutoff) ' and cohend>' num2str(cohend_cutoff)])
         ax = gca;
         ax.FontSize = 14;
-        saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded_partner.png']); close all
+        saveas(gcf, [savePath '/Cohend_heatmap_sorted_thresholded_partner.pdf']); close all
 
 %         %Includes both p-value and cohen d as thresholds
 %         figure; hold on; set(gcf,'Position',[150 250 1500 800]);
@@ -232,61 +243,61 @@ for s =session_range %1:length(sessions)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Summary figures
 
-        figure; scatter(nanmean(abs(cohend_thresh)), n_per_behav); corrcoef(nanmean(abs(cohend_thresh)), n_per_behav,'rows','pairwise')
-        figure; scatter(sum(~isnan(cohend_thresh)), n_per_behav); corrcoef(sum(~isnan(cohend_thresh)), n_per_behav,'rows','pairwise')
+% %         figure; scatter(nanmean(abs(cohend_thresh)), n_per_behav); corrcoef(nanmean(abs(cohend_thresh)), n_per_behav,'rows','pairwise')
+% %         figure; scatter(sum(~isnan(cohend_thresh)), n_per_behav); corrcoef(sum(~isnan(cohend_thresh)), n_per_behav,'rows','pairwise')
 
  
-        %Plot the distribution of effect sizes for each behavior
-        figure; hold on; set(gcf,'Position',[150 250 1000 500]);
-        boxchart(cohend_thresh_sorted(:,nancol))
-        % scatter(1:length(idx_sort),mean_cohend_per_behav(idx_sort),60,'filled')
-        % errorbar(mean_cohend_per_behav(idx_sort), std_cohend_per_behav(idx_sort),'LineWidth',1.5)
-        % legend({'mean','standard deviation'},'Location','best')
-        ylim([-2.5 2.5]); %xlim([0 length(nancol)+1])
-        ylabel(['Cohens-d, p<' num2str(p_cutoff)])
-        yline(0,'LineStyle','--')
-        text(1,1.75,'Increased firing relative to baseline','FontSize',14)
-        text(1,-1.75,'Decreased firing relative to baseline','FontSize',14)
-        %xticks(1:length(nancol))
-        xticklabels(AxesLabels_sorted(nancol))
-        set(gca,'FontSize',15);
-        title('Distribution of effect size per partner behavior')
-        saveas(gcf, [savePath '/Distribution_cohend_per_PARTNER_behavior.png']);  close all
+% %         %Plot the distribution of effect sizes for each behavior
+% %         figure; hold on; set(gcf,'Position',[150 250 1000 500]);
+% %         boxchart(cohend_thresh_sorted(:,nancol))
+% %         % scatter(1:length(idx_sort),mean_cohend_per_behav(idx_sort),60,'filled')
+% %         % errorbar(mean_cohend_per_behav(idx_sort), std_cohend_per_behav(idx_sort),'LineWidth',1.5)
+% %         % legend({'mean','standard deviation'},'Location','best')
+% %         ylim([-2.5 2.5]); %xlim([0 length(nancol)+1])
+% %         ylabel(['Cohens-d, p<' num2str(p_cutoff)])
+% %         yline(0,'LineStyle','--')
+% %         text(1,1.75,'Increased firing relative to baseline','FontSize',14)
+% %         text(1,-1.75,'Decreased firing relative to baseline','FontSize',14)
+% %         %xticks(1:length(nancol))
+% %         xticklabels(AxesLabels_sorted(nancol))
+% %         set(gca,'FontSize',15);
+% %         title('Distribution of effect size per partner behavior')
+% %         saveas(gcf, [savePath '/Distribution_cohend_per_PARTNER_behavior.png']);  close all
 
-        %Plot the proportion of selective neurons per behavior
-        figure; hold on; set(gcf,'Position',[150 250 1000 500]);
-        [~,idx_sort]=sort(prop_selective_per_behav(s,:),'descend');
-        scatter(1:n_behav,prop_selective_per_behav(s,idx_sort),60,'filled')
-        ylabel('Prop. selective units')
-        xticks(1:n_behav); xlim([0 n_behav+1]); ylim([0 1])
-        xticklabels(AxesLabels(idx_sort))
-        set(gca,'FontSize',15);
-        title('Proportion of units selective per partner behavior')
-        saveas(gcf, [savePath '/Proportion_units_selective_per_PARTNER_behav.png']);  close all
-
-        % Variance in single neuron selectivity
-        mean_cohend_per_neuron = nanmean(cohend_thresh,2);
-        std_cohend_per_neuron = nanstd(cohend_thresh,0,2);
-
-        figure; hold on; set(gcf,'Position',[150 250 1000 500]);
-        [~, idx_sort]=sort(mean_cohend_per_neuron);
-        scatter(1:length(idx_sort),mean_cohend_per_neuron(idx_sort),20,'filled')
-        errorbar(mean_cohend_per_neuron(idx_sort), std_cohend_per_neuron(idx_sort),'LineWidth',1.5)
-        legend({'mean','standard deviation'},'Location','best')
-        ylim([-2 2]); xlim([0 n_neurons(s)+1])
-        ylabel(['Cohens-d, p<' num2str(p_cutoff)]); xlabel('Units')
-        yline(0,'LineStyle','--')
-        text(10,1.5,'Increased firing relative to baseline','FontSize',14)
-        text(10,-1.5,'Decreased firing relative to baseline','FontSize',14)
-        set(gca,'FontSize',15);
-        title('Distribution of effect size across all units, PARTNER')
-        saveas(gcf, [savePath '/Distribution_cohend_all_units_PARTNER.png']); close all
-
-        %Number of behaviors a single neuron is selective for
-        figure; histogram(num_selective_behav_per_neuron{s})
-        xlabel('Number of behavior a given neuron is selective to')
-        title('Distribution of the number of behaviors single units are selective for')
-        saveas(gcf, [savePath '/Distribution_number_selective_PARTNER_behavior_per_unit.png']); close all
+% %         %Plot the proportion of selective neurons per behavior
+% %         figure; hold on; set(gcf,'Position',[150 250 1000 500]);
+% %         [~,idx_sort]=sort(prop_selective_per_behav(s,:),'descend');
+% %         scatter(1:n_behav,prop_selective_per_behav(s,idx_sort),60,'filled')
+% %         ylabel('Prop. selective units')
+% %         xticks(1:n_behav); xlim([0 n_behav+1]); ylim([0 1])
+% %         xticklabels(AxesLabels(idx_sort))
+% %         set(gca,'FontSize',15);
+% %         title('Proportion of units selective per partner behavior')
+% %         saveas(gcf, [savePath '/Proportion_units_selective_per_PARTNER_behav.png']);  close all
+% % 
+% %         % Variance in single neuron selectivity
+% %         mean_cohend_per_neuron = nanmean(cohend_thresh,2);
+% %         std_cohend_per_neuron = nanstd(cohend_thresh,0,2);
+% % 
+% %         figure; hold on; set(gcf,'Position',[150 250 1000 500]);
+% %         [~, idx_sort]=sort(mean_cohend_per_neuron);
+% %         scatter(1:length(idx_sort),mean_cohend_per_neuron(idx_sort),20,'filled')
+% %         errorbar(mean_cohend_per_neuron(idx_sort), std_cohend_per_neuron(idx_sort),'LineWidth',1.5)
+% %         legend({'mean','standard deviation'},'Location','best')
+% %         ylim([-2 2]); xlim([0 n_neurons(s)+1])
+% %         ylabel(['Cohens-d, p<' num2str(p_cutoff)]); xlabel('Units')
+% %         yline(0,'LineStyle','--')
+% %         text(10,1.5,'Increased firing relative to baseline','FontSize',14)
+% %         text(10,-1.5,'Decreased firing relative to baseline','FontSize',14)
+% %         set(gca,'FontSize',15);
+% %         title('Distribution of effect size across all units, PARTNER')
+% %         saveas(gcf, [savePath '/Distribution_cohend_all_units_PARTNER.png']); close all
+% % 
+% %         %Number of behaviors a single neuron is selective for
+% %         figure; histogram(num_selective_behav_per_neuron{s})
+% %         xlabel('Number of behavior a given neuron is selective to')
+% %         title('Distribution of the number of behaviors single units are selective for')
+% %         saveas(gcf, [savePath '/Distribution_number_selective_PARTNER_behavior_per_unit.png']); close all
 
         % % %%%%%%%%%%%%%%%%%%%%%%%%
         % % %Single neuron selectivity:
@@ -325,7 +336,7 @@ for s = a_sessions
 end
 legend({sessions(a_sessions).name},'Location','eastoutside')
 ylim([-1.5 1.5]); xlim([0 n_behav+1])
-ylabel(['Cohens-d, p<' num2str(cutoff)])
+ylabel(['Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
 % text(20,-0.15,'Decreased firing relative to baseline','FontSize',14)
@@ -341,7 +352,7 @@ for s = h_sessions
 end
 legend({sessions(h_sessions).name},'Location','eastoutside')
 ylim([-1.5 1.5]); xlim([0 n_behav+1])
-ylabel(['Cohens-d, p<' num2str(cutoff)])
+ylabel(['Cohens-d, p<' num2str(p_cutoff)])
 yline(0,'LineStyle','--')
 % text(20,0.15,'Increased firing relative to baseline','FontSize',14)
 % text(20,-0.15,'Decreased firing relative to baseline','FontSize',14)

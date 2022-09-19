@@ -12,8 +12,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =1;
@@ -28,20 +28,20 @@ min_occurrences = 30;%Minimum number of occurrence per behavior
 alone_block=0; %1: during alone block; 0:during paired blocks; anything else: all blocks.
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
-null=0;%Set whether we want the null 
+null=0;%Set whether we want the null
 simplify=0;%lump similar behavioral categories together to increase sample size.
 
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=1;
+s=18;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -52,7 +52,7 @@ for s =session_range %1:length(sessions)
 
     for channel_flag = ["vlPFC", "TEO", "all"]
 
-        
+
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
@@ -101,7 +101,7 @@ for s =session_range %1:length(sessions)
         behavior_labels_partner = behavior_labels_partner_init(idx);
         behavior_labels_subject = behavior_labels_subject_init(idx);
         behav = unique(behavior_labels_partner);
-        
+
         %Compute freq of behavior for the session
         behav_freq_table = tabulate(behavior_labels_partner);
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
@@ -116,91 +116,95 @@ for s =session_range %1:length(sessions)
         fprintf('Behaviors evaluated are: %s \n', behavs_eval);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-        
-        %Select the correct indices.
-        idx_beh = find(ismember(behavior_labels_partner,behav));
-        subject_behav_after_selection = behavior_labels_subject(idx_beh);
-        partner_behav_after_selection = behavior_labels_partner(idx_beh);
-        block_after_selection = block_labels(idx_beh);
-        
-        Spike_count_raster_final = Spike_count_raster_final(idx_beh,:);
-        behavior_labels_final = partner_behav_after_selection;
-
-        overlap_partner_subject_after_selection = length(find(partner_behav_after_selection == subject_behav_after_selection))/length(idx);
-        fprintf('Percent overlap between subject and partner labels AFTER selecting behaviors: %s \n', num2str(overlap_partner_subject_after_selection))
-        alone_block_obs = length(find(block_after_selection==3))/length(idx);
-        fprintf('Percent observations in "alone" block AFTER selecting behaviors: %s \n', num2str(alone_block_obs))
+        if length(behav)>1
 
 
-        %% Run SVM over multiple iterations
+            %Select the correct indices.
+            idx_beh = find(ismember(behavior_labels_partner,behav));
+            subject_behav_after_selection = behavior_labels_subject(idx_beh);
+            partner_behav_after_selection = behavior_labels_partner(idx_beh);
+            block_after_selection = block_labels(idx_beh);
 
-        disp('Start running SVM...')
-        for iter = 1:num_iter
+            Spike_count_raster_final = Spike_count_raster_final(idx_beh,:);
+            behavior_labels_final = partner_behav_after_selection;
 
-            if null
-                %Simulate fake labels
-                [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution,0);
-                Labels = sim_behav;
-            else
-                Labels = behavior_labels_final;
+            overlap_partner_subject_after_selection = length(find(partner_behav_after_selection == subject_behav_after_selection))/length(idx);
+            fprintf('Percent overlap between subject and partner labels AFTER selecting behaviors: %s \n', num2str(overlap_partner_subject_after_selection))
+            alone_block_obs = length(find(block_after_selection==3))/length(idx);
+            fprintf('Percent observations in "alone" block AFTER selecting behaviors: %s \n', num2str(alone_block_obs))
+
+
+            %% Run SVM over multiple iterations
+
+            disp('Start running SVM...')
+            for iter = 1:num_iter
+
+                if null
+                    %Simulate fake labels
+                    [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution,0);
+                    Labels = sim_behav;
+                else
+                    Labels = behavior_labels_final;
+                end
+
+                %Balance number of trials per class
+                Input_matrix = Spike_count_raster_final;
+
+                uniqueLabels = unique(Labels); %IDentify unique labels (useful when not numbers)
+                NumOfClasses = length(uniqueLabels); % Total number of classes
+                numericLabels = 1:NumOfClasses; %Numeric name of labels
+
+                labels_temp = Labels;
+                for i=1:NumOfClasses
+                    idx = Labels == uniqueLabels(i);
+                    labels_temp(idx) = numericLabels(i);
+                    labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
+                end
+                Labels = labels_temp;
+
+                num_trials = hist(Labels,numericLabels); %number of trials in each class
+                minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
+                chosen_trials = [];
+                for i = 1:NumOfClasses %for each class
+                    idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
+                    rand_i = randsample(length(idx), minNumTrials); %Select a random n number of them
+                    chosen_trials = [chosen_trials; idx(rand_i)]; %Put the selected trials in a matrix, ordered by class
+                end
+                Input_matrix = Input_matrix(chosen_trials, :);
+                Labels = Labels(chosen_trials, :);
+                Labels_shuffled = Labels(randperm(length(Labels)));
+                %tabulate(Labels);
+
+                % % %% Save variables
+                % save([filePath '\SVM_input.mat'],'Input_matrix', 'Labels','Labels_shuffled');
+
+                % Run svm
+                [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
+                [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
+
+                disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
             end
 
-            %Balance number of trials per class
-            Input_matrix = Spike_count_raster_final;
+            %         channel = char(channel_flag);
+            %         disp('****************************************************************************')
+            %         disp(['ID type ' num2str(partner) ', channels: ' channel '. DONE'])
+            %         disp('****************************************************************************')
+            %
+            mean_hitrate{s}(chan) = mean(hitrate)
+            sd_hitrate{s}(chan) = std(hitrate);
+            mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
+            sd_hitrate_shuffled = std(hitrate_shuffled);
 
-            uniqueLabels = unique(Labels); %IDentify unique labels (useful when not numbers)
-            NumOfClasses = length(uniqueLabels); % Total number of classes
-            numericLabels = 1:NumOfClasses; %Numeric name of labels
+            C_concat=cat(3,C{:});
+            confusion_mat_avg=round(mean(C_concat,3)*100);
+            rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
+            C_table{s,chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
 
-            labels_temp = Labels;
-            for i=1:NumOfClasses
-                idx = Labels == uniqueLabels(i);
-                labels_temp(idx) = numericLabels(i);
-                labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
-            end
-            Labels = labels_temp;
+            chan = chan +1;
 
-            num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
-            chosen_trials = [];
-            for i = 1:NumOfClasses %for each class
-                idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
-                rand_i = randsample(length(idx), minNumTrials); %Select a random n number of them
-                chosen_trials = [chosen_trials; idx(rand_i)]; %Put the selected trials in a matrix, ordered by class
-            end
-            Input_matrix = Input_matrix(chosen_trials, :);
-            Labels = Labels(chosen_trials, :);
-            Labels_shuffled = Labels(randperm(length(Labels)));
-            %tabulate(Labels);
-
-            % % %% Save variables
-            % save([filePath '\SVM_input.mat'],'Input_matrix', 'Labels','Labels_shuffled');
-
-            % Run svm
-            [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
-            [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
-
-            disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
-        end
-
-%         channel = char(channel_flag);
-%         disp('****************************************************************************')
-%         disp(['ID type ' num2str(partner) ', channels: ' channel '. DONE'])
-%         disp('****************************************************************************')
-% 
-        mean_hitrate{s}(chan) = mean(hitrate)
-        sd_hitrate{s}(chan) = std(hitrate);
-        mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
-        sd_hitrate_shuffled = std(hitrate_shuffled);
-
-        C_concat=cat(3,C{:});
-        confusion_mat_avg=round(mean(C_concat,3)*100);
-        rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-        C_table{s,chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
-
-    chan = chan +1;
+        end %end of behavior > 1 clause.
     end% End of channel for loop
-    
+
     clear labels_id
 
 end% End of session for loop
@@ -211,7 +215,7 @@ cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 save('SVM_results_partnerBehav.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 
 load('SVM_results_partnerBehav.mat')
-   
+
 %Plot decoding accuracy for all sessions, separated by monkey
 figure;  set(gcf,'Position',[150 250 700 700]);
 subplot(2,1,1);hold on;
@@ -280,7 +284,7 @@ subplot(2,1,2);hold on;
 cmap = hsv(size(mean_hitrate,2));
 for s = h_sessions
     y = mean_hitrate{s}./mean_hitrate_shuffled{s};
-     scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
+    scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
 end
 legend({sessions(h_sessions).name},'Location','eastoutside')
 chance_level = 1;
