@@ -33,8 +33,6 @@ alone_block=0; %1: during alone block; 0:during paired blocks; anything else: al
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
-simplify=0;%lump similar behavioral categories together to increase sample size.
-
 
 %Select session range:
 if with_partner ==1
@@ -45,7 +43,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=6;
+s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -59,120 +57,168 @@ for s =session_range %1:length(sessions)
 
         %% Load data
 
-    %Get data with specified temporal resolution and channels
-    if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
-    else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
-            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
-    end
+        %Get data with specified temporal resolution and channels
+        if with_partner ==1
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
+        end
 
-    session_length = size(Spike_rasters,2); % get session length
+        session_length = size(Spike_rasters,2); % get session length
 
-    %Extract behavior labels for subject and partner
-    behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-    behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
-    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
-    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+        %Extract behavior labels for subject and partner
+        behavior_labels_subject_init = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+        behavior_labels_partner_init = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
 
-    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
-    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+        %Consider sitting in proximity to be rest
+        behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
+        behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
 
-    behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
-    behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+        %Lump approach and leave into travel
+        behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+        behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+        behavior_labels_subject_init(behavior_labels_subject_init==find(behav_categ=="leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+        behavior_labels_partner_init(behavior_labels_partner_init==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
 
-    block_labels = cell2mat({labels{:,11}}'); %Extract block info
-    alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
+        %Extract block info
+        block_labels = cell2mat({labels{:,11}}');
+        alone_block_id = find(strcmp(block_times{:,"Behavior"},"Alone.block"));
 
-    %Only consider paired blocks
-    if alone_block==1
-        behavior_labels_subject_init = behavior_labels_subject_init(block_labels== alone_block_id);
-        behavior_labels_partner_init = behavior_labels_partner_init(block_labels== alone_block_id);
-        Spike_rasters = Spike_rasters(:,block_labels== alone_block_id);
-        block_labels=block_labels(block_labels== alone_block_id,:);
-    elseif alone_block==0
-        behavior_labels_subject_init = behavior_labels_subject_init(block_labels~= alone_block_id);
-        behavior_labels_partner_init = behavior_labels_partner_init(block_labels~= alone_block_id);
-        Spike_rasters = Spike_rasters(:,block_labels~= alone_block_id);
-        block_labels=block_labels(block_labels~= alone_block_id,:);
-    end
+        %Only consider paired blocks
+        if alone_block==1
+            behavior_labels_subject_init = behavior_labels_subject_init(block_labels== alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels== alone_block_id);
+            Spike_rasters = Spike_rasters(:,block_labels== alone_block_id);
+            block_labels=block_labels(block_labels== alone_block_id,:);
+        elseif alone_block==0
+            behavior_labels_subject_init = behavior_labels_subject_init(block_labels~= alone_block_id);
+            behavior_labels_partner_init = behavior_labels_partner_init(block_labels~= alone_block_id);
+            Spike_rasters = Spike_rasters(:,block_labels~= alone_block_id);
+            block_labels=block_labels(block_labels~= alone_block_id,:);
+        end
 
 
-    %% Get indices for which subject and partner do not behav similarly & don't engage in reciprocal behaviors
-    % Select behaviors manually
-    behav = [4,5,18,24]; %focus on a set of behaviors which happen enough time in both the subject and partner and are not reciprocal
+        %% Get indices for which subject and partner do not behav similarly & don't engage in reciprocal behaviors
+        % Select behaviors manually
+        behav = [5,18]; %focus on a set of behaviors which happen enough time in both the subject and partner and are not reciprocal
 
-    % Get indices where either:
-    % 1. The subject is behaving and the partner is resting
-    idx_sub = find(ismember(behavior_labels_subject_init,behav));
-    idx_part = find(ismember(behavior_labels_partner_init,behav) &...
-        ~ismember(behavior_labels_subject_init,behav));% &...
+        % Get indices where either:
+        % 1. The subject is behaving and the partner is resting
+        idx_sub = find(ismember(behavior_labels_subject_init,behav));
+        idx_part = find(ismember(behavior_labels_partner_init,behav) &...
+            ~ismember(behavior_labels_subject_init,behav));
+        %ismember(behavior_labels_subject_init,length(behav_categ)));% &...
         %block_labels~=alone_block_id); %find the indices of the behaviors considered
 
-    Spike_rasters_partner = Spike_rasters(:,idx_part)';%Only keep timepoints where the behaviors of interest occur in spiking data
-    behavior_labels_partner = behavior_labels_partner_init(idx_part);%Same as above but in behavior labels
+        Spike_rasters_partner = Spike_rasters(:,idx_part)';%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_partner = behavior_labels_partner_init(idx_part);%Same as above but in behavior labels
+        partner_behav = tabulate(behavior_labels_partner);
 
-    Spike_rasters_subject = Spike_rasters(:,idx_sub)';
-    behavior_labels_subject = behavior_labels_subject_init(idx_sub);block_labels = cell2mat({labels{:,11}}'); %Extract block info
-    
+        Spike_rasters_subject = Spike_rasters(:,idx_sub)';
+        behavior_labels_subject = behavior_labels_subject_init(idx_sub);block_labels = cell2mat({labels{:,11}}'); %Extract block info
+        subject_behav = tabulate(behavior_labels_subject);
 
-    if length(unique(behavior_labels_partner))>1
+        if length(unique(behavior_labels_partner))==length(behav) && length(unique(behavior_labels_subject))==length(behav)
+            if all(partner_behav(behav,2)>30) && all(subject_behav(behav,2)>30)
 
 
-            %% Run SVM over multiple iterations
+                %% Run SVM over multiple iterations
 
-            disp('Start running SVM...')
-            for iter = 1:num_iter
+                disp('Start running SVM...')
+                for iter = 1:num_iter
 
-                if null
-                    %Simulate fake labels
-                    [sim_behav] = GenSimBehavior(behavior_labels_subject,behav_categ, temp_resolution,0);
-                    Labels = sim_behav;
-                else
-                    Labels = behavior_labels_subject;
+                    traindata = Spike_rasters_subject; trainlbls = behavior_labels_subject;
+                    testdata = Spike_rasters_partner; testlbls = behavior_labels_partner;
+
+                    %Balance number of trials for train data
+                    uniqueLabels = unique(trainlbls); %IDentify unique labels (useful when not numbers)
+                    NumOfClasses = length(uniqueLabels); % Total number of classes
+                    numericLabels = 1:NumOfClasses; %Numeric name of labels
+
+                    labels_temp = trainlbls;
+                    for i=1:NumOfClasses
+                        idx = trainlbls == uniqueLabels(i);
+                        labels_temp(idx) = numericLabels(i);
+                        labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
+                    end
+                    trainlbls = labels_temp;
+
+                    num_trials = hist(trainlbls,numericLabels); %number of trials in each class
+                    minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
+                    chosen_trials = [];
+                    for i = 1:NumOfClasses %for each class
+                        idx = find(trainlbls == numericLabels(i)); %find indexes of trials belonging to this class
+                        rand_i = randsample(length(idx), minNumTrials); %Select a random n number of them
+                        chosen_trials = [chosen_trials; idx(rand_i)]; %Put the selected trials in a matrix, ordered by class
+                    end
+                    traindata = traindata(chosen_trials, :);
+                    trainlbls = trainlbls(chosen_trials, :);
+                    trainlbls_shuffled = trainlbls(randperm(length(trainlbls)));
+
+                    %Balance number of trials for test data
+                    uniqueLabels = unique(testlbls); %IDentify unique labels (useful when not numbers)
+                    NumOfClasses = length(uniqueLabels); % Total number of classes
+                    numericLabels = 1:NumOfClasses; %Numeric name of labels
+
+                    labels_temp = testlbls;
+                    for i=1:NumOfClasses
+                        idx = testlbls == uniqueLabels(i);
+                        labels_temp(idx) = numericLabels(i);
+                        labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
+                    end
+                    testlbls = labels_temp;
+
+                    num_trials = hist(testlbls,numericLabels); %number of trials in each class
+                    minNumTrials = min(num_trials); %find the minimum one %CT change to have 30 of each class
+                    chosen_trials = [];
+                    for i = 1:NumOfClasses %for each class
+                        idx = find(testlbls == numericLabels(i)); %find indexes of trials belonging to this class
+                        rand_i = randsample(length(idx), minNumTrials); %Select a random n number of them
+                        chosen_trials = [chosen_trials; idx(rand_i)]; %Put the selected trials in a matrix, ordered by class
+                    end
+                    testdata = testdata(chosen_trials, :);
+                    testlbls = testlbls(chosen_trials, :);
+                    testlbls_shuffled = testlbls(randperm(length(testlbls)));
+
+                    % Run svm
+                    [hitrate_subject(iter)] = log_SVM_basic_function(traindata, trainlbls, 5, 0, 0);
+                    [hitrate_partner(iter)] = log_SVM_basic_function(testdata, testlbls, 5, 0, 0);
+                    [hitrate_cross(iter), C{iter}] = log_SVM_ccgp_function(trainlbls,traindata,...
+                        testlbls, testdata, 0, 0);
+                    [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_ccgp_function(trainlbls,traindata,...
+                        testlbls_shuffled, testdata, 0, 0);
+
+                    disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
                 end
 
-               
-                behavior_labels_subject_shuffled=behavior_labels_subject(randperm(length(behavior_labels_subject)));
-   
+                %         channel = char(channel_flag);
+                %         disp('****************************************************************************')
+                %         disp(['ID type ' num2str(partner) ', channels: ' channel '. DONE'])
+                %         disp('****************************************************************************')
+                %
 
-                %tabulate(behavior_labels_partner);
+                mean_hitrate_partner{s}(chan) = mean(hitrate_partner)
+                mean_hitrate_subject{s}(chan) = mean(hitrate_subject)
+                mean_hitrate_cross{s}(chan) = mean(hitrate_cross)
+                sd_hitrate{s}(chan) = std(hitrate_cross);
+                mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
+                sd_hitrate_shuffled = std(hitrate_shuffled);
 
-                % % %% Save variables
-                % save([filePath '\SVM_input.mat'],'Input_matrix', 'Labels','Labels_shuffled');
+                C_concat=cat(3,C{:});
+                confusion_mat_avg=round(mean(C_concat,3)*100);
+                %             rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
+                %             C_table{s,chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
 
-                % Run svm
-                [hitrate(iter), C{iter}] = log_SVM_partner_subject_function(behavior_labels_subject,Spike_rasters_subject,...
-                    behavior_labels_partner, Spike_rasters_partner, 0, 0);
-                [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_partner_subject_function(behavior_labels_subject_shuffled,Spike_rasters_subject,...
-                    behavior_labels_partner, Spike_rasters_partner, 0, 0);
+                chan = chan +1;
 
-                disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
-            end
-
-            %         channel = char(channel_flag);
-            %         disp('****************************************************************************')
-            %         disp(['ID type ' num2str(partner) ', channels: ' channel '. DONE'])
-            %         disp('****************************************************************************')
-            %
-            mean_hitrate{s}(chan) = mean(hitrate)
-            sd_hitrate{s}(chan) = std(hitrate);
-            mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
-            sd_hitrate_shuffled = std(hitrate_shuffled);
-
-            C_concat=cat(3,C{:});
-            confusion_mat_avg=round(mean(C_concat,3)*100);
-%             rowNames = {labels_id{:,2}}; colNames = {labels_id{:,2}};
-%             C_table{s,chan} = array2table(confusion_mat_avg,'RowNames',rowNames,'VariableNames',colNames);
-
-            chan = chan +1;
-
-        end %end of behavior > 1 clause.
+            end %end of #behavior classes clause.
+        end
     end% End of channel for loop
 
 end% End of session for loop
@@ -180,122 +226,42 @@ end% End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_TrainSubjectTestPatrner.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_TrainSubjectTestPatrner.mat', "mean_hitrate_subject","mean_hitrate_partner","mean_hitrate_cross","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 
 load('SVM_results_TrainSubjectTestPatrner.mat')
-
-%Plot decoding accuracy for all sessions, separated by monkey
-figure;  set(gcf,'Position',[150 250 700 700]);
-subplot(2,1,1);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = a_sessions
-    y = mean_hitrate{s};
-    std_dev = sd_hitrate{s};
-    errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
-end
-chance_level = 1/length(behav);
-yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for partner current behavioral states, Monkey A','FontSize', 14)
-
-subplot(2,1,2);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = h_sessions
-    y = mean_hitrate{s};
-    std_dev = sd_hitrate{s};
-    errorbar(y,std_dev,'s','MarkerSize',5,'MarkerFaceColor',cmap(s,:))
-end
-chance_level = 1/length(behav);
-yline(chance_level,'--','Chance level', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel('Decoding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for partner current behavioral states, Monkey H','FontSize', 14)
-
-if randomsample ==0 && onlysingle==1
-    saveas(gcf,['SVM_results_accuracy_behav_NOsubsample_unique_allSessions_partner.png'])
-elseif randomsample ==1 && onlysingle==1
-    saveas(gcf,['SVM_results_accuracy_behav_subsample_unique_allSessions_partner.png'])
-elseif randomsample ==0 && onlysingle==0
-    saveas(gcf,['SVM_results_accuracy_behav_NOsubsample_NOTunique_allSessions_partner.png'])
-elseif randomsample ==1 && onlysingle==0
-    saveas(gcf,['SVM_results_accuracy_behav_subsample_NOTunique_allSessions_partner.png'])
-end
-close all
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Plot decoding accuracy relative to chance for all sessions, separated by monkey
-figure;  set(gcf,'Position',[150 250 700 700]);
-subplot(2,1,1);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = a_sessions
-    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
-    scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
-end
-legend({sessions(a_sessions).name},'Location','eastoutside')
-chance_level = 1;
-yline(chance_level,'--','At Chance', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 4])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for partner current behavioral states, Monkey A','FontSize', 14)
-
-subplot(2,1,2);hold on;
-cmap = hsv(size(mean_hitrate,2));
-for s = h_sessions
-    y = mean_hitrate{s}./mean_hitrate_shuffled{s};
-    scatter(1:3, y, 60,'filled','MarkerFaceAlpha',0.6)
-end
-legend({sessions(h_sessions).name},'Location','eastoutside')
-chance_level = 1;
-yline(chance_level,'--','At Chance', 'FontSize',16)
-xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 4])
-xticklabels({'','vlPFC','TEO','all',''})
-ax = gca;
-ax.FontSize = 14;
-ylabel({'Multiple of chance level','hitrate/shuffled'},'FontSize', 18); xlabel('Brain area','FontSize', 18)
-title('Decoding accuracy for partner current behavioral states, Monkey H','FontSize', 14)
-
-if randomsample ==0 && unq_behav==1
-    saveas(gcf,['SVM_results_behav_NOsubsample_unique_allSessions_partner.png'])
-elseif randomsample ==1 && unq_behav==1
-    saveas(gcf,['SVM_results_behav_subsample_unique_allSessions_partner.png'])
-elseif randomsample ==0 && unq_behav==0
-    saveas(gcf,['SVM_results_behav_NOsubsample_NOTunique_allSessions_partner.png'])
-elseif randomsample ==1 && unq_behav==0
-    saveas(gcf,['SVM_results_behav_subsample_NOTunique_allSessions_partner.png'])
-end
-close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bar plot decoding accuracy
 
 figure; hold on
-data = cell2mat(mean_hitrate');
+data_subject = cell2mat(mean_hitrate_subject');
+data_partner = cell2mat(mean_hitrate_partner');
+data_cross = cell2mat(mean_hitrate_cross');
 data_shuffle = cell2mat(mean_hitrate_shuffled');
-bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+bp = bar([mean(data_subject(:,:)); mean(data_partner(:,:)); ...
+    mean(data_cross(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
 
-sp1 = scatter(ones(size(data,1))*0.78,data(:,1), 'filled','b');
-sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
+sp1 = scatter(ones(size(data_subject,1))*0.78,data_subject(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_subject,1)),data_subject(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_subject,1))*1.22,data_subject(:,3), 'filled','y');
 
-sp1 = scatter(ones(size(data,1))*1.78,data_shuffle(:,1), 'filled','b');
-sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
+sp1 = scatter(ones(size(data_partner,1))*1.78,data_partner(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_partner,1))*2,data_partner(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_partner,1))*2.22,data_partner(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data_cross,1))*2.78,data_cross(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_cross,1))*3,data_cross(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_cross,1))*3.22,data_cross(:,3), 'filled','y');
+
+sp1 = scatter(ones(size(data_shuffle,1))*3.78,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_shuffle,1))*4,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_shuffle,1))*4.22,data_shuffle(:,3), 'filled','y');
 
 legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
-ylabel('Decoding Accuracy'); ylim([0 1])
-xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
+ylabel('Decoding Accuracy'); ylim([0.4 1])
+xticks([1 2 3 4]); xticklabels({'Subject','Partner','Cross', 'Shuffled'}); xlim([0.25 4.75])
 ax = gca;
 ax.FontSize = 16;
-saveas(gcf,['SVM_results_allSessions_allUnits_PARTNER.png'])
+saveas(gcf,['SVM_results_trainSubjectTestPartner.pdf'])
 

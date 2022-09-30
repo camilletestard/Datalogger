@@ -1,4 +1,4 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_groom_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
 
 %Log GenerateDataToRes_function
 % Input data files: 
@@ -68,6 +68,8 @@ monkey = session_name_split{1};
 behavior_log = readtable('EVENTLOG_restructured.csv');% for subject
 behavior_log_partner = readtable('EVENTLOG_restructured_partner.csv');% for partner
 block_log = readtable('session_block_schedule.csv');% for block info
+groom_pose = readtable('GROOMLOG_pose_restructured.csv');% for subject
+groom_bodypart = readtable('GROOMLOG_bodypart_restructured.csv');% for subject
 
 %Load neural data
 if isolatedOnly==1
@@ -262,6 +264,7 @@ if smooth
     Spike_rasters = Spike_rasters_smooth;
 end
 
+
 %% Get behavior label vector for each time bin at specified resolution
 
 %Create behavior key
@@ -303,7 +306,7 @@ end_times_partner = behavior_log_partner{:,'end_time_round'};
 Intervals_partner = [start_times_partner end_times_partner];
 
 %%%%%% Create labels vector for SUBJECT monkey %%%%%%
-labels = cell(length_recording,11); %initialize dataframe
+labels = cell(length_recording,14); %initialize dataframe
 for s = 1:length_recording %for all secs in a session
     % this finds the index of the rows(2) that have x in between
     idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
@@ -406,6 +409,43 @@ for s = 1:length_recording %for all secs in a session
     end
 end
 
+%% Get pose label vector for each time bin at specified resolution
+pose_categ = string(unique(groom_pose{:,1}));
+
+start_times = round(groom_pose{:,'start_time'});
+end_times = round(groom_pose{:,'end_time'});
+Intervals = [start_times end_times];
+
+for s = 1:length_recording %for all secs in a session
+    % this finds the index of the rows(2) that have x in between
+    idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
+    %IMPORTANT note: interval includes lower bound but excludes upper boundary as is.
+    if ~isempty(idx) %if it belongs to an interval
+        labels{s,13} = groom_pose{idx,'Pose'}; %add behavior label in [plain english]
+        labels{s,14} = find(matches(pose_categ,labels{s,13})); %add behavior label in [number]
+    else
+        labels{s,14} = 0;
+    end
+end
+
+%% Get body part label vector for each time bin at specified resolution
+bodypart_categ = string(unique(groom_bodypart{:,1}));
+
+start_times = groom_bodypart{:,'start_time'};
+end_times = groom_bodypart{:,'end_time'};
+Intervals = [start_times end_times];
+
+for s = 1:length_recording %for all secs in a session
+    % this finds the index of the rows(2) that have x in between
+    idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
+    %IMPORTANT note: interval includes lower bound but excludes upper boundary as is.
+    if ~isempty(idx) %if it belongs to an interval
+        labels{s,15} = groom_bodypart{idx,'Body_part'}; %add behavior label in [plain english]
+        labels{s,16} = find(matches(bodypart_categ,labels{s,15})); %add behavior label in [number]
+    end
+end
+
+%%
 %%%%%% Create labels vector for PARTNER monkey %%%%%%
 labels_partner = cell(length_recording,10); %initialize dataframe
 for s = 1:length_recording %for all secs in a session

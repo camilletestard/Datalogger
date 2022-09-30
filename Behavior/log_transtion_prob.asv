@@ -31,7 +31,7 @@ simplify=2;
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
+    a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
@@ -125,11 +125,6 @@ for s =session_range %1:length(sessions)
     close all
 end
 
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Behavior_results/']);
-
-%%%%%%%%%%%%%%%%%%%
-%% AMOS
-
 %Combined sessions for amos
 P_total = sum(cat(3,P{a_sessions}),3);
 row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
@@ -137,37 +132,14 @@ P_total_final = P_total(row_non_zeros,row_non_zeros);
 
 figure; set(gcf,'Position',[150 250 1200 700])
 heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-xlabel('Following behavior'); ylabel('Preceding behavior'); title('Amos')
+xlabel('Following behavior'); ylabel('Preceding behavior')
 ax = gca;
 ax.FontSize = 16;
-saveas(gcf,'/TransitionProbabilityMatrix_AMOS.pdf')
 
 %Plot transition graph
-mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
+mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros(row_non_zeros_v2)));
 
 figure;set(gcf,'Position',[150 250 1200 700])
 graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-saveas(gcf,'/TransitionProbabilityPlot_AMOS.pdf')
-
-%%%%%%%%%%%%%%%%%%%
-%% HOOKE
-
-%Combined sessions for Hooke
-P_total = sum(cat(3,P{h_sessions}),3);
-row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
-P_total_final = P_total(row_non_zeros,row_non_zeros);
-
-figure; set(gcf,'Position',[150 250 1200 700])
-heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-xlabel('Following behavior'); ylabel('Preceding behavior'); title('Hooke')
-ax = gca;
-ax.FontSize = 16;
-saveas(gcf,'/TransitionProbabilityMatrix_HOOKE.pdf')
-
-%Plot transition graph
-mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
-
-figure;set(gcf,'Position',[150 250 1200 700])
-graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-saveas(gcf,'/TransitionProbabilityPlot_Hooke.pdf')
+saveas(gcf,[savePath '/TransitionProbabilityPlot.pdf'])
 

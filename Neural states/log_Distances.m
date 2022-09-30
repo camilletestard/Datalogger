@@ -22,7 +22,7 @@ smooth= 1; %smooth the data
 sigma = 1;%set the smoothing window size (sigma)
 var_explained_threshold=90;
 num_iter = 500; num_units = 100;
-simplify=2;
+simplify=0;
 
 %Select session range:
 if with_partner ==1
@@ -44,6 +44,7 @@ elseif simplify ==3
     min_occurrences = 50;
 else
     dim = nan(max(session_range),2,8,num_iter);
+    min_occurrences = 30;
 end
 
 s=1;
@@ -106,18 +107,20 @@ for s =session_range %1:length(sessions)
 
             behav = [find(behav_categ=="Getting groomed"),find(behav_categ=="Rest")];
 
-%             %Lump all that is not foraging
-%             behavior_labels(ismember(behavior_labels,find(behav_categ~="Foraging" )))=find(behav_categ=="Rest");
-% 
-%             behav = [find(behav_categ=="Foraging"),find(behav_categ=="Rest")];
+            %             %Lump all that is not foraging
+            %             behavior_labels(ismember(behavior_labels,find(behav_categ~="Foraging" )))=find(behav_categ=="Rest");
+            %
+            %             behav = [find(behav_categ=="Foraging"),find(behav_categ=="Rest")];
 
         elseif simplify == 3 %Comapre grooming behaviors between each other
 
             behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom")];
 
         else %Compare all behaviors separately (without pooling across)
-            behav = [4,5,7,8,9,10,24,29];
-        end
+            %behav = [4,5,7,8,9,10,24,29];
+            behav = [7,8];
+
+        end %End of simplifying loop
 
         behav_freq_table = tabulate(behavior_labels);
 
@@ -128,33 +131,37 @@ for s =session_range %1:length(sessions)
         n_per_behav{s} = behav_freq(behav_freq(:,2)>0,2);
         if all(behav_freq(behav_freq(:,2)>0,2)>min_occurrences) && length(find(behav_freq(:,2)>0))>=length(behav)
 
-            for b = 1:length(behav)
+            for iter = 1:num_iter
 
-                disp(['Behavior: ' behav_categ(behav(b))])
+                for b = 1:length(behav)
 
-
-                for iter = 1:num_iter
+                    disp(['Behavior: ' behav_categ(behav(b))])
 
                     %Select time points to run PCA
                     idx= find(ismember(behavior_labels,behav(b)));
                     idx_beh = idx(randsample(1:length(idx),min_occurrences));
 
                     %Select unit to run PCA
-                    Input_matrix = zscore(Spike_count_raster(idx_beh,randsample(size(Spike_count_raster,2), num_units)));
+                    Input_matrix{b} = zscore(Spike_count_raster(idx_beh,randsample(size(Spike_count_raster,2), num_units)))';
 
-                    %figure; hold on; hist(corr(Input_matrix))
+                end
+                Input_matrix_full = cell2mat(Input_matrix);
+                %figure; hold on; hist(corr(Input_matrix))
 
-                    %PCA
-                    [coeff,score,~,~,explained] = pca(Input_matrix);
+                %PCA
+                [coeff,score,~,~,explained] = pca(Input_matrix_full');
+                %[coeff,score,~,~,explained] = pca(Spike_count_raster);
 
-                    %Get dimensionality
-                    var_explained = cumsum(explained);
-                    idxl = find(var_explained>=var_explained_threshold);
-                    dim(s,chan,b,iter) = min(idxl);
+                %Get dimensionality
+                var_explained = cumsum(explained);
+                idxl = find(var_explained>=var_explained_threshold);
 
-                end % end of interation loop
+                %Get distances
+                D=pdist(score(:,1:20), 'cityblock');
+                Z = squareform(D);
+                heatmap(Z,'Colormap',jet)
 
-            end %end of behavior loop
+            end % end of interation loop
 
         end % end of if clause
 

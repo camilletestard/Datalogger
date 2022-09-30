@@ -13,8 +13,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
@@ -22,7 +22,7 @@ with_partner =1;
 temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
-unq_behav=1; %If only consider epochs where only 1 behavior happens
+unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 num_iter = 100;%Number of SVM iterations
@@ -34,13 +34,13 @@ simplify=0;%lump similar behavioral categories together to increase sample size.
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=1;
+s=2;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -73,9 +73,9 @@ for s =session_range %1:length(sessions)
         %Spike_count_raster = lowpass(Spike_rasters',0.05,1);
 
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-%         behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-%         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
-%         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+        behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
+        behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
+        behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
         co_occurrence = cell2mat({labels{:,5}}');
 
@@ -124,7 +124,7 @@ for s =session_range %1:length(sessions)
 
 
         % OR select behaviors manually
-%          behav = [4,5,7,8,9,10,24];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        %behav = [5,18];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -168,7 +168,7 @@ for s =session_range %1:length(sessions)
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = 30;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
+            minNumTrials = min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -199,9 +199,9 @@ for s =session_range %1:length(sessions)
         sd_hitrate_shuffled = std(hitrate_shuffled);
 
         C_concat=cat(3,C{:}); %Get confusion matrix
-        confusion_mat_avg=round(mean(C_concat,3)*100); %Average over SVM iterations
+        confusion_mat_avg{s, chan}=round(mean(C_concat,3)*100); %Average over SVM iterations
         rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
-        C_table{s, temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames{s},'VariableNames',colNames{s});
+        C_table{s, chan} = array2table(confusion_mat_avg{s, chan},'RowNames',rowNames{s},'VariableNames',colNames{s});
 
         chan = chan +1;
         clear labels_id
@@ -211,6 +211,24 @@ for s =session_range %1:length(sessions)
     cd(savePath)
 
     %% Plot confusion matrices
+
+    figure; set(gcf,'Position',[150 250 1500 500]);
+    subplot(1,2,1)
+    hp=heatmap(confusion_mat_avg{s, 1},'Colormap', jet); caxis([0 100]);
+    hp.XDisplayLabels = rowNames{s}; hp.YDisplayLabels = colNames{s}; title(['vlPFC'])
+    ylabel('Real'); xlabel('Predicted')
+    ax = gca;
+    ax.FontSize = 14;
+    
+    subplot(1,2,2)
+    hp=heatmap(confusion_mat_avg{s, 2},'Colormap', jet); caxis([0 100]);
+    hp.XDisplayLabels = rowNames{s}; hp.YDisplayLabels = colNames{s}; title(['TEO'])
+    ylabel('Real'); xlabel('Predicted')
+    ax = gca;
+    ax.FontSize = 14;
+    saveas(gcf,['ConfusionMatrix.pdf'])
+
+
 %     vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
 %     D{s} = vlpfc-TEO;
 %     CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
@@ -218,17 +236,6 @@ for s =session_range %1:length(sessions)
 %     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
 %     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
 %     subplot(2,2,4); h = heatmap(D{s},'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
-
-%     if randomsample ==0 && unq_behav==1
-%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique_confmat.png'])
-%     elseif randomsample ==1 && unq_behav==1
-%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique_confmat.png'])
-%     elseif randomsample ==0 && unq_behav==0
-%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique_confmat.png'])
-%     elseif randomsample ==1 && unq_behav==0
-%         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique_confmat.png'])
-%     end
-
     %close all
 
     %% Plot session result
@@ -260,18 +267,6 @@ for s =session_range %1:length(sessions)
 % % %     ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
 % % %     title('Decoding accuracy for subject current behavioral states','FontSize', 14)
 
-% % %     cd(savePath)
-% % % 
-% % %     if randomsample ==0 && unq_behav==1
-% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_unique.png'])
-% % %     elseif randomsample ==1 && unq_behav==1
-% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_unique.png'])
-% % %     elseif randomsample ==0 && unq_behav==0
-% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_NOsubsample_NOTunique.png'])
-% % %     elseif randomsample ==1 && unq_behav==0
-% % %         saveas(gcf,['SVM_results_' num2str(length(behavs_eval)) 'behav_subsample_NOTunique.png'])
-% % %     end
-% % %     close all
 
 end %End of session for loop
 

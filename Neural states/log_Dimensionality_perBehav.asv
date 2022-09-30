@@ -42,7 +42,7 @@ elseif simplify ==2
     min_occurrences = 230;
 elseif simplify ==3
     dim = nan(max(session_range),2,3,num_iter);
-    min_occurrences = 100;
+    min_occurrences = 50;
 else
     dim = nan(max(session_range),2,8,num_iter);
 end
@@ -215,39 +215,13 @@ save('Dimensionality_GroomCateg.mat', "dim","behav","a_sessions","h_sessions","b
 
 %% Plot results across sessions
 
-load('Dimensionality_GroomCateg.mat')
+load('Dimensionality_2categ.mat')
 
 dim_amos = squeeze(nanmean(dim(a_sessions,:,:,:),1));
-dim_hooke = squeeze(nanmean(dim(h_sessions,:,:,:),1));
-dim_all = squeeze(nanmean(dim,1));
-
-%Pooling both monkeys
-figure; hold on; set(gcf,'Position',[150 250 1000 500]); lowlimit=25; uplimit=45;
-subplot(1,2,1); hold on
-mean_dim_vlpfc = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim_vlpfc);
-violin(squeeze(dim_all(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-ax = gca;
-ax.FontSize = 14;
-ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-title('vlPFC')
-
-subplot(1,2,2); hold on
-mean_dim_teo = squeeze(mean(dim_all(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
-violin(squeeze(dim_all(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-ax = gca;
-ax.FontSize = 14;
-ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-title('TEO')
-saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')
+dim_hooke = squeeze(mean(dim(h_sessions,:,:,:),1));
 
 
-
-%Separated by monkey
-figure; hold on; set(gcf,'Position',[150 250 1000 800]); lowlimit=25; uplimit=45;
+figure; hold on; set(gcf,'Position',[150 250 1000 800]); lowlimit=25; uplimit=55;
 
 %Amos
 subplot(2,2,1); hold on
@@ -291,4 +265,4 @@ ax.FontSize = 14;
 ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
 title('Hooke, TEO')
 
-saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')
+saveas(gcf,'DimensionalityPerBehav_2categ.pdf')

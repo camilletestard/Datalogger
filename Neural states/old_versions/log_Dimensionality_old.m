@@ -1,5 +1,3 @@
-%%Log_dimensionality
-
 %Set session list
 is_mac = 1;
 if is_mac
@@ -9,21 +7,21 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
+session_range_no_partner=[1:6,11:13,15:16];
+session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 with_partner =0;
 temp = 1; temp_resolution = 1;
-channel_flag = "vlPFC";
+channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
-sigma = 1;%set the smoothing window size (sigma)
-var_explained_threshold=90; num_units = 100;
-num_iter = 100;
+sigma = 3;%set the smoothing window size (sigma)
+var_explained_threshold=90;
+num_iter = 100; numpoints = 10;
 
 %Select session range:
 if with_partner ==1
@@ -31,10 +29,8 @@ if with_partner ==1
     a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
-
-
 
 s=1;
 for s =session_range %1:length(sessions)
@@ -44,7 +40,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/UMAP_results/'];
 
     chan = 1;
-    dim = nan(2,num_iter);
+    dim = nan(2,numpoints,num_iter);
 
     for channel_flag = ["vlPFC", "TEO"]
         %channel_flag = "vlPFC";
@@ -64,48 +60,50 @@ for s =session_range %1:length(sessions)
         Spike_count_raster = Spike_rasters';
 
 
-        %% Compute dimensionality for 100 units, over multiple iterations
+        %% Compute dimensionality over increasing numbers of units, over multiple iterations
+        u = 1; unit_num_range = round(linspace(1,min(unit_count),numpoints));
 
-        for iter = 1:num_iter
+        for unit_num = unit_num_range
 
-            %Select unit to run SVM
-            Input_matrix = Spike_count_raster(:,randsample(size(Spike_count_raster,2), num_units));
+            disp(['Unit num: ' num2str(unit_num)])
+            for iter = 1:num_iter
 
-            %PCA
-            [coeff,score,~,~,explained] = pca(Input_matrix);
+                %Select unit to run SVM
+                Input_matrix = Spike_count_raster(:,randsample(unit_count(chan), unit_num));
 
-            %Get dimensionality
-            var_explained = cumsum(explained);
-            idxl = find(var_explained>=var_explained_threshold);
-            dim(chan,iter) = min(idxl);
+                %PCA
+                [coeff,score,~,~,explained] = pca(Input_matrix);
 
-        end % end of interation loop
+                %Get dimensionality
+                var_explained = cumsum(explained);
+                idxl = find(var_explained>=var_explained_threshold);
+                dim(chan,u,iter) = min(idxl);
+
+            end % end of interation loop
+
+            u=u+1;
+        end %end of unit loop
 
         chan=chan+1;
         disp([channel_flag ' done'])
     end %end of channel loop
 
     %% Plot results for the session
-    mean_dim_vlpfc(s) = mean(dim(1,:),2);
-    sd_dim_vlpfc(s) = std(dim(1,:),0,2);
-    mean_dim_teo(s) = mean(dim(2,:),2);
-    sd_dim_teo(s) = std(dim(2,:),0,2);
+    mean_dim_vlpfc = mean(dim(1,:,:),3);
+    sd_dim_vlpfc = std(dim(1,:,:),0,3);
+    mean_dim_teo = mean(dim(2,:,:),3);
+    sd_dim_teo = std(dim(2,:,:),0,3);
 
+    figure; hold on; set(gcf,'Position',[150 250 700 500])
+    errorbar(mean_dim_vlpfc, sd_dim_vlpfc,'s','MarkerSize',10)
+    errorbar(mean_dim_teo, sd_dim_teo,'s','MarkerSize',10)
+    xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]); ylim([0 max(mean_dim_vlpfc)+max(mean_dim_vlpfc)*0.1])
+    xticklabels(unit_num_range)
+    ax = gca;
+    ax.FontSize = 14;
+    legend('vlPFC','TEO')
+    ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18); xlabel('#units included','FontSize', 18)
+    title('Smoothing: 20s')
+    
 
 end%end of session loop
-
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Dimensionality_results/']);
-
-
-nonzero_sessions = mean_dim_vlpfc~=0;
-figure; hold on; set(gcf,'Position',[150 250 700 500])
-violin([mean_dim_vlpfc(nonzero_sessions)', mean_dim_teo(nonzero_sessions)'])
-scatter(ones(1,length(session_range)),mean_dim_vlpfc(nonzero_sessions),50,'g','filled')
-scatter(ones(1,length(session_range))*2,mean_dim_teo(nonzero_sessions),50,'b','filled')
-xticks([1 2]); xlim([0.5 2.5]); ylim([0 35])
-xticklabels({'vlPFC','TEO'})
-ax = gca;
-ax.FontSize = 14;
-ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 18)
-title('Whole session')
-saveas(gcf,'DimensionalityPerArea.pdf')
