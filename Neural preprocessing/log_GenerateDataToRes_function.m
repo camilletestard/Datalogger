@@ -1,23 +1,37 @@
 function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
-
 %Log GenerateDataToRes_function
-% Input data files: 
+% Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
 %   2. Behavior of the partner: "EVENTLOG_restructured_partner.csv"
 %   3. Spike sorted neural data: "Neural_data_*sessionname*.mat" OR
 %   "Neural_data_*sessionname*_isolatedunits.mat"
 %   4. Motion energy measure for each top view video: "ME.csv"
 
-% This function formats the raw input data to have the following elements:
-% 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
-% 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
+% Arguments: 
+%   filePath: is the experimental data path
+%   Temp_resolution: is the temporal resolution at which we would like to
+%   analyze the dat
+%   Channel_flag: specifies with channels to include: only TEO array, only
+%   vlPFC array or all channels
+%   is_mac: specifies whether the code is run on a mac or pc
+%   with_NC: specifies whether the "noise cluster" (or the first cell of
+%   every channel) is included (1) or not (0). If with_NC=2 then we only
+%   include the noise cluster (not the other neurons).
+%   isolatedOnly: specifies if only the well isolated units are considered.
+%   smooth: is the data smoothed using function conv.
+%   sigma: size of smoothing
+
+% This function formats the raw input data to have the following elements (output data):
+% 1. Spike_rasters: Neural data matrix, size [Time (to chosen resolution) x #neurons]
+% 2. labels: Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
 %       1st column includes all behaviors in "plain english"
 %       2nd column behavior number code
 %       3rd column unique behavior code (when two occur
 %       simultaneously, we chose one, see below for details)
 %       4th column whether behavior happens in isolation or co-occurs
 %       with another.
-%       5th column binary code for behavior happening in isolation (1) or not (0)
+%       5th column indicates the block in which we are
+%       (Paired,monkey1; Paired monkey2 or Alone)
 %       6th column is the behavior "reciprocal" (i.e. partner behavior can
 %       be 100% predictted by subject behavior and vice-versa)
 %       7th column binary code reciprocal (1) vs. not (0)
@@ -28,8 +42,15 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       (Paired, "female" neighbor; Paired, "male" neighbor or "alone")
 %       11th column gives a corresponding numerical value to the block order.
 %       12th column is a numerical version of block ID.
-% 3. Label for partner behavior, same columns as subject labels
-% 4. Label for grooming, length of the session, with the following columns:
+% 3. labels_partner: same as above but for the partner
+% 4. behav_categ: behavioral categories
+% 5. block_times: Order and timing of blocks during the session
+% 6. monkey: ID of the subject monkey
+% 7. reciprocal_set: Set of reciprocal behaviors
+% 8. social_set: Set of social behaviors 
+% 9. ME_final: Motion energy for the session
+% 10.unit_count: Number of units per brain area
+% 11.groom_labels_all: Label of grooming category. Columns correspond to:
 %       1. Behavior label. If not grooming (7 groom give, 8 groom receive),
 %       then all categories below will be 0. If grooming, the bout can be
 %       qualified as:
@@ -37,18 +58,8 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       3. Grooming after a threat (1) or not (2)
 %       4. Grooming reciprocated (1) or not (2)
 %       5. Grooming initiated (1) or not (2)
+% 12.brain_label: brain area label for each unit 
 
-% Arguments: 
-%   filePath is the experimental data path
-%   Temp_resolution is the temporal resolution at which we would like to
-%   analyze the dat
-%   Channel_flag specifies with channels to include: only TEO array, only
-%   vlPFC array or all channels
-%   is_mac: specifies whether the code is run on a mac or pc
-%   with_NC: specifies whether the "noise cluster" (or the first cell of
-%   every channel) is included (1) or not (0). If with_NC=2 then we only
-%   inlcude the noise cluster (not the other neurons).
-%   isolatedOnly: specifies if only the well isolated units are considered.
 
 % Camille Testard - Nov. 2021
 

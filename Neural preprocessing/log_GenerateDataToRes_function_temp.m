@@ -1,5 +1,5 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
-%Log GenerateDataToRes_function
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original] = log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
+%Log GenerateDataToRes_function_temp
 % Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
 %   2. Behavior of the partner: "EVENTLOG_restructured_partner.csv"
@@ -7,9 +7,23 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %   "Neural_data_*sessionname*_isolatedunits.mat"
 %   4. Motion energy measure for each top view video: "ME.csv"
 
-% This function formats the raw input data to have the following elements:
-% 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
-% 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
+% Arguments: 
+%   filePath: is the experimental data path
+%   Temp_resolution: is the temporal resolution at which we would like to
+%   analyze the dat
+%   Channel_flag: specifies with channels to include: only TEO array, only
+%   vlPFC array or all channels
+%   is_mac: specifies whether the code is run on a mac or pc
+%   with_NC: specifies whether the "noise cluster" (or the first cell of
+%   every channel) is included (1) or not (0). If with_NC=2 then we only
+%   include the noise cluster (not the other neurons).
+%   isolatedOnly: specifies if only the well isolated units are considered.
+%   smooth: is the data smoothed using function conv.
+%   sigma: size of smoothing
+
+% This function formats the raw input data to have the following elements (output data):
+% 1. Spike_rasters: Neural data matrix, size [Time (to chosen resolution) x #neurons]
+% 2. labels: Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
 %       1st column includes all behaviors in "plain english"
 %       2nd column behavior number code
 %       3rd column unique behavior code (when two occur
@@ -18,21 +32,28 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       with another.
 %       5th column indicates the block in which we are
 %       (Paired,monkey1; Paired monkey2 or Alone)
-%       6th column gives a corresponding numerical value to the block
-
-% Arguments: 
-%   filePath is the experimental data path
-%   Temp_resolution is the temporal resolution at which we would like to
-%   analyze the dat
-%   Channel_flag specifies with channels to include: only TEO array, only
-%   vlPFC array or all channels
-%   is_mac: specifies whether the code is run on a mac or pc
-%   with_NC: specifies whether the "noise cluster" (or the first cell of
-%   every channel) is included (1) or not (0). If with_NC=2 then we only
-%   inlcude the noise cluster (not the other neurons).
-%   isolatedOnly: specifies if only the well isolated units are considered.
-%   smooth: is the data smoothed using function conv.
-%   sigma: size of smoothing
+%       6th column is the behavior "reciprocal" (i.e. partner behavior can
+%       be 100% predictted by subject behavior and vice-versa)
+%       7th column binary code reciprocal (1) vs. not (0)
+%       8th column is the behavior "social" or not (i.e. done with a
+%       conspecific)
+%       9th column binary code for social (1) or not (0).
+%       10th column indicates the block ID in which we are
+%       (Paired, "female" neighbor; Paired, "male" neighbor or "alone")
+%       11th column gives a corresponding numerical value to the block order.
+%       12th column is a numerical version of block ID.
+% 3. labels_partner: same as above but for the partner
+% 4. behav_categ: behavioral categories
+% 5. block_times: Order and timing of blocks during the session
+% 6. monkey: ID of the subject monkey
+% 7. reciprocal_set: Set of reciprocal behaviors
+% 8. social_set: Set of social behaviors 
+% 9. ME_final: Motion energy for the session
+% 10.unit_count: Number of units per brain area
+% 11.groom_labels_all:  
+% 12.brain_label: brain area label for each unit 
+% 13.behavior_log: raw behavioral log
+% 14.behav_categ_original: original category labeling
 
 % Camille Testard - Nov. 2021
 
@@ -67,6 +88,7 @@ num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessio
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 
+%ME (for now ignore)
 ME_final = []'; %Combine ME vectors
 
 
@@ -242,7 +264,7 @@ Intervals = [start_times end_times];
 
 
 %%%%%% Create labels vector for SUBJECT monkey %%%%%%
-labels = cell(length_recording,11); %initialize dataframe
+labels = cell(length_recording,12); %initialize dataframe
 for s = 1:length_recording %for all secs in a session
     % this finds the index of the rows(2) that have x in between
     idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
@@ -346,6 +368,7 @@ for s = 1:length_recording %for all secs in a session
 end
 
 %Rename behavior category to not have acronyms
+behav_categ_original = behav_categ;
 behav_categ{find(matches(behav_categ,'HIP'))}='Threat to partner';
 behav_categ{find(matches(behav_categ,'HIS'))}='Threat to subject';
 behav_categ{find(matches(behav_categ,'Pacing/Travel'))}='Travel';
@@ -480,144 +503,6 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
 
 end
 groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
-
-% % % % % % % groom_labels_all=zeros(size(labels,1),5); %Initiliaze
-% % % % % % % %First row: label of all behavior
-% % % % % % % %2nd row: Is start (1, first half or first 20sec) or end (2, 2nd half or last 20sec) of grooming bout
-% % % % % % % %3rd row: Is grooming bout after a threat event (within 1min after threat)
-% % % % % % % %4th row: Is grooming bout reciprocated (within 30sec of previous grooming bout)
-% % % % % % % %5th row: Is grooming bout initiated (within 30sec of an approach or groom present)
-% % % % % % % 
-% % % % % % % %set paramaters:
-% % % % % % % time_start_end = 5; %in sec
-% % % % % % % time_after_threat = 30;
-% % % % % % % time_postthreat = 10;
-% % % % % % % time_after_recip = 5;
-% % % % % % % time_postrecip =10;
-% % % % % % % time_after_sollicit = 5;
-% % % % % % % time_postsollicit =10;
-% % % % % % % 
-% % % % % % % %Set first column as the behavior labels
-% % % % % % % groom_labels_all(:,1) = cell2mat({labels{:,3}}');
-% % % % % % % 
-% % % % % % % %get all grooming bouts
-% % % % % % % all_groom_bouts = sort([find(strcmp(table2array(behavior_log(:,'Behavior')),'Groom Give'));...
-% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'Groom Receive'))]);
-% % % % % % % 
-% % % % % % % %Get human threat times and intervals considered "post-threat"
-% % % % % % % all_threat_end_times = table2array(behavior_log([find(strcmp(table2array(behavior_log(:,'Behavior')),'HIS'));...
-% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'HIP'))],"end_time_round")); %Get threat times
-% % % % % % % threat_interval=[]; %Initialize
-% % % % % % % for n=1:length(all_threat_end_times) %For all threat times
-% % % % % % %     threat_interval = [threat_interval, all_threat_end_times(n):all_threat_end_times(n)+time_after_threat]; %Get all indices consideres as "post-threat"
-% % % % % % % end
-% % % % % % % 
-% % % % % % % %Get sollicitation times and intervals considered "post-sollicitation"
-% % % % % % % all_sollicit_end_times = table2array(behavior_log([find(strcmp(table2array(behavior_log(:,'Behavior')),'Grm prsnt'));...
-% % % % % % %     find(strcmp(table2array(behavior_log(:,'Behavior')),'Approach'))],"end_time_round"));
-% % % % % % % sollicit_interval=[];
-% % % % % % % for n=1:length(all_sollicit_end_times)
-% % % % % % %     sollicit_interval = [sollicit_interval, all_sollicit_end_times(n):all_sollicit_end_times(n)+time_after_sollicit];
-% % % % % % % end
-% % % % % % % 
-% % % % % % % 
-% % % % % % % %Create grooming label matrix
-% % % % % % % for g = 1:length(all_groom_bouts) %For all grooming bouts
-% % % % % % % 
-% % % % % % %     bout_behav = table2array(behavior_log(all_groom_bouts(g),"Behavior")); %Groom give or groom receive
-% % % % % % %     bout_start_time = table2array(behavior_log(all_groom_bouts(g),"start_time_round"));%Start time
-% % % % % % %     bout_end_time = table2array(behavior_log(all_groom_bouts(g),"end_time_round"))-1;%End time
-% % % % % % % 
-% % % % % % %     if g>1 %If not first bout
-% % % % % % %         previous_bout_behav = table2array(behavior_log(all_groom_bouts(g-1),"Behavior"));%Grooming behavior of previous bout
-% % % % % % %         previous_bout_end_time = table2array(behavior_log(all_groom_bouts(g-1),"end_time_round"));%End time previous bout
-% % % % % % %         previous_bout_start_time = table2array(behavior_log(all_groom_bouts(g-1),"start_time_round"));%Start time previous bout
-% % % % % % % 
-% % % % % % %         %If there is less than 5sec between two bouts of the SAME grooming
-% % % % % % %         %behavior
-% % % % % % %         if bout_start_time - previous_bout_end_time < 5 && isequal(bout_behav, previous_bout_behav)
-% % % % % % %             %Consider this bouts to be the same as the previous bout.
-% % % % % % %             diff_bout =0; %Set bout as NOT different
-% % % % % % %             bout_start_time = previous_bout_start_time; %Change start time to be the start time of the previous bout.
-% % % % % % %         else
-% % % % % % %             diff_bout =1; %Set bout as different.
-% % % % % % %         end
-% % % % % % %     end
-% % % % % % % 
-% % % % % % %     bout_length = bout_end_time - bout_start_time+1; %Set bout length in sec
-% % % % % % %     bout_idx = bout_start_time:bout_end_time;%Get bout indices
-% % % % % % % 
-% % % % % % %     %Label start and end of bout
-% % % % % % %     if bout_length > time_start_end*2 %If bout is longer than twice the start/end time
-% % % % % % %         idx_start = bout_start_time:bout_start_time+time_start_end-1; %First 20s is "start" of grooming bout
-% % % % % % %         idx_end = bout_end_time-time_start_end+1:bout_end_time;%Last 20s is "end" of grooming bout
-% % % % % % %         idx_middle = setdiff(bout_start_time:bout_end_time, [idx_start idx_end]);%Rest is middle
-% % % % % % %     else %If bout is shorter
-% % % % % % %         idx_start = bout_start_time:bout_start_time+round(bout_length/2);%Consider the first half of the bout as start
-% % % % % % %         idx_end = bout_start_time+round(bout_length/2)+1:bout_end_time;%Last half of the bout as end
-% % % % % % %         idx_middle =[];%No middle
-% % % % % % %     end
-% % % % % % %     groom_labels_all(idx_start,2)=1; groom_labels_all(idx_end,2)=2; groom_labels_all(idx_middle,2)=3;
-% % % % % % % 
-% % % % % % %     %Label post-threat status
-% % % % % % %     idx_postthreat=intersect(bout_idx, threat_interval);%Indices that occur during the "post-threat" interval
-% % % % % % %     if ~isempty(idx_postthreat)
-% % % % % % %         if length(bout_idx)>time_postthreat
-% % % % % % %             idx_threat = bout_start_time:bout_start_time+time_postthreat;
-% % % % % % %             idx_nonthreat = setdiff(bout_idx,idx_threat);
-% % % % % % %             groom_labels_all(idx_threat,3)=2; groom_labels_all(idx_nonthreat,3)=1;
-% % % % % % %         else
-% % % % % % %             groom_labels_all(bout_idx,3)=2;%Label the whole bout as sollicited
-% % % % % % %         end
-% % % % % % %         %         groom_labels_all(bout_idx,3)=2;
-% % % % % % %     else
-% % % % % % %         groom_labels_all(bout_idx,3)=1;
-% % % % % % %     end
-% % % % % % %     %     idx_nothreat = setdiff(bout_idx,idx_postthreat);%The rest is not "post-threat"
-% % % % % % %     %     groom_labels_all(idx_nothreat,3)=1; groom_labels_all(idx_postthreat,3)=2;
-% % % % % % % 
-% % % % % % %     %Label reciprocated status
-% % % % % % %     if g>1 %If this is not the first grooming bout
-% % % % % % %         if diff_bout==1 %If it is a different bout (i.e. there is at least 3sec between the two bouts)
-% % % % % % %             if bout_start_time-previous_bout_end_time <= time_after_recip && ~ismember(previous_bout_behav,bout_behav)
-% % % % % % %                 %If there is less than Xsec between a groom receive and a groom give
-% % % % % % %                 if length(bout_idx)>time_postrecip
-% % % % % % %                     idx_recip = bout_start_time:bout_start_time+time_postrecip;
-% % % % % % %                     idx_nonrecip = setdiff(bout_idx,idx_recip);
-% % % % % % %                     groom_labels_all(idx_recip,4)=2; groom_labels_all(idx_nonrecip,4)=1;
-% % % % % % %                 else
-% % % % % % %                     groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
-% % % % % % %                 end
-% % % % % % %                 %groom_labels_all(bout_idx,4)=2;%Label the whole bout as reciprocated
-% % % % % % %             else
-% % % % % % %                 groom_labels_all(bout_idx,4)=1;%Label the whole bout as non-reciprocated
-% % % % % % %             end
-% % % % % % %         else % If it is actually the same bout (not enough difference between the bouts)
-% % % % % % %             groom_labels_all(bout_idx,4)=groom_labels_all(bout_idx(1),4);%Label the same way as the previous bout
-% % % % % % %         end
-% % % % % % %     else %If it is the first grooming bout of the session
-% % % % % % %         groom_labels_all(bout_idx,4)=1;%Label as non-reciprocal
-% % % % % % %     end
-% % % % % % % 
-% % % % % % %     %Label initiated status
-% % % % % % %     idx_initiated=intersect(bout_idx, sollicit_interval);%Indices that occur during the "post-sollicitation" interval
-% % % % % % %     if ~isempty(idx_initiated)
-% % % % % % %         if length(bout_idx)>time_postsollicit
-% % % % % % %             idx_sollicited = bout_start_time:bout_start_time+time_postsollicit;
-% % % % % % %             idx_nonsollicited = setdiff(bout_idx,idx_sollicited);
-% % % % % % %             groom_labels_all(idx_sollicited,5)=2; groom_labels_all(idx_nonsollicited,5)=1;
-% % % % % % %         else
-% % % % % % %             groom_labels_all(bout_idx,5)=2;%Label the whole bout as sollicited
-% % % % % % %         end
-% % % % % % %         %groom_labels_all(bout_idx,5)=2;
-% % % % % % %     else
-% % % % % % %         groom_labels_all(bout_idx,5)=1;
-% % % % % % %     end
-% % % % % % %     %     idx_not_initiated = setdiff(bout_idx,idx_initiated);%The rest is not post-sollicitation
-% % % % % % %     %     groom_labels_all(idx_not_initiated,5)=1; groom_labels_all(idx_initiated,5)=2;
-% % % % % % % 
-% % % % % % % end
-% % % % % % % groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
 
 
 end
