@@ -1,7 +1,5 @@
 %% log_mvmt_perBehav
-% Extract movement variation per behavior, as well as overlap across
-% behaviors
-% C. Testard Oct. 2022
+% Extract amount of movement variance per behavior.
 
 
 %Set session list
@@ -18,7 +16,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 30; %frame rate
+temp = 1; temp_resolution = 1; %frame rate
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -66,7 +64,7 @@ for s =session_range %1:length(sessions)
 
         cd(filePath)
 
-        %Trim neural and behavioral data to align with video data
+        %Trim neural data and behavioral to align with video data
         camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
         Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
         labels_trimmed = labels(camera_start_time:end,:);
@@ -96,7 +94,7 @@ for s =session_range %1:length(sessions)
 
         % Get alone block
         %For behavior labels
-        lbls = cell2mat(labels_trimmed(:,3));
+        lbls = cell2mat(labels(:,3));
         lbls=lbls(1:size(top_view_ME,1));
         %lbls = categorical(lbls);
 

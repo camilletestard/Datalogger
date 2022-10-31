@@ -35,7 +35,7 @@ behavs = as.character(unique(log$Behavior))
 behavs = behavs[!(is.na(behavs) | behavs=="")] #remove blank behaviors
 
 #Only keep behaviors, remove session events
-to_remove = cbind("Started recording", "Camera Sync", "Stopped recording")
+to_remove = cbind("Started recording","Stopped recording")
 if (any(is.na(match(to_remove, behavs)))) { #if one of the session event is missing (should only be the case for one session)
   to_remove = to_remove[!is.na(match(to_remove, behavs))]
 }
@@ -45,7 +45,7 @@ behavs = behavs[-match(to_remove, behavs)] #only keep behaviors
 new_log=data.frame(); b=1
 for (b in 1:length(behavs)){ #For all behaviors
   
-    data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
+  data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior
   
   interim=split(data,data$Start.end) #Split the data by behavior start and behavior end
@@ -85,7 +85,7 @@ new_log_final$Behavior=factor(new_log_final$Behavior,
                               levels=c("Aggression","Proximity", "HIP","Foraging", "Vocalization","SS","Groom Give", "Masturbating","Mounting",
                                        "Submission", "Approach","Yawning","Self-groom","HIS","Other monkeys vocalize", "Lip smack",
                                        "Groom Receive","Leave","Drinking","SP","Pacing/Travel","Scratch","RR", "Butt sniff","Grm prsnt",
-                                       "Swinging", "Head Bobbing", "Object Manipulation","watch.neighbor"))
+                                       "Swinging", "Head Bobbing", "Object Manipulation","watch.neighbor","Camera Sync"))
 
 #Remove NAs (for behavior categories we do not consider here)
 new_log_final = new_log_final[!is.na(new_log_final$Behavior),]
@@ -109,7 +109,7 @@ new_log_final_plot$Behavior = factor(new_log_final_plot$Behavior)
 new_log_final_plot$Behavior=factor(new_log_final_plot$Behavior,
                               levels=c("Aggression","Proximity", "Threat to partner","Foraging", "Vocalization","Groom partner", "Mounting",
                                       "Approach","Yawning","Self-groom","Threat to subject","Other monkeys vocalize", 
-                                       "Getting groomed","Leave","Drinking","Travel","Scratch","Alert", "Limb presentation"))
+                                       "Getting groomed","Leave","Drinking","Travel","Scratch","Alert", "Limb presentation","Camera Sync"))
 
 #Plot
 behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+

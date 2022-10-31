@@ -1,5 +1,7 @@
 %% log_mvmt_perBehav
-% Extract amount of movement variance per behavior.
+% Extract movement variation per behavior, as well as overlap across
+% behaviors
+% C. Testard Oct. 2022
 
 
 %Set session list
@@ -62,25 +64,39 @@ for s =session_range %1:length(sessions)
                 is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
-
         cd(filePath)
 
-        %Load ME
-        load('hooke0819_motion_energy.mat')
-        top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
+        %Trim neural and behavioral data to align with video data
+        camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
+        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
+        labels_trimmed = labels(camera_start_time:end,:);
 
         %Load DLC
-        dlc = readtable('hooke0819_dlc_head.csv');% Load DLC key point data
+        dlc = readtable('mvmt_data.csv');% Load DLC key point data
         dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
 
-        logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
+        toplogger = table2array(dlc(:,1:2));
+        bottomlogger = table2array(dlc(:,4:5));
+        logger_bottom = table2array(dlc(:,1:2)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
         logger_top = table2array(dlc(:,5:7)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
         nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
 
-        %Load head derived measures
-        head_derived_measures = load('hooke0819_head_direction.mat');
-        head_direction = head_derived_measures.head_orientation_dlc; head_direction = head_direction(1:end-1,:);
-        quad_position = head_derived_measures.updown_position; quad_position = quad_position(1:end-1,:);
+%         %Load ME
+%         load('hooke0819_motion_energy.mat')
+%         top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
+% 
+%         %Load DLC
+%         dlc = readtable('hooke0819_dlc_head.csv');% Load DLC key point data
+%         dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
+% 
+%         logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
+%         logger_top = table2array(dlc(:,5:7)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
+%         nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
+% 
+%         %Load head derived measures
+%         head_derived_measures = load('hooke0819_head_direction.mat');
+%         head_direction = head_derived_measures.head_orientation_dlc; head_direction = head_direction(1:end-1,:);
+%         quad_position = head_derived_measures.updown_position; quad_position = quad_position(1:end-1,:);
 
         disp('Data Loaded')
 
@@ -152,6 +168,8 @@ for s =session_range %1:length(sessions)
 
         %% Quantify movements within behaviors
 
+        cd(savePath)
+
         %For motion energy
         unq_beh = [1 4 5 18 23 24 25 29];%unique(lbls_final);
         figure; xlim([0 50000]); hold on
@@ -203,13 +221,17 @@ for s =session_range %1:length(sessions)
         %% Compare movements across behaviors
         
         %For field of view
-        figure;  hold on; set(gcf,'Position',[150 250 1500 200]);
+        figure;  hold on; %set(gcf,'Position',[150 250 1500 200]);
         for b=1:length(unq_beh)
-            subplot(1,length(unq_beh),b)
+            %subplot(1,length(unq_beh),b)
             histogram(head_direction_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf')
-            title(behav_categ(unq_beh(b)))
+            %title(behav_categ(unq_beh(b)))
             xlim([-180 180]); ylim([0 0.045])
             ylabel('Proportion'); xlabel('Degrees')
         end
+        legend(behav_categ(unq_beh))
+        title('Field of view across behaviors')
+        ax = gca;
+        ax.FontSize = 14;
 end
 

@@ -1,4 +1,4 @@
-%% Log_SingleNeuronTuning_Cohensd
+%% Log_SingleNeuronTuning_zscore
 %  This script computes firing rate of individual neuron under different
 %  behavioral conditions. Then, it computes a cohen's d (or effect size)
 %  difference between the distribution of firing rates during behavior X
@@ -13,14 +13,14 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 1; %Temporal resolution of firing rate. 1sec
+temp_resolution = 10; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
@@ -43,10 +43,10 @@ n_per_behav = nan(length(sessions),n_behav);
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
@@ -75,10 +75,10 @@ for s =session_range %1:length(sessions)
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
-    behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=length(behav_categ); %exclude rowdy room for now
-    behavior_labels(behavior_labels==find(behav_categ=="Other monkeys vocalize"))=length(behav_categ); %exclude rowdy room for now
-    behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
-    behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+    behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=length(behav_categ)+1; %exclude rowdy room for now
+    behavior_labels(behavior_labels==find(behav_categ=="Other monkeys vocalize"))=length(behav_categ)+1; %exclude rowdy room for now
+%     behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+%     behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
     behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
     behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
 
@@ -133,8 +133,8 @@ for s =session_range %1:length(sessions)
     AxesLabels_sorted_a = behav_categ(orderIdx);
     AxesLabels = behav_categ(1:end-1);
     lim=max(abs(max(max(mean_beh))), abs(min(min(mean_beh))));
-    caxis_upper = 3;%max(max(mean_beh));
-    caxis_lower = -3;%min(min(mean_beh));
+    caxis_upper = 2;%max(max(mean_beh));
+    caxis_lower = -2;%min(min(mean_beh));
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
     figure; %set(gcf,'Position',[150 250 1000 500]);
     [nanrow nancol_a]=find(~isnan(meanBehav_sorted)); nancol_a = unique(nancol_a);

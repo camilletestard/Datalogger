@@ -69,16 +69,21 @@ for s =15%session_range %1:length(sessions)
 
         cd(filePath)
 
+        %Trim neural data and behavioral to align with video data
+        camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
+        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
+        labels_trimmed = labels(camera_start_time:end,:);
+
         %Load ME
         load('hooke0819_motion_energy.mat')
         top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
 
         %Load DLC
-        dlc = readtable('hooke0819_dlc_head.csv');% Load DLC key point data
+        dlc = readtable('hooke0819_dlc_head_alone.csv');% Load DLC key point data
         dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
 
-        logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
-        logger_top = table2array(dlc(:,5:7)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
+        logger_top = table2array(dlc(:,2:4)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
+        logger_bottom = table2array(dlc(:,5:7)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
         nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
 
         %Load head derived measures
@@ -88,20 +93,18 @@ for s =15%session_range %1:length(sessions)
 
         disp('Data Loaded')
 
-
-
         %% Pool all the data from the alone block
 
         % Get alone block
         %For behavior labels
-        lbls = cell2mat(labels(:,3));
+        lbls = cell2mat(labels_trimmed(:,3));
         lbls=lbls(1:size(top_view_ME,1));
         lbls = categorical(lbls);
 
         tabulate(lbls)
 
         %For spike data
-        Spike_rasters_final =  zscore(Spike_rasters(:,1:size(top_view_ME,1)),0,2)';
+        Spike_rasters_final =  zscore(Spike_rasters_trimmed(:,1:size(top_view_ME,1)),0,2)';
 
         %Combine mvmt predictors
         logger_top_x = logger_top(:,1);
@@ -154,6 +157,8 @@ for s =15%session_range %1:length(sessions)
                 mvmt_logger_top_x_final, mvmt_logger_top_y_final,...
                 head_direction_final,head_mvmt_final,quad_position_final,...
                 Y_final{sig}(:,unit));
+            X_FOV = table(head_direction_final,head_mvmt_final,...
+                Y_final{sig}(:,unit));
             X_ME = table(top_view_ME_final, side_view_ME_final,...
                 Y_final{sig} (:,unit));
             X_all = table(lbls_final, top_view_ME_final, side_view_ME_final,...
@@ -176,7 +181,7 @@ for s =15%session_range %1:length(sessions)
             mdl_behav = fitlm(X_lbls); %run linear model with behavior only for specific unit
             ResultsBehav.(['sigma' num2str(sig)]).(['unit' num2str(unit)])= mdl_behav;
             Adj_rsq_behav(sig, unit) = mdl_behav.Rsquared.Adjusted;
-            if Adj_rsq_behav(sig, unit)>0.9
+            if Adj_rsq_behav(sig, unit)>0.8
                 Adj_rsq_behav(sig, unit)=nan;
                 ResultsBehav.(['sigma' num2str(sig)]).(['unit' num2str(unit)])=nan;
             end
@@ -191,14 +196,14 @@ for s =15%session_range %1:length(sessions)
             mdl_mvmt = fitlm(X_mvmt); %run linear model with mvmt only for specific unit
             ResultsMvmt.(['sigma' num2str(sig)]).(['unit' num2str(unit)])= mdl_mvmt;
             Adj_rsq_mvmt(sig, unit) = mdl_mvmt.Rsquared.Adjusted;
-            if Adj_rsq_mvmt(sig, unit)>0.9
+            if Adj_rsq_mvmt(sig, unit)>0.8
                 Adj_rsq_mvmt(sig, unit)=nan;
                 ResultsMvmt.(['sigma' num2str(sig)]).(['unit' num2str(unit)])=nan;
             end
 
             mdl_ME = fitlm(X_ME); %run linear model with mvmt only for specific unit
             Adj_rsq_ME(sig, unit) = mdl_ME.Rsquared.Adjusted;
-            if Adj_rsq_ME(sig, unit)>0.9
+            if Adj_rsq_ME(sig, unit)>0.8
                 Adj_rsq_ME(sig, unit)=nan;
             end
 
@@ -254,21 +259,23 @@ for s =15%session_range %1:length(sessions)
     TEO_units = find(strcmp(brain_label,'TEO'));
     vlPFC_units = find(strcmp(brain_label,'vlPFC'));
 
-    sig = 3;
+    sig = 1;
 
     %TEO
     figure; hold on
+
+    subplot(2,2,1); hold on
     boxplot([Adj_rsq_all(sig,TEO_units); Adj_rsq_behav(sig,TEO_units); Adj_rsq_mvmt(sig,TEO_units); Adj_rsq_ME(sig,TEO_units)]')
-    ylabel('Adjusted Rsq')
+    ylabel('Adjusted Rsq'); ylim([0 1])
     xticks([1:4]); xlim([0.5 4.5])
     xticklabels({'all','Behavior','movement + field of view', 'ME'})
     ax = gca;
     ax.FontSize = 14;
     title(['TEO, sigma = ' num2str(sigma_list(sig)) 's'])
 
-    figure; hold on
+    subplot(2,2,2); hold on
     boxplot([unique_behav_contribution(sig,TEO_units); unique_mvmt_contribution(sig,TEO_units)]')
-    ylabel('Unique explained variance')
+    ylabel('Unique explained variance'); ylim([0 1])
     xticks([1:2]); xlim([0.5 2.5])
     xticklabels({'Behavior','Movement'})
     ax = gca;
@@ -276,18 +283,18 @@ for s =15%session_range %1:length(sessions)
     title(['TEO unique contribution, sigma = ' num2str(sigma_list(sig)) 's'])
 
     %vlPFC
-    figure; hold on
+    subplot(2,2,3); hold on
     boxplot([Adj_rsq_all(sig,vlPFC_units); Adj_rsq_behav(sig,vlPFC_units); Adj_rsq_mvmt(sig,vlPFC_units); Adj_rsq_ME(sig,vlPFC_units)]')
-    ylabel('Adjusted Rsq')
+    ylabel('Adjusted Rsq'); ylim([0 1])
     xticks([1:4]); xlim([0.5 4.5])
     xticklabels({'all','Behavior','movement + field of view', 'ME'})
     ax = gca;
     ax.FontSize = 14;
     title(['vlPFC, sigma = ' num2str(sigma_list(sig)) 's'])
 
-    figure; hold on
+    subplot(2,2,4); hold on
     boxplot([unique_behav_contribution(sig,vlPFC_units); unique_mvmt_contribution(sig,vlPFC_units)]')
-    ylabel('Unique explained variance')
+    ylabel('Unique explained variance'); ylim([0 1])
     xticks([1:2]); xlim([0.5 2.5])
     xticklabels({'Behavior','Movement'})
     ax = gca;

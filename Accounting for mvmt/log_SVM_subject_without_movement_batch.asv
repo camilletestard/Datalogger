@@ -18,14 +18,14 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
-with_partner =1;
+with_partner =0;
 temp = 1; temp_resolution = 30; %set temp resolution at the camera temp resolution (FPS)
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 100;%Number of SVM iterations
+num_iter = 5;%Number of SVM iterations
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
@@ -59,13 +59,15 @@ for s =session_range %1:length(sessions)
                 is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
                 is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
-        %Neural data
-        Spike_count_raster = Spike_rasters';
+        %Trim neural data and behavioral to align with video data
+        camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
+        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
+        labels_trimmed = labels(camera_start_time:end,:);
 
         cd(filePath)
 
@@ -74,7 +76,7 @@ for s =session_range %1:length(sessions)
         top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
 
         %Load DLC
-        dlc = readtable('hooke0819_dlc_head.csv');% Load DLC key point data
+        dlc = readtable('hooke0819_dlc_head_alone.csv');% Load DLC key point data
         dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
 
         logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
@@ -92,14 +94,14 @@ for s =session_range %1:length(sessions)
 
         % Get alone block
         %For behavior labels
-        lbls = cell2mat(labels(:,3)); 
-        lbls=lbls(1:size(top_view_ME,1)); lbls_not_categ = lbls;
+        lbls = cell2mat(labels_trimmed(:,3)); 
+        lbls=lbls(1:size(dlc,1)); lbls_not_categ = lbls;
         lbls = categorical(lbls); 
 
         tabulate(lbls)
 
         %For spike data
-        Spike_rasters_final =  zscore(Spike_rasters(:,1:size(top_view_ME,1)),0,2)';
+        Spike_rasters_final =  zscore(Spike_rasters_trimmed(:,1:size(dlc,1)),0,2)';
 
         %Combine mvmt predictors
         logger_top_x = logger_top(:,1);
@@ -170,19 +172,6 @@ for s =session_range %1:length(sessions)
         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
-        co_occurrence = cell2mat({labels{:,5}}');
-
-        if null
-            %Simulate fake labels
-            [sim_behav] = GenSimBehavior(behavior_labels,behav_categ, temp_resolution);
-            behavior_labels = sim_behav;
-        end
-
-        if unq_behav==1%Select epochs where only one behavior happens at any given time (i.e. no co-occurrence).
-            idx_single = find(co_occurrence<4); %(no co-occurrence, or with RR or with proximity)
-            Spike_count_raster = Spike_count_raster(idx_single,:);
-            behavior_labels = behavior_labels(idx_single,:);
-        end
 
         if simplify
             %Simplify behavioral catagories
@@ -275,7 +264,7 @@ for s =session_range %1:length(sessions)
                 Labels = labels_temp;
 
                 num_trials = hist(Labels,numericLabels); %number of trials in each class
-                minNumTrials = min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
+                minNumTrials = 300;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
                 chosen_trials = [];
                 for i = 1:NumOfClasses %for each class
                     idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -290,7 +279,7 @@ for s =session_range %1:length(sessions)
                 [hitrate(iter), C{iter}] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
                 [hitrate_shuffled(iter), C_shuffled{iter}] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
-                if mod(iter,10)==1
+                if mod(iter,5)==1
                     disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
                 end
             end %End of SVM for loop

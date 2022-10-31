@@ -82,8 +82,8 @@ for s =session_range %1:length(sessions)
     behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
 
     %Exclude behavior of others
-    behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=length(behav_categ)+1;
-    behavior_labels(behavior_labels==find(behav_categ=="Other monkeys vocalize"))=length(behav_categ)+1;
+    behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=find(behav_categ=="Threat to partner");
+    behavior_labels(behavior_labels==find(behav_categ=="Other monkeys "))=find(behav_categ=="Threat to subject");
 
     if null
         %Simulate fake labels
@@ -179,8 +179,8 @@ for s =session_range %1:length(sessions)
 
     AxesLabels_sorted = behav_categ(orderIdx);
     AxesLabels = behav_categ(1:end-1);
-    caxis_upper = 1;
-    caxis_lower = -1;
+    caxis_upper = 1.5;
+    caxis_lower = -1.5;
     cmap=flipud(cbrewer('div','RdBu', length(caxis_lower:0.01:caxis_upper)));
 
     if plot_toggle

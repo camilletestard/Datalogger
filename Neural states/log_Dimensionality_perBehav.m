@@ -41,7 +41,7 @@ elseif simplify ==2
     dim = nan(max(session_range),2,2,num_iter);
     min_occurrences = 230;
 elseif simplify ==3
-    dim = nan(max(session_range),2,3,num_iter);
+    dim = nan(max(session_range),2,4,num_iter);
     min_occurrences = 100;
 else
     dim = nan(max(session_range),2,8,num_iter);
@@ -118,7 +118,10 @@ for s =session_range %1:length(sessions)
 
         elseif simplify == 3 %Comapre grooming behaviors between each other
 
-            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom")];
+            %Lump all that is not grooming together
+            behavior_labels(ismember(behavior_labels,find(behav_categ~="Groom partner" & behav_categ~="Getting groomed" & behav_categ~="Self-groom")))=find(behav_categ=="Rest");
+
+            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom",find(behav_categ=="Rest"))];
 
         else %Compare all behaviors separately (without pooling across)
             behav = [4,5,7,8,9,10,24,29];

@@ -102,7 +102,7 @@ behavior_log{:,'duration_round'}=behavior_log{:,'end_time_round'}-behavior_log{:
 %Eliminate behaviors that do not meet the minimum length
 %Note that this will be an issue only for time resolution >1sec
 min_length = 1/temp_resolution;
-idx = find(behavior_log{:,'duration_s'}<min_length);
+idx = find(behavior_log{:,'duration_round'}<min_length);
 behavior_log{idx,'start_time_round'} = 0; behavior_log{idx,'end_time_round'} = 0;
 
 %Get block times (at the end of the EventLog_Restructured)
@@ -261,6 +261,7 @@ social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"
 start_times = behavior_log{:,'start_time_round'};
 end_times = behavior_log{:,'end_time_round'};
 Intervals = [start_times end_times];
+Intervals(strcmp(behavior_log{:,'Behavior'},"Camera Sync"),2) =Intervals(strcmp(behavior_log{:,'Behavior'},"Camera Sync"),1);
 
 
 %%%%%% Create labels vector for SUBJECT monkey %%%%%%
@@ -269,43 +270,50 @@ for s = 1:length_recording %for all secs in a session
     % this finds the index of the rows(2) that have x in between
     idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
     %IMPORTANT note: interval includes lower bound but excludes upper boundary as is.
-    if ~isempty(idx) %if it belongs to an interval
+    if ~isempty(idx)%if it belongs to an interval
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior label in [plain english]
         labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior label in [number]
-        if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
-            if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity or RR
-                labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
-                labels{s,4} = 'co-occur with prox or RR';
-                labels{s,5} = 2;
-            else %If proximity & RR co-occur
-                labels{s,3}=find(matches(behav_categ,'Proximity')); % prioritize proximity
-                labels{s,4} = 'prox & RR co-occur';
-                labels{s,5} = 3;
+
+        if ~strcmp(labels{s,1},"Camera Sync")
+            if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
+                if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity or RR
+                    labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
+                    labels{s,4} = 'co-occur with prox or RR';
+                    labels{s,5} = 2;
+                else %If proximity & RR co-occur
+                    labels{s,3}=find(matches(behav_categ,'Proximity')); % prioritize proximity
+                    labels{s,4} = 'prox & RR co-occur';
+                    labels{s,5} = 3;
+                end
+            else %If only one behavior happens in that sec
+                labels{s,3} = labels{s,2};
+                labels{s,4} = 'single';
+                labels{s,5} = 1;
             end
-        else %If only one behavior happens in that sec
-            labels{s,3} = labels{s,2};
-            labels{s,4} = 'single';
-            labels{s,5} = 1;
-        end
-        if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include proximity or RR
-            if any(labels{s,3}==grmpr) % if one of the behavior includes other monkey vocalize
-                labels{s,3}=grmpr; %Keep groom present
-                labels{s,4} = 'grmpr co-occur';
-                labels{s,5} = 4;
-            elseif any(labels{s,3}==omv) % if one of the behavior includes other monkey vocalize
-                labels{s,3}=omv; %Keep Other Monkey Vocalize
-                labels{s,4} = 'omv co-occur';
-                labels{s,5} = 5;
-            else %Otherwise just choose the second behavior for now...
-                %                 error('More than one behavior simultansouly')
-                %                 return
-                labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
-                labels{s,4} = 'Other key behav co-occur';
-                labels{s,5} = 6;
+            if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include proximity or RR
+                if any(labels{s,3}==grmpr) % if one of the behavior includes other monkey vocalize
+                    labels{s,3}=grmpr; %Keep groom present
+                    labels{s,4} = 'grmpr co-occur';
+                    labels{s,5} = 4;
+                elseif any(labels{s,3}==omv) % if one of the behavior includes other monkey vocalize
+                    labels{s,3}=omv; %Keep Other Monkey Vocalize
+                    labels{s,4} = 'omv co-occur';
+                    labels{s,5} = 5;
+                else %Otherwise just choose the second behavior for now...
+                    %                 error('More than one behavior simultansouly')
+                    %                 return
+                    labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
+                    labels{s,4} = 'Other key behav co-occur';
+                    labels{s,5} = 6;
+                end
             end
+        else
+            labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
         end
+
     else %if not
         labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
+
     end
     %Add behavior information: reciprocal vs non-reciprocal. Reciprocal
     %behavior is the exact reverse of the subject behavior (i.e. we can
@@ -342,26 +350,26 @@ for s = 1:length_recording %for all secs in a session
     elseif s>block_times{1,'end_time_round'} && s<=block_times{2,'end_time_round'}
         labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),3});
         labels{s,11} = 2;
-        
-         if labels{s,10}=="female"
+
+        if labels{s,10}=="female"
             labels{s,12} = 1;%numerical form
         elseif labels{s,10}=="male"
             labels{s,12} = 2;
         else
             labels{s,12} = 3;
-         end
+        end
 
     elseif s>block_times{2,'end_time_round'}
         labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),4});
         labels{s,11} = 3;
-        
-         if labels{s,10}=="female"
+
+        if labels{s,10}=="female"
             labels{s,12} = 1;%numerical form
         elseif labels{s,10}=="male"
             labels{s,12} = 2;
         else
             labels{s,12} = 3;
-         end
+        end
 
     end
 

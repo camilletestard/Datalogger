@@ -42,7 +42,7 @@ for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Mvmt_results'];
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
     chan = 1; channel_flag = "all";
@@ -71,34 +71,26 @@ for s =session_range %1:length(sessions)
         Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
         labels_trimmed = labels(camera_start_time:end,:);
 
-        %Load ME
-        load('hooke0819_motion_energy.mat')
-        top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
-
         %Load DLC
-        dlc = readtable('hooke0819_dlc_head.csv');% Load DLC key point data
+        dlc = readtable('mvmt_data.csv');% Load DLC key point data
         dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
 
-        logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
-        logger_top = table2array(dlc(:,5:7)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
-        nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
-
-        %Load head derived measures
-        head_derived_measures = load('hooke0819_head_direction.mat');
-        head_direction = head_derived_measures.head_orientation_dlc; head_direction = head_direction(1:end-1,:);
-        quad_position = head_derived_measures.updown_position; quad_position = quad_position(1:end-1,:);
+        toplogger = table2array(dlc(:,1:2));
+        bottomlogger = table2array(dlc(:,4:5));
+        fov = table2array(dlc(:,7));
 
         disp('Data Loaded')
 
 
 
-        %% Pool all the data from the alone block
+        %% Pool align neural, behavior and video-based mvmt data
 
-        % Get alone block
         %For behavior labels
         lbls = cell2mat(labels_trimmed(:,3));
-        lbls=lbls(1:size(top_view_ME,1));
-        %lbls = categorical(lbls);
+        lbls=lbls(1:length(fov)); %cut labels data at length of video 
+        %Note: neural recordings started before camera started and ended after. So we need to trim
+        %neural and behavioral data on both ends to match the length of
+        %camera-based movement data.
 
         %Simplify behaviors (lumping categories together)
         lbls(lbls==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
@@ -121,17 +113,15 @@ for s =session_range %1:length(sessions)
         tabulate(lbls)
 
         %Combine mvmt predictors
-        logger_top_x = logger_top(:,1);
-        logger_top_y = logger_top(:,2);
-        mvmt_logger_top_x = [0; diff(logger_top(:,1))];
-        mvmt_logger_top_y = [0; diff(logger_top(:,2))];
-        head_mvmt = [0; diff(head_direction)];
+        logger_top_x = toplogger(:,1);
+        logger_top_y = toplogger(:,2);
+        mvmt_logger_top_x = [0; diff(toplogger(:,1))];
+        mvmt_logger_top_y = [0; diff(toplogger(:,2))];
+        fov_mvmt = [0; diff(fov)];
 
-        mvmt = [top_view_ME, side_view_ME,...
-            logger_top_x, logger_top_y,...
+        mvmt = [logger_top_x, logger_top_y,...
             mvmt_logger_top_x, mvmt_logger_top_y,...
-            head_direction, head_mvmt,...
-            quad_position];
+            fov, fov_mvmt];
 
         %mvmt = [top_view_ME, side_view_ME,quad_position];
 
@@ -144,84 +134,83 @@ for s =session_range %1:length(sessions)
 
         %Remove missing data
         lbls_final = lbls(idx_to_keep);
-        top_view_ME_final = top_view_ME(idx_to_keep);
-        side_view_ME_final = side_view_ME(idx_to_keep);
         logger_top_x_final = logger_top_x(idx_to_keep);
         logger_top_y_final = logger_top_y(idx_to_keep);
         mvmt_logger_top_x_final = mvmt_logger_top_x(idx_to_keep);
         mvmt_logger_top_y_final = mvmt_logger_top_y(idx_to_keep);
-        head_direction_final=head_direction(idx_to_keep);
-        head_mvmt_final = head_mvmt(idx_to_keep);
-        quad_position_final = quad_position(idx_to_keep);
+        fov_final=fov(idx_to_keep);
+        fov_mvmt_final = fov_mvmt(idx_to_keep);
         %mvmt_final = mvmt(idx_to_keep,:);
 
 
         %% Quantify movements within behaviors
 
+        %Set colormap
+        Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.3 0.7 1];[0 0.7 0];[1 0 1];[0 1 1];...
+            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
+            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
+
         cd(savePath)
 
-        %For motion energy
-        unq_beh = [1 4 5 18 23 24 25 29];%unique(lbls_final);
-        figure; xlim([0 50000]); hold on
+        %For position in enclosure
+        unq_beh = [1 4 5 7 8 18 23 24 29];%unique(lbls_final);
+        figure; hold on; set(gcf,'Position',[150 250 1800 1000]);
         for b=1:length(unq_beh)
-            %subplot(1,length(unq_beh),b)
-            histogram(top_view_ME_final(lbls_final==unq_beh(b)),'BinWidth',2000,'Normalization','pdf')
+            subplot(3,length(unq_beh),b)
+            histogram(logger_top_x_final(lbls_final==unq_beh(b)),'BinWidth',50,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
+            xlim([0 2000]); ylim([0 0.004])
             title(behav_categ(unq_beh(b)))
-            pause(3)
+
+            if b==1
+            ylabel('Proportion')
+            xlabel('Enclosure x pos.')
+            end
         end
 
-        figure; xlim([0 50000]); hold on
+
+        %figure; hold on; set(gcf,'Position',[150 250 1800 200]);
         for b=1:length(unq_beh)
-            %subplot(1,length(unq_beh),b)
-            histogram(side_view_ME_final(lbls_final==unq_beh(b)),'BinWidth',2000,'Normalization','pdf')
-            title(behav_categ(unq_beh(b)))
-            pause(3)
+            subplot(3,length(unq_beh),length(unq_beh)+b)
+            histogram(logger_top_y_final(lbls_final==unq_beh(b)),'BinWidth',50,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
+            %title(behav_categ(unq_beh(b)))            
+            xlim([0 1200]); ylim([0 0.007])
+
+            if b==1
+            ylabel('Proportion')
+            xlabel('Enclosure y pos.')
+            end
         end
 
         %For field of view
-        figure;  hold on; set(gcf,'Position',[150 250 1500 200]);
+        %figure;  hold on; set(gcf,'Position',[150 250 1800 200]);
         for b=1:length(unq_beh)
-            subplot(1,length(unq_beh),b)
-            histogram(head_direction_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf')
+            subplot(3,length(unq_beh),length(unq_beh)*2+b)
+            histogram(fov_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
             title(behav_categ(unq_beh(b)))
-            xlim([-180 180]); ylim([0 0.045])
+            xlim([-180 180]); ylim([0 0.025])
             ylabel('Proportion'); xlabel('Degrees')
         end
 
-        %For x position
-        figure;  hold on; set(gcf,'Position',[150 250 1500 200]);
-        for b=1:length(unq_beh)
-            subplot(1,length(unq_beh),b)
-            histogram(logger_top_x_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf')
-            title(behav_categ(unq_beh(b)))
-            xlim([0 800]); ylim([0 0.045])
-            ylabel('Proportion'); xlabel('Enclosure x pos.')
-        end
-
-        %For y position
-        figure;  hold on; set(gcf,'Position',[150 250 1500 200]);
-        for b=1:length(unq_beh)
-            subplot(1,length(unq_beh),b)
-            histogram(logger_top_y_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf')
-            title(behav_categ(unq_beh(b)))
-            xlim([0 800]); ylim([0 0.02])
-            ylabel('Proportion'); xlabel('Enclosure y pos.')
-        end
+        saveas(gcf, [savePath '/Mvmt_variation_within_behaviors_colored.pdf']); close all
 
         %% Compare movements across behaviors
+
+        
         
         %For field of view
         figure;  hold on; %set(gcf,'Position',[150 250 1500 200]);
         for b=1:length(unq_beh)
             %subplot(1,length(unq_beh),b)
-            histogram(head_direction_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf')
+            histogram(fov_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:),'FaceAlpha',0.8)
             %title(behav_categ(unq_beh(b)))
-            xlim([-180 180]); ylim([0 0.045])
+            xlim([-180 180]); ylim([0 0.03])
             ylabel('Proportion'); xlabel('Degrees')
         end
-        legend(behav_categ(unq_beh))
+        legend(behav_categ(unq_beh),'Location','best')
         title('Field of view across behaviors')
         ax = gca;
         ax.FontSize = 14;
+         saveas(gcf, [savePath '/Mvmt_overlap_between_behaviors.pdf']); close all
 end
 

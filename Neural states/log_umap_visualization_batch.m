@@ -12,14 +12,14 @@ session_range_with_partner=[1:3,11:13];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp = 1; temp_resolution = 30;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1;%set the smoothing window size (sigma)
+sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0; %lump similar behavioral categories together
 
@@ -102,7 +102,7 @@ for s =session_range(2:end) %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 10;
+        min_occurrences = 30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
         %Remove behaviors we're not interested in for now
