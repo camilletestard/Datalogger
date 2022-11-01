@@ -24,9 +24,6 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
 sigma = 1;%set the smoothing window size (sigma)
-var_explained_threshold=90;
-num_iter = 500; num_units = 100;
-simplify=2;
 
 %Select session range:
 if with_partner ==1
@@ -73,12 +70,13 @@ for s =session_range %1:length(sessions)
     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
 
-    %Remove rest and proximity for transition probabilities
-    behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=29); %remove rest
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=19); %remove proximity
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=17); %remove "other monkeys vocalize"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=20); %remove "rowdy room"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=23); %remove "rowdy room"
+    %Remove rest, proximity, behaviors from other individuals and behaviors that are too rare
+    behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=find(behav_categ=="Rest")); %remove "rest"
+    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Proximity")); %remove "proximity"
+    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Other monkeys vocalize")); %remove "other monkeys vocalize"
+    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Rowdy Room")); %remove "rowdy room"
+    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Scratch")); %remove "Scratch"
+    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Butt sniff")); %remove "Scratch"
 
     %Get transitions
     x=behavior_labels_subject_select(1:end-1); y=behavior_labels_subject_select(2:end);
@@ -94,9 +92,9 @@ for s =session_range %1:length(sessions)
     shift_categ_table= tabulate(shift_labels(shift_times)); %Tabulate puts the "name" of the transition (see above) in the first column, then gives the absolute occurance and percent in the following columns
     total_transitions = length(find(shift_times));
 
-    P{s} = zeros(length(behav_categ)); %Count matrix of all possible behavioral transitions
-    for b = 1:length(behav_categ)
-        for b2 = 1:length(behav_categ)
+    P{s} = zeros(length(behav_categ)); %Count matrix of behavioral transitions
+    for b = 1:length(behav_categ) %for all preceeding behaviors
+        for b2 = 1:length(behav_categ) %for all following behaviors
 
             transition = string(strcat(num2str(b),'.',num2str(b2))); %same concatenate trick from above
             idx = strcmp(shift_categ_table(:,1), transition); %See if that numeric value of the transition exists in the table
@@ -107,7 +105,7 @@ for s =session_range %1:length(sessions)
         end
     end
 
-    row_non_zeros = intersect(find(any(P{s} ~= 0)), find(any(P{s} ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
+    row_non_zeros = intersect(find(any(P{s} ~= 0)), find(any(P{s} ~= 0,2))'); %only consider transitions that occur at least once?  Any() serves to check each row.  
     P_final{s} = P{s}(row_non_zeros,row_non_zeros);
 
     figure; set(gcf,'Position',[150 250 1200 700])
@@ -115,13 +113,13 @@ for s =session_range %1:length(sessions)
     xlabel('Following behavior'); ylabel('Preceding behavior')
     ax = gca;
     ax.FontSize = 16;
-    saveas(gcf,[savePath '/TransitionProbabilityMatrix.pdf'])
+    %saveas(gcf,[savePath '/TransitionProbabilityMatrix.pdf'])
 
     %Plot transition graph
     mc = dtmc(P_final{s},'StateNames',behav_categ(row_non_zeros)); %get transition graph object
     figure;set(gcf,'Position',[150 250 1200 700])
     graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-    saveas(gcf,[savePath '/TransitionProbabilityPlot.pdf'])
+    %saveas(gcf,[savePath '/TransitionProbabilityPlot.pdf'])
     close all
 end
 

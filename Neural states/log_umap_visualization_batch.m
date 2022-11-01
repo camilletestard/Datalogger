@@ -141,7 +141,7 @@ for s =session_range(2:end) %1:length(sessions)
 %         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3,'label_column', 'end'); %Run umap to get 2d embedded states
 
         %Unsupervised
-        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 100, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
         close
 
         channel = char(channel_flag);

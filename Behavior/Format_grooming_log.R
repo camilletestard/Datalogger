@@ -1,8 +1,8 @@
-#Format_behavior_log.R
-#This script re-formats the deuteron behavior log in a way that is easily interpretable for
-#neural data analysis. It also plots behavior during a session.
-# Certain red flags to keep in mind:
-#Camille Testard - September 2021
+#Format_grooming_log.R
+#This script re-formats grooming pose and bodypart groomed logs for downstream
+#neural data analysis (cross-pose decoding). 
+
+#C. Testard - September 2022
                   
 #Load libraries:
 library(timeline)
@@ -78,58 +78,6 @@ for (bp in 1:length(bodypart)){ #For all behaviors
   
   bodypart_log=rbind(bodypart_log,data)
 }
-
-# #Split all behavior events by start and end:
-# new_log=data.frame(); b=1
-# for (b in 1:length(behavs)){ #For all behaviors
-#   
-#     data=log[log$Behavior==behavs[b],c("Time", "Behavior", "Start.end")] #Only keep useful columns
-#   if (length(which(is.na(data$Behavior)))!=0){data=data[-which(is.na(data$Behavior)),]}# remove rows with empty/NA behavior
-#   
-#   interim=split(data,data$Start.end) #Split the data by behavior start and behavior end
-#   names(interim[[2]])[1]="start.time";names(interim[[1]])[1]="end.time" #rename columns
-#   
-#   data = cbind(interim[[1]],interim[[2]]); data=data[,-c(3,5,6)]
-#   data=data[,c("Behavior","start.time","end.time")]
-#   data$start.time=as.numeric(data$start.time); data$end.time=as.numeric(data$end.time)
-#   data[,c("start.time","end.time")]=data[,c("start.time","end.time")]/1000
-#   
-#   new_log=rbind(new_log,data)
-# }
-# #behavs[b]
-# 
-# #Note: The bit of code above will have an error if there aren't the same
-# #number of start and end for any one behavior. When an error occurs, check for which behavior it occurs
-# # and adjust the excel file accordingly (usually an end is missing, or there are 2 starts, use the videos to check).
-# # The script stops at the behavior that has an issue, number "b". You can check in the character vector
-# # 'behavs' which behavior causes issues.
-# 
-# #Format for plotting:
-# new_log$group.min=0; new_log$group.max=1
-# new_log$Behavior=as.character(new_log$Behavior)
-# 
-# #Order new log chronologically
-# new_log = new_log[order(new_log$start.time),]
-# new_log$duration.s = new_log$end.time - new_log$start.time
-# 
-# #Get block limits
-# block_order = new_log$Behavior[grep('block',new_log$Behavior)]
-# block_start = new_log$start.time[grep('block',new_log$Behavior)]
-# block_end = new_log$end.time[grep('block',new_log$Behavior)]
-# 
-# #Order behaviors
-# new_log_final = new_log; unique(new_log$Behavior)
-# new_log_final$Behavior=factor(new_log_final$Behavior,
-#                               levels=c("Groom Give","Groom Receive"))
-# 
-# if (length(which(new_log_final$duration.s<=0))>0){stop("NEGATIVE OR 0 DURATION")}
-# 
-# #Add block limits
-# blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)
-# blocklim$Behavior = block_order
-# blocklim$start.time = block_start
-# blocklim$end.time = block_end
-# new_log_final = rbind(new_log_final, blocklim)
 
 #Save to .csv
 #output_file = utils::choose.dir(default = "", caption = "Select folder") # choose output directory

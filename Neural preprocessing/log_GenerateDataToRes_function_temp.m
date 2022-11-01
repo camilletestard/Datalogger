@@ -29,9 +29,8 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       3rd column unique behavior code (when two occur
 %       simultaneously, we chose one, see below for details)
 %       4th column whether behavior happens in isolation or co-occurs
-%       with another.
-%       5th column indicates the block in which we are
-%       (Paired,monkey1; Paired monkey2 or Alone)
+%       with another. String description.
+%       5th column numerical code for the type of co-occurrence
 %       6th column is the behavior "reciprocal" (i.e. partner behavior can
 %       be 100% predictted by subject behavior and vice-versa)
 %       7th column binary code reciprocal (1) vs. not (0)
@@ -242,11 +241,19 @@ behav_categ = sort(behav_categ);
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
 
 %For behaviors that often co-occur with other behaviors, determine priority
-double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];% When co-occurring, other behaviors will take precedence over these ones %, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))];
-omv = find(matches(behav_categ,'Other monkeys vocalize')); %When co-occurring with toher behaviors, vocalizations take precedence
+double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR")), find(matches(behav_categ,'Other monkeys vocalize'))];% When co-occurring, other behaviors will take precedence over these ones 
+
+%annotation: omv = other monkeys vocalize
+%            grmpr = groom presentation
 grmpr = find(matches(behav_categ,'Grm prsnt'));
+omv = find(matches(behav_categ,'Other monkeys vocalize'));
+
+%Create set of reciprocal behaviors (i.e. behavior of partner can be 100%
+%predicted by behavior of subject)
 reciprocal_set = [find(matches(behav_categ,'RR')), find(matches(behav_categ,'Other monkeys vocalize')), find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"SS")), find(matches(behav_categ,"HIP")), find(matches(behav_categ,"HIS")), find(matches(behav_categ,"SP"))];
+
+%Create set of social behaviors (which happen with conspecifics)
 social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"Submission")), find(matches(behav_categ,"Approach")), find(matches(behav_categ,"Leave")), find(matches(behav_categ,"Butt sniff")),...
     find(matches(behav_categ,"Grm prsnt")), find(matches(behav_categ,"Aggression"))];
@@ -256,7 +263,7 @@ social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"
 % This cell matrix will have six columns. The first column is the full
 % name of the behavior label
 
-%Create event intervals:
+%Create event time intervals:
 %For subject monkey
 start_times = behavior_log{:,'start_time_round'};
 end_times = behavior_log{:,'end_time_round'};
@@ -274,30 +281,30 @@ for s = 1:length_recording %for all secs in a session
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior label in [plain english]
         labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior label in [number]
 
-        if ~strcmp(labels{s,1},"Camera Sync")
+        if ~strcmp(labels{s,1},"Camera Sync") %if not camera sync
             if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
-                if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity or RR
+                if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity, other monkeys vocalize or RR
                     labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
-                    labels{s,4} = 'co-occur with prox or RR';
+                    labels{s,4} = 'co-occur with prox, omv or RR';
                     labels{s,5} = 2;
-                else %If proximity & RR co-occur
-                    labels{s,3}=find(matches(behav_categ,'Proximity')); % prioritize proximity
-                    labels{s,4} = 'prox & RR co-occur';
+                elseif isempty(setdiff(labels{s,2}, double_behav_set(1:2))) && any(labels{s,3}==omv) %if RR or proximity co-occur with omv
+                    labels{s,3}=omv; % prioritize Other monkeyz vocalize
+                    labels{s,4} = 'omv co-occurs with prox & RR';
                     labels{s,5} = 3;
+                else isempty(setdiff(labels{s,2}, double_behav_set(1:2)))%If proximity and RR co-occur
+                    labels{s,3}=find(matches(behav_categ,'RR')); % prioritize Rowdy Room
+                    labels{s,4} = 'prox & RR co-occur';
+                    labels{s,5} = 4;
                 end
             else %If only one behavior happens in that sec
                 labels{s,3} = labels{s,2};
                 labels{s,4} = 'single';
                 labels{s,5} = 1;
             end
-            if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include proximity or RR
-                if any(labels{s,3}==grmpr) % if one of the behavior includes other monkey vocalize
+            if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include omv, proximity or RR
+                if any(labels{s,3}==grmpr) % if one of the behavior includes groom present
                     labels{s,3}=grmpr; %Keep groom present
                     labels{s,4} = 'grmpr co-occur';
-                    labels{s,5} = 4;
-                elseif any(labels{s,3}==omv) % if one of the behavior includes other monkey vocalize
-                    labels{s,3}=omv; %Keep Other Monkey Vocalize
-                    labels{s,4} = 'omv co-occur';
                     labels{s,5} = 5;
                 else %Otherwise just choose the second behavior for now...
                     %                 error('More than one behavior simultansouly')
@@ -311,7 +318,7 @@ for s = 1:length_recording %for all secs in a session
             labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
         end
 
-    else %if not
+    else %if second belongs to no interval, set it to "rest"
         labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
 
     end
@@ -386,6 +393,7 @@ behav_categ{find(matches(behav_categ,'SS'))}='Squeeze Subject';
 behav_categ{find(matches(behav_categ,'Grm prsnt'))}='Groom sollicitation';
 behav_categ{find(matches(behav_categ,'Groom Give'))}='Groom partner';
 behav_categ{find(matches(behav_categ,'Groom Receive'))}='Getting groomed';
+
 
 %% Create grooming label
 

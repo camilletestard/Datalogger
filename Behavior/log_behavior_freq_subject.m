@@ -1,6 +1,6 @@
 %% Log_behavior_freq_subject
 %This script computes the duration and proportion of behaviors across
-%sessions
+%blocks over all sessions, separated by monkeys.
 %Testard C. August 2022
 
 %Set session list
@@ -12,15 +12,13 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
-with_partner =0;
-temp = 1; temp_resolution = 1;
-channel_flag = "all";
-randomsample=0; %subsample neurons to match between brain areas
-unq_behav=0; %If only consider epochs where only 1 behavior happens
+with_partner =0; %with parameters
+temp_resolution = 1; %temporal resolution
+channel_flag = "all"; %Units considered (vlPFC, TEO or all)
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
@@ -30,18 +28,18 @@ sigma = 1;%set the smoothing window size (sigma)
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
-for s =session_range %1:length(sessions)
+for s =session_range %for all sessions
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/UMAP_results/'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Behavior_results/'];
 
 
     %% Get data with specified temporal resolution and channels
@@ -77,8 +75,8 @@ for s =session_range %1:length(sessions)
     block_categ = string({labels{:,10}}');
     block_categ = block_categ;%(unq_behavior_labels~=length(behav_categ));
 
-    for beh = 1:length(behav)
-        for bl = 1:3
+    for beh = 1:length(behav)% for all behaviors
+        for bl = 1:3 %for all blocks
             beh_stats(s, beh, bl)=length(find(behavior_labels == behav(beh) & block_lbl==bl));
         end
     end
