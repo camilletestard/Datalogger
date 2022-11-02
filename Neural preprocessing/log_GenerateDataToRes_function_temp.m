@@ -281,7 +281,7 @@ for s = 1:length_recording %for all secs in a session
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior label in [plain english]
         labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior label in [number]
 
-        if ~strcmp(labels{s,1},"Camera Sync") %if not camera sync
+        if all(~strcmp(labels{s,1},"Camera Sync")) %if not camera sync
             if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
                 if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity, other monkeys vocalize or RR
                     labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
@@ -291,7 +291,8 @@ for s = 1:length_recording %for all secs in a session
                     labels{s,3}=omv; % prioritize Other monkeyz vocalize
                     labels{s,4} = 'omv co-occurs with prox & RR';
                     labels{s,5} = 3;
-                else isempty(setdiff(labels{s,2}, double_behav_set(1:2)))%If proximity and RR co-occur
+                else 
+                    isempty(setdiff(labels{s,2}, double_behav_set(1:2)));%If proximity and RR co-occur
                     labels{s,3}=find(matches(behav_categ,'RR')); % prioritize Rowdy Room
                     labels{s,4} = 'prox & RR co-occur';
                     labels{s,5} = 4;
@@ -306,12 +307,43 @@ for s = 1:length_recording %for all secs in a session
                     labels{s,3}=grmpr; %Keep groom present
                     labels{s,4} = 'grmpr co-occur';
                     labels{s,5} = 5;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Scratch'))) %if on of the behavior includes scratch
+                    labels{s,3}=setdiff(labels{s,3}, find(matches(behav_categ,'Scratch'))); %Consider the other behavior
+                    labels{s,4} = 'scratch co-occur';
+                    labels{s,5} = 6;
+                    if length(labels{s,3})~=1 %there are more than 2 behaviors that co-occur with scratch,
+                        labels{s,3}= labels{s,3}(2); %choose 2nd behavior 
+                    end
+                elseif any(labels{s,3}==find(matches(behav_categ,'Aggression'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Aggression')); %Consider the other behavior
+                    labels{s,4} = 'aggression co-occur';
+                    labels{s,5} = 7;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Submission'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Submission')); %Consider the other behavior
+                    labels{s,4} = 'submission co-occur';
+                    labels{s,5} = 8;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Masturbating'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Masturbating')); %Consider the other behavior
+                    labels{s,4} = 'masturbating co-occur';
+                    labels{s,5} = 9;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Mounting'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Mounting')); %Consider the other behavior
+                    labels{s,4} = 'mounting co-occur';
+                    labels{s,5} = 10;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Approach'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Approach')); %Consider the other behavior
+                    labels{s,4} = 'approach co-occur';
+                    labels{s,5} = 11;
+                elseif any(labels{s,3}==find(matches(behav_categ,'Leave'))) %If one of the behavior includes aggression
+                    labels{s,3}=find(matches(behav_categ,'Leave')); %Consider the other behavior
+                    labels{s,4} = 'leave co-occur';
+                    labels{s,5} = 12;
                 else %Otherwise just choose the second behavior for now...
                     %                 error('More than one behavior simultansouly')
                     %                 return
                     labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
                     labels{s,4} = 'Other key behav co-occur';
-                    labels{s,5} = 6;
+                    labels{s,5} = 13;
                 end
             end
         else

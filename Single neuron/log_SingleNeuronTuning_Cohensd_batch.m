@@ -75,7 +75,7 @@ for s =session_range %1:length(sessions)
 
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
-    
+
     %Simplify labels
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
     %behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
@@ -116,6 +116,7 @@ for s =session_range %1:length(sessions)
 
     %% Compute cohen's d
 
+    %Initialize matrices
     cohend = nan(n_neurons(s),n_behav);
     cohend_shuffle = nan(n_neurons(s),n_behav);
     mean_beh = nan(n_neurons(s), n_behav);

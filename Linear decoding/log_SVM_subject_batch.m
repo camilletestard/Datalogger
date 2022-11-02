@@ -18,7 +18,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
-with_partner =1;
+with_partner =0;
 temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
@@ -111,7 +111,7 @@ for s =session_range %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 30;
+        min_occurrences = 20;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
         % Remove behaviors that are ill-defined
@@ -193,9 +193,9 @@ for s =session_range %1:length(sessions)
         disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])
         disp('****************************************************************************')
 
-        mean_hitrate{s}(temp, chan) = mean(hitrate)
-        sd_hitrate{s}(temp, chan) = std(hitrate);
-        mean_hitrate_shuffled{s}(temp, chan) = mean(hitrate_shuffled)
+        mean_hitrate{s}(chan) = mean(hitrate)
+        sd_hitrate{s}(chan) = std(hitrate);
+        mean_hitrate_shuffled{s}(chan) = mean(hitrate_shuffled)
         sd_hitrate_shuffled = std(hitrate_shuffled);
 
         C_concat=cat(3,C{:}); %Get confusion matrix
@@ -274,7 +274,7 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_subjectBehav_newBehavPreprocess.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 %load('SVM_results_subjectBehav.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey

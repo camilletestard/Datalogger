@@ -15,7 +15,7 @@ session_range_no_partner=[1:6,11:13,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
-with_partner =1;
+with_partner =0;
 temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
@@ -24,6 +24,9 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
 sigma = 1;%set the smoothing window size (sigma)
+only_beh_states =1; %1:only consider behavioral states (with extended duration). 
+                    % I.e. exclude short point behaviors such as yawning,
+                    % vocalization and scratch. 0: consider short behaviors
 
 %Select session range:
 if with_partner ==1
@@ -58,8 +61,9 @@ for s =session_range %1:length(sessions)
 
     %Format data
     Spike_count_raster = Spike_rasters';
+    %cooccurrence = cell2mat({labels{:,5}}'); {labels{find(cooccurrence>4),2}}'; length(find(cooccurrence>4))/size(Spike_count_raster,1)
     behavior_labels_subject = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-    behavior_labels_partner = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
+    %behavior_labels_partner = cell2mat({labels_partner{:,3}}'); %Extract unique behavior info for partner
     block_labels = cell2mat({labels{:,11}}'); %Extract block info
     % labels_per_sec = table(behavior_labels_subject, behavior_labels_partner, block_labels);
     % writetable(labels_per_sec, 'Labels_per_sec.csv')
@@ -70,13 +74,19 @@ for s =session_range %1:length(sessions)
     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
 
-    %Remove rest, proximity, behaviors from other individuals and behaviors that are too rare
+    %Remove rest, proximity, behaviors from other individuals and short point behaviors
     behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=find(behav_categ=="Rest")); %remove "rest"
     behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Proximity")); %remove "proximity"
     behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Other monkeys vocalize")); %remove "other monkeys vocalize"
     behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Rowdy Room")); %remove "rowdy room"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Scratch")); %remove "Scratch"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Butt sniff")); %remove "Scratch"
+
+    if only_beh_states ==1
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Scratch")); %remove "Scratch"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Butt sniff")); %remove "butt sniff"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Vocalization")); %remove "Vocalization"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Lip smack")); %remove "Lip smack"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Yawning")); %remove "Scratch"
+    end
 
     %Get transitions
     x=behavior_labels_subject_select(1:end-1); y=behavior_labels_subject_select(2:end);
@@ -108,64 +118,79 @@ for s =session_range %1:length(sessions)
     row_non_zeros = intersect(find(any(P{s} ~= 0)), find(any(P{s} ~= 0,2))'); %only consider transitions that occur at least once?  Any() serves to check each row.  
     P_final{s} = P{s}(row_non_zeros,row_non_zeros);
 
-    figure; set(gcf,'Position',[150 250 1200 700])
-    heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_final{s},'Colormap',jet)
-    xlabel('Following behavior'); ylabel('Preceding behavior')
-    ax = gca;
-    ax.FontSize = 16;
+%     figure; set(gcf,'Position',[150 250 1200 700])
+%     heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_final{s},'Colormap',jet)
+%     xlabel('Following behavior'); ylabel('Preceding behavior')
+%     ax = gca;
+%     ax.FontSize = 16;
     %saveas(gcf,[savePath '/TransitionProbabilityMatrix.pdf'])
 
     %Plot transition graph
-    mc = dtmc(P_final{s},'StateNames',behav_categ(row_non_zeros)); %get transition graph object
-    figure;set(gcf,'Position',[150 250 1200 700])
-    graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
+%     mc = dtmc(P_final{s},'StateNames',behav_categ(row_non_zeros)); %get transition graph object
+%     figure;set(gcf,'Position',[150 250 1200 700])
+%     graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
     %saveas(gcf,[savePath '/TransitionProbabilityPlot.pdf'])
-    close all
+    %close all
 end
 
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Behavior_results/']);
 
 %%%%%%%%%%%%%%%%%%%
-%% AMOS
-
-%Combined sessions for amos
-P_total = sum(cat(3,P{a_sessions}),3);
+%% Both monkeys
+P_total = sum(cat(3,P{:}),3);
 row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
 P_total_final = P_total(row_non_zeros,row_non_zeros);
 
 figure; set(gcf,'Position',[150 250 1200 700])
 heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-xlabel('Following behavior'); ylabel('Preceding behavior'); title('Amos')
+xlabel('Following behavior'); ylabel('Preceding behavior'); title('Monkeys combined, n=12 sessions')
 ax = gca;
 ax.FontSize = 16;
-saveas(gcf,'/TransitionProbabilityMatrix_AMOS.pdf')
+caxis([0, 40]);
+saveas(gcf,'TransitionProbabilityMatrix_bothMonkeys_onlyStateas.pdf')
 
-%Plot transition graph
-mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
 
-figure;set(gcf,'Position',[150 250 1200 700])
-graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-saveas(gcf,'/TransitionProbabilityPlot_AMOS.pdf')
-
-%%%%%%%%%%%%%%%%%%%
-%% HOOKE
-
-%Combined sessions for Hooke
-P_total = sum(cat(3,P{h_sessions}),3);
-row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
-P_total_final = P_total(row_non_zeros,row_non_zeros);
-
-figure; set(gcf,'Position',[150 250 1200 700])
-heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-xlabel('Following behavior'); ylabel('Preceding behavior'); title('Hooke')
-ax = gca;
-ax.FontSize = 16;
-saveas(gcf,'/TransitionProbabilityMatrix_HOOKE.pdf')
-
-%Plot transition graph
-mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
-
-figure;set(gcf,'Position',[150 250 1200 700])
-graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-saveas(gcf,'/TransitionProbabilityPlot_Hooke.pdf')
+% % % % %%%%%%%%%%%%%%%%%%%
+% % % % %% AMOS
+% % % % 
+% % % % %Combined sessions for amos
+% % % % P_total = sum(cat(3,P{a_sessions}),3);
+% % % % row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
+% % % % P_total_final = P_total(row_non_zeros,row_non_zeros);
+% % % % 
+% % % % figure; set(gcf,'Position',[150 250 1200 700])
+% % % % heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
+% % % % xlabel('Following behavior'); ylabel('Preceding behavior'); title('Amos')
+% % % % ax = gca;
+% % % % ax.FontSize = 16;
+% % % % saveas(gcf,'/TransitionProbabilityMatrix_AMOS.pdf')
+% % % % 
+% % % % %Plot transition graph
+% % % % mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
+% % % % 
+% % % % figure;set(gcf,'Position',[150 250 1200 700])
+% % % % graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
+% % % % saveas(gcf,'/TransitionProbabilityPlot_AMOS.pdf')
+% % % % 
+% % % % %%%%%%%%%%%%%%%%%%%
+% % % % %% HOOKE
+% % % % 
+% % % % %Combined sessions for Hooke
+% % % % P_total = sum(cat(3,P{h_sessions}),3);
+% % % % row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
+% % % % P_total_final = P_total(row_non_zeros,row_non_zeros);
+% % % % 
+% % % % figure; set(gcf,'Position',[150 250 1200 700])
+% % % % heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
+% % % % xlabel('Following behavior'); ylabel('Preceding behavior'); title('Hooke')
+% % % % ax = gca;
+% % % % ax.FontSize = 16;
+% % % % saveas(gcf,'/TransitionProbabilityMatrix_HOOKE.pdf')
+% % % % 
+% % % % %Plot transition graph
+% % % % mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
+% % % % 
+% % % % figure;set(gcf,'Position',[150 250 1200 700])
+% % % % graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
+% % % % saveas(gcf,'/TransitionProbabilityPlot_Hooke.pdf')
 

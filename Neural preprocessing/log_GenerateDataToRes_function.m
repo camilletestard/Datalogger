@@ -340,7 +340,8 @@ for s = 1:length_recording %for all secs in a session
                     labels{s,3}=omv; % prioritize Other monkeyz vocalize
                     labels{s,4} = 'omv co-occurs with prox & RR';
                     labels{s,5} = 3;
-                else isempty(setdiff(labels{s,2}, double_behav_set(1:2)))%If proximity and RR co-occur
+                else 
+                    isempty(setdiff(labels{s,2}, double_behav_set(1:2)));%If proximity and RR co-occur
                     labels{s,3}=find(matches(behav_categ,'RR')); % prioritize Rowdy Room
                     labels{s,4} = 'prox & RR co-occur';
                     labels{s,5} = 4;
