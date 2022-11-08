@@ -1,8 +1,7 @@
 %% Log_SVM_SocialContext_batch
-% Run a linear decoder on a the neural activity to decode social context
-% (neighbor ID, paired or not).
+% Run a linear decoder on a the neural activity to decode whether the animal is paired or alone.
 % Batch version
-% March 2022 Camille Testard
+% March 2022 C. Testard
 
 
 %Set session list
@@ -15,12 +14,12 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_with_partner=[1:6,11:13,15:16];
 
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -30,8 +29,9 @@ num_iter = 100;%Number of SVM iterations
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
-simplify=0; %lump similar behavioral categories together
-min_occurrence = 30;
+simplify=1; %lump similar behavioral categories together
+min_occurrence = 15;
+agg_precedence = 1;
 
 %Select session range:
 if with_partner ==1
@@ -52,7 +52,7 @@ for s =session_range %1:length(sessions)
     chan = 1;
     for channel_flag = ["vlPFC", "TEO", "all"]
 
-        %% Get data with specified temporal resolution and channels
+        %Get data with specified temporal resolution and channels
         if with_partner ==1
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
@@ -62,33 +62,16 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-        block_labels = cell2mat({labels{:,12}}');
+        block_labels = cell2mat({labels{:,13}}');
 
-        %% Check which behaviors occur in different blocks
-
-        %     unq_behav = unique(behavior_labels);
-        %     behav_in_block = zeros(length(unq_behav), 3);
-        %     for b = 1:length(unq_behav)
-        %         for bl = 1:3
-        %             behav_in_block(b, bl) = length(intersect(find(behavior_labels == unq_behav(b)), find(block_labels==bl)));
-        %         end
-        %     end
-        %
-        %     figure; hold on; set(gcf,'Position',[150 250 1500 500])
-        %     bar(behav_in_block, 'stacked')
-        %     xticks(1:length(unq_behav))
-        %     xticklabels(behav_categ(unq_behav));
-        %     xtickangle(45)
-        %     leg = legend(block_times.Behavior{:});
-        %     title(leg,'Block')
-
+ 
         %% Select behaviors to decode
 
         if simplify == 1
@@ -96,47 +79,25 @@ for s =session_range %1:length(sessions)
             %Lump all aggressive interactions together
             behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
             behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
+
+            %Lump foraging and drinking
+            behavior_labels(behavior_labels==find(behav_categ=="Drinking"))=find(behav_categ=="Foraging");
 
             %Lump all travel together
             behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
             behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
 
-            %Lump Drinking and foraging
-            behavior_labels(behavior_labels==find(behav_categ=="Drinking"))=find(behav_categ=="Foraging");
-
-            %Lump all grooming together
-            behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Groom sollicitation"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Self-groom"))=find(behav_categ=="Groom partner");
-
-            behav = [1,5,7,18,29];
+            behav = [1,5,18,29];
         else
-            behav = [4,5,7,8,9,10,24,29];
+            behav = [4,5,9,10,24,29];
         end
 
         % For all behaviors
         for b=1:length(behav)
 
-            % Select behaviors which occur in multiple blocks
-            %behav =[find(matches(behav_categ,'Groom partner')), find(matches(behav_categ,'Getting groomed'))]; %manually select behaviors of interest
-            %behav =[find(matches(behav_categ,'Threat to subject')), find(matches(behav_categ,'Threat to partner'))];
-            %behav = find(matches(behav_categ,'Rest'));
-
             %Only keep the behaviors of interest
             idx = find(ismember(behavior_labels,behav(b))); %find the indices of the behaviors considered
-            %         y=zeros(1, size(Spike_count_raster)); y(idx)=1;
-            %         figure; plot(1:session_length, y); ylim([-0.5, 1.5])
-            %         yticks([0 1]); yticklabels(["Behavior", "Rest/baseline"])
-            %         xlabel('Time in s'); title('Baseline epochs')
-            %         set(gca,'FontSize',15);
-            %         close all
 
-            % % %         %Only consider indices close in time
-            % % %         idx_close_in_time = block_times{2,"start_time_round"}-200:block_times{2,"start_time_round"}+200;
-            % % %         idx = intersect(idx, idx_close_in_time');
-            % % %         hist(idx)
 
             Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
             behavior_labels_final = block_labels(idx,:);%Same as above but in behavior labels
@@ -144,7 +105,7 @@ for s =session_range %1:length(sessions)
 
             if ~isempty(idx)
 
-                if all(behavfreq(:,2)>=min_occurrence)
+                if size(behavfreq,1)>1 && all(behavfreq(:,2)>=min_occurrence)
 
                     %% Run SVM over multiple iterations
 
@@ -169,8 +130,7 @@ for s =session_range %1:length(sessions)
                         labels_temp = Labels;
                         for i=1:NumOfClasses
                             idx = Labels == uniqueLabels(i);
-                            labels_temp(idx) = numericLabels(i);
-                            labels_id{i,1} = uniqueLabels(i); labels_id{i,2}=behav_categ{uniqueLabels(i)} ;
+                            labels_temp(idx) = numericLabels(i);    
                         end
                         Labels = labels_temp;
 
@@ -203,7 +163,6 @@ for s =session_range %1:length(sessions)
                     mean_hitrate_shuffled{b}(s, chan) = mean(hitrate_shuffled)
                     sd_hitrate_shuffled{b}(s, chan) = std(hitrate_shuffled);
 
-                    clear labels_id
 
                     disp(['Behavior: ' behav_categ(behav(b)) ' done.'])
 
@@ -227,8 +186,8 @@ end %end of session loop
 
 %Change savePath for all session results folder:
 cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_allBehavs_NeighborID.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
-load('SVM_allBehavs_NeighborID.mat')
+save('SVM_allBehavs_AloneVSPaired.mat', "mean_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+load('SVM_allBehavs_AloneVSPaired.mat')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -256,7 +215,7 @@ sp1 = scatter(ones(size(data,1))*2.22,data_shuffled(:,3), 'filled','y');
 %legend(bp,{'vlPFC','TEO','all'},'Location','best')
 title(behav_categ(behav(b)))
 
-ylabel('Decoding Accuracy'); ylim([0.2 1])
+ylabel('Decoding Accuracy'); ylim([0.4 1])
 xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;

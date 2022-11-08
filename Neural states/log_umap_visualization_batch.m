@@ -1,3 +1,7 @@
+%% log_umap_visualization_batch
+% This script applied unsupervised umap on smoothed firing 
+% Ref: Connor Meehan, Jonathan Ebrahimian, Wayne Moore, and Stephen Meehan (2022). Uniform Manifold Approximation and Projection (UMAP) (https://www.mathworks.com/matlabcentral/fileexchange/71902), MATLAB Central File Exchange.
+
 %Set session list
 is_mac = 1;
 if is_mac
@@ -7,12 +11,12 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 30;
+temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -21,19 +25,20 @@ isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated 
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
-simplify=0; %lump similar behavioral categories together
+simplify=1; %lump similar behavioral categories together
+agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=1;
-for s =session_range(2:end) %1:length(sessions)
+s=2;
+for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
@@ -55,7 +60,7 @@ for s =session_range(2:end) %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         disp('Data Loaded')
@@ -63,38 +68,24 @@ for s =session_range(2:end) %1:length(sessions)
         %Raw data
         Spike_count_raster = Spike_rasters';
 
-        %Low-pass filter
-        %Spike_count_raster = lowpass(Spike_rasters',0.005,1);
-        %PCA
-        % [coeff,score,latent,tsquared,explained] = pca(Spike_rasters');
-        % Spike_count_raster = score(:,1:15);
-
 
         %% Select behaviors to visualize
 
         %Extract behavior labels and frequency
         behavior_labels = cell2mat({labels{:,3}}');
-        behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-        behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
-        if simplify
-            %Simplify behavioral catagories
-            %Lump all aggressive interactions together
-            behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
-
-            %Lump all travel together
-            behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
-            behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
-        end
+        %Pull threats to partner and subject together
+        behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
+        behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         
+        %Lump all travel together
+        behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
+        behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
+
         %Extract block labels
         block_labels = cell2mat({labels{:,12}}');
-        block_categ = string(block_times{:,1})';
-
+        
         % Select behaviors
 
         %Compute freq of behavior for the session
@@ -141,7 +132,7 @@ for s =session_range(2:end) %1:length(sessions)
 %         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3,'label_column', 'end'); %Run umap to get 2d embedded states
 
         %Unsupervised
-        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 100, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+        [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
         close
 
         channel = char(channel_flag);
@@ -159,63 +150,63 @@ for s =session_range(2:end) %1:length(sessions)
 
         %% Plot UMAP projection in 3D space
 
-        figure; hold on; set(gcf,'Position',[150 250 1500 500])
-
-        %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,3,1);
-        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Behavior')
-        set(gca,'FontSize',12);
-        %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
-        %pause(5)
-
-        %Plot UMAP results color-coded by time
-        ax2=subplot(1,3,2);
-        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Time')
-        set(gca,'FontSize',12);
-
-        %Color-coded by block
-        ax3=subplot(1,3,3);
-        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Block')
-        set(gca,'FontSize',12);
-      
-        sgtitle([channel ' units, UMAP, ' sessions(s).name])
-
-        hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
-        rotate3d on
+% % % % %         figure; hold on; set(gcf,'Position',[150 250 1500 500])
+% % % % % 
+% % % % %         %Plot UMAP results color-coded by behavior
+% % % % %         ax1=subplot(1,3,1);
+% % % % %         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
+% % % % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+% % % % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+% % % % %         title('Behavior')
+% % % % %         set(gca,'FontSize',12);
+% % % % %         %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
+% % % % %         %pause(5)
+% % % % % 
+% % % % %         %Plot UMAP results color-coded by time
+% % % % %         ax2=subplot(1,3,2);
+% % % % %         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
+% % % % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+% % % % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+% % % % %         title('Time')
+% % % % %         set(gca,'FontSize',12);
+% % % % % 
+% % % % %         %Color-coded by block
+% % % % %         ax3=subplot(1,3,3);
+% % % % %         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
+% % % % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+% % % % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+% % % % %         title('Block')
+% % % % %         set(gca,'FontSize',12);
+% % % % % 
+% % % % %         sgtitle([channel ' units, UMAP, ' sessions(s).name])
+% % % % % 
+% % % % %         hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
+% % % % %         rotate3d on
 
         %savefig([savePath 'Umap_3Dprojection_' channel '.fig'])
         %saveas(gcf,[savePath '/umap_ColorCodedByBlock_' channel 'Units.png'])
 
 
-% % % %         %plot by cluster
-% % % %         [cls, pnode] = knncluster(umap_result{s,chan}, 200); unique(cls)
-% % % %         Cmap_cls = jet(length(unique(cls)));
-% % % %         figure;scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_cls(cls,:),'filled')
-% % % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-% % % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-% % % %         title('Behavior')
-% % % %         set(gca,'FontSize',12);
-% % % % 
-% % % %         %Find correlation between low-D embedding and high-D embedding
-% % % %         corr(s,chan) = pdist_plot(Spike_count_raster_final);
-% % % %         corr_supervised(s,chan) = pdist_plot(data,'label_column',307);
+        % % % %         %plot by cluster
+        % % % %         [cls, pnode] = knncluster(umap_result{s,chan}, 200); unique(cls)
+        % % % %         Cmap_cls = jet(length(unique(cls)));
+        % % % %         figure;scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_cls(cls,:),'filled')
+        % % % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        % % % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        % % % %         title('Behavior')
+        % % % %         set(gca,'FontSize',12);
+        % % % %
+        % % % %         %Find correlation between low-D embedding and high-D embedding
+        % % % %         corr(s,chan) = pdist_plot(Spike_count_raster_final);
+        % % % %         corr_supervised(s,chan) = pdist_plot(data,'label_column',307);
 
-%         cd(savePath)
-%         OptionZ.FrameRate=30;OptionZ.Duration=15;OptionZ.Periodic=true;
-%         CaptureFigVid([-20,10;-380,190],['Umap_3Dprojection_' channel],OptionZ)
-        
+        %         cd(savePath)
+        %         OptionZ.FrameRate=30;OptionZ.Duration=15;OptionZ.Periodic=true;
+        %         CaptureFigVid([-20,10;-380,190],['Umap_3Dprojection_' channel],OptionZ)
+
         chan=chan+1;
 
-    end %end of channel for loop
+     end %end of channel for loop
 
      figure; hold on; set(gcf,'Position',[150 250 1000 800])
 
@@ -254,7 +245,8 @@ for s =session_range(2:end) %1:length(sessions)
         hlink = linkprop([ax1,ax2,ax3,ax4],{'CameraPosition','CameraUpVector'});
         rotate3d on
 
-        savefig([savePath 'Umap_3Dprojection_bothAreas.fig'])
+        saveas(gcf,[savePath '/umap_ColorCodedBy_Units.pdf'])
+% % % %         savefig([savePath 'Umap_3Dprojection_bothAreas.fig'])
 
 %         cd(savePath)
 %         OptionZ.FrameRate=30;OptionZ.Duration=15;OptionZ.Periodic=true;

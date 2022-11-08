@@ -25,7 +25,7 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
-sigma_list= [1/temp_resolution, 1, 10, 30];
+sigma_list= 10;%[1/temp_resolution, 1, 10, 30];
 num_iter = 500;
 
 %Select session range:

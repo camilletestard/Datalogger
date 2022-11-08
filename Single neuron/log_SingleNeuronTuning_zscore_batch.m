@@ -1,8 +1,7 @@
-%% Log_SingleNeuronTuning_zscore
-%  This script computes firing rate of individual neuron under different
-%  behavioral conditions. Then, it computes a cohen's d (or effect size)
-%  difference between the distribution of firing rates during behavior X
-%  with a baseline firing rate.
+%% Log_SingleNeuronTuning_zscore_batch
+%  This script computes the mean z-scored firing rate of individual neuron under different
+%  behavioral conditions. 
+%  C. Testard July 2022
 
 %Set session list
 is_mac = 1;
@@ -20,14 +19,14 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 10; %Temporal resolution of firing rate. 1sec
+temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =30;
 cohend_cutoff=0.3; p_cutoff=0.01;%Set thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1;%set the smoothing window size (sigma)
+sigma = 1*temp_resolution;%set the smoothing window size in sec (sigma)
 null=0;%Set whether we want the null
 
 %Initialize session batch variables:
@@ -55,7 +54,7 @@ for s =session_range %1:length(sessions)
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/Subject_behav'];
-    %savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SingleUnit_results/partner_vs_subject'];
+    
 
     %% Load data
     if with_partner ==1
@@ -118,6 +117,7 @@ for s =session_range %1:length(sessions)
 
                 mean_beh(n,b)=mean(Spike_rasters_zscore(n, idx),2);
                 std_beh(n,b)=std(Spike_rasters_zscore(n, idx),0,2);
+            
             end
 
         end
@@ -194,7 +194,7 @@ ax = gca;
 ax.FontSize = 14;
 saveas(gcf, [savePath '/Zscore_heatmap_binarized.pdf']); close all
 
-
+%Plot violins
 figure; set(gcf,'Position',[150 250 1500 400]);
 subplot(1,2,1)
 violin(all_sessions_data_sorted_a(:,nancol_a))

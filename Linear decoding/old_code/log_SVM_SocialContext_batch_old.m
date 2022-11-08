@@ -68,7 +68,7 @@ for s =session_range %1:length(sessions)
 
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-        block_labels = cell2mat({labels{:,11}}');
+        block_labels = cell2mat({labels{:,12}}');
 
         %% Check which behaviors occur in different blocks
 

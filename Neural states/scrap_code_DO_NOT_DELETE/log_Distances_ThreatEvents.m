@@ -1,3 +1,9 @@
+%% log_Distances_ThreatEvents
+% Compute distance between threat neural states, compared to non-threat
+% behaviors.
+% categories
+% C. Testard, September 2022
+
 %Set session list
 is_mac = 1;
 if is_mac
@@ -7,8 +13,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
@@ -61,74 +67,37 @@ for s =session_range %1:length(sessions)
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey,...
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, ...
-                with_NC, isolatedOnly, smooth, sigma);
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         end
 
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
-
         behavior_labels = cell2mat({labels{:,3}}');
+
+        %Lump behavioral labels
         behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
-        if simplify == 1 %Compare across 5 behavioral categories that are common across sessions
-            %Simplify behavioral catagories
-            %Lump all aggressive interactions together
-            behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
-
-            %Lump all travel together
-            behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
-            behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
-
-            %Lump Drinking and foraging
-            behavior_labels(behavior_labels==find(behav_categ=="Drinking"))=find(behav_categ=="Foraging");
-
-            %Lump all grooming together
-            behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Groom sollicitation"))=find(behav_categ=="Groom partner");
-            behavior_labels(behavior_labels==find(behav_categ=="Self-groom"))=find(behav_categ=="Groom partner");
-
-            behav = [1,5,7,18,29];
-
-        elseif simplify == 2 % Compare one behavior across all others
-
-            %Lump all that is not grooming together
-            behavior_labels(ismember(behavior_labels,find(behav_categ~="Groom partner" & behav_categ~="Getting groomed")))=find(behav_categ=="Rest");
-
-            behav = [find(behav_categ=="Getting groomed"),find(behav_categ=="Rest")];
-
-            %             %Lump all that is not foraging
-            %             behavior_labels(ismember(behavior_labels,find(behav_categ~="Foraging" )))=find(behav_categ=="Rest");
-            %
-            %             behav = [find(behav_categ=="Foraging"),find(behav_categ=="Rest")];
-
-        elseif simplify == 3 %Comapre grooming behaviors between each other
-
-            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom")];
-
-        else %Compare all behaviors separately (without pooling across)
-            %behav = [4,5,7,8,9,10,24,29];
-            behav = [7,8];
-
-        end %End of simplifying loop
-
         behav_freq_table = tabulate(behavior_labels);
+
+        behav = [7,8,9,10,18];
 
         %% Compute dimensionality over increasing numbers of units, over multiple iterations
 
         idx_all_beh= find(ismember(behavior_labels,behav));
         behav_freq=tabulate(behavior_labels(idx_all_beh));
         n_per_behav{s} = behav_freq(behav_freq(:,2)>0,2);
+        
         if all(behav_freq(behav_freq(:,2)>0,2)>min_occurrences) && length(find(behav_freq(:,2)>0))>=length(behav)
 
             for iter = 1:num_iter
@@ -143,10 +112,20 @@ for s =session_range %1:length(sessions)
 
                     %Select unit to run PCA
                     Input_matrix{b} = zscore(Spike_count_raster(idx_beh,randsample(size(Spike_count_raster,2), num_units)))';
+                    labels_matrix{b} = behavior_labels(idx_beh);
 
                 end
                 Input_matrix_full = cell2mat(Input_matrix);
+                Labels_matrix_full = cell2mat(labels_matrix);
                 %figure; hold on; hist(corr(Input_matrix))
+
+                [umap_result]=run_umap(Input_matrix_full', 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+                figure
+                scatter3(umap_result(:,1), umap_result(:,2),umap_result(:,3),40,Cmap(Labels_matrix_full,:),'filled')
+                xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+                %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+                title('Behavior')
+                set(gca,'FontSize',12);
 
                 %PCA
                 [coeff,score,~,~,explained] = pca(Input_matrix_full');
@@ -154,12 +133,21 @@ for s =session_range %1:length(sessions)
 
                 %Get dimensionality
                 var_explained = cumsum(explained);
-                idxl = find(var_explained>=var_explained_threshold);
+                idxl = min(find(var_explained>=var_explained_threshold));
+
+                figure
+                Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
+                    [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
+                    [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
+                    [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
+
+                scatter3(score(:,1), score(:,2),score(:,3),40,Cmap(Labels_matrix_full,:),'filled')
+
 
                 %Get distances
-                D=pdist(score(:,1:20), 'cityblock');
+                D=pdist(score(:,1:3), 'cityblock');
                 Z = squareform(D);
-                heatmap(Z,'Colormap',jet)
+                figure; heatmap(Z,'Colormap',jet)
 
             end % end of interation loop
 

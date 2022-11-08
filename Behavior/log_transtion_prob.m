@@ -16,7 +16,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -27,6 +27,7 @@ sigma = 1;%set the smoothing window size (sigma)
 only_beh_states =1; %1:only consider behavioral states (with extended duration). 
                     % I.e. exclude short point behaviors such as yawning,
                     % vocalization and scratch. 0: consider short behaviors
+agg_precedence=1; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 
 %Select session range:
 if with_partner ==1
@@ -54,7 +55,7 @@ for s =session_range %1:length(sessions)
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
             reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
             log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
+            is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
     end
 
     disp('Data Loaded')

@@ -174,7 +174,7 @@ for s =15%session_range %1:length(sessions)
             
             else
 
-                for pred = 1:size(X_all, 2)-1
+                for pred = 1:size(X_all, 2)-1 % for all predictors 
 
                     %Full contribution per regressor
                     mdl = fitlm(X_all(:,[pred,size(X_all, 2)])); %run linear model with only one predictor

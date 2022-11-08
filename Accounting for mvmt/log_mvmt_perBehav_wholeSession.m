@@ -27,6 +27,7 @@ isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated
 smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
 simplify=1;
+agg_precedence =1;
 
 %Select session range:
 if with_partner ==1
@@ -61,7 +62,7 @@ for s =session_range %1:length(sessions)
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
             reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
             log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
+            is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
     end
 
     cd(filePath)
@@ -158,7 +159,9 @@ for s =session_range %1:length(sessions)
     figure; hold on; set(gcf,'Position',[150 250 1800 1000]);
     for b=1:length(unq_beh)
         subplot(3,length(unq_beh),b)
+        loggertopx_cv(b) = getCV(logger_top_x_final(lbls_final==unq_beh(b)));
         histogram(logger_top_x_final(lbls_final==unq_beh(b)),'BinWidth',50,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
+        text(50,0.0035, num2str(round(loggertopx_cv(b),2)))
         xlim([0 2000]); ylim([0 0.004])
         title(behav_categ(unq_beh(b)))
         if b==1
@@ -173,7 +176,9 @@ for s =session_range %1:length(sessions)
     %figure; hold on; set(gcf,'Position',[150 250 1800 200]);
     for b=1:length(unq_beh)
         subplot(3,length(unq_beh),length(unq_beh)+b)
+        loggertopy_cv(b) = getCV(logger_top_y_final(lbls_final==unq_beh(b)));
         histogram(logger_top_y_final(lbls_final==unq_beh(b)),'BinWidth',50,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
+        text(50, 0.006, num2str(round(loggertopy_cv(b),2)))
         %title(behav_categ(unq_beh(b)))
         xlim([0 1200]); ylim([0 0.007])
         if b==1
@@ -188,8 +193,10 @@ for s =session_range %1:length(sessions)
     %figure;  hold on; set(gcf,'Position',[150 250 1800 200]);
     for b=1:length(unq_beh)
         subplot(3,length(unq_beh),length(unq_beh)*2+b)
+        fov_cv(b) = getCV(fov_final(lbls_final==unq_beh(b)));
         histogram(fov_final(lbls_final==unq_beh(b)),'BinWidth',10,'Normalization','pdf','FaceColor',Cmap(unq_beh(b),:))
         %title(behav_categ(unq_beh(b)))
+        text(-160, 0.02, num2str(round(fov_cv(b),2)))
         xlim([-180 180]); ylim([0 0.025])
         if b==1
             ylabel('Proportion'); xlabel('Degrees')
@@ -218,5 +225,24 @@ for s =session_range %1:length(sessions)
     ax = gca;
     ax.FontSize = 14;
     saveas(gcf, [savePath '/Mvmt_overlap_between_behaviors.pdf']); close all
+
+
+    for b1=1:length(unq_beh)
+        for b2=1:length(unq_beh)
+            hist1= histcounts(fov_final(lbls_final==unq_beh(b1)),20)/length(fov_final(lbls_final==unq_beh(b1)));
+            hist2= histcounts(fov_final(lbls_final==unq_beh(b2)),20)/length(fov_final(lbls_final==unq_beh(b2)));
+
+            bothHistograms = [hist1', hist2'];
+            minCounts = min(bothHistograms, [], 2);
+            maxCounts = max(bothHistograms, [], 2);
+            ratios = minCounts ./ maxCounts;
+            meanPercentage(b1,b2) = nanmean(ratios);
+        end
+    end
+    A=tril(meanPercentage,-1); A(A==0)=nan;
+    meanPercentage_session(s)=nanmean(reshape(A,1,[]));
+    sdPercentage_session(s)=nanstd(reshape(A,1,[]));
+
+
 end
 
