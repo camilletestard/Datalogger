@@ -1,54 +1,64 @@
 function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final, unit_count, groom_labels_all, brain_label] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma)
-
 %Log GenerateDataToRes_function
-% Input data files: 
+% Input data: 
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
 %   2. Behavior of the partner: "EVENTLOG_restructured_partner.csv"
 %   3. Spike sorted neural data: "Neural_data_*sessionname*.mat" OR
 %   "Neural_data_*sessionname*_isolatedunits.mat"
 %   4. Motion energy measure for each top view video: "ME.csv"
 
-% This function formats the raw input data to have the following elements:
-% 1. Neural data matrix, size [Time (to chosen resolution) x #neurons]
-% 2. Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
+% Arguments: 
+%   filePath: is the experimental data path
+%   Temp_resolution: is the temporal resolution at which we would like to
+%   analyze the dat
+%   Channel_flag: specifies with channels to include: only TEO array, only
+%   vlPFC array or all channels
+%   is_mac: specifies whether the code is run on a mac or pc
+%   with_NC: specifies whether the "noise cluster" (or the first cell of
+%   every channel) is included (1) or not (0). If with_NC=2 then we only
+%   include the noise cluster (not the other neurons).
+%   isolatedOnly: specifies if only the well isolated units are considered.
+%   smooth: is the data smoothed using function conv.
+%   sigma: size of smoothing
+
+% This function formats the raw input data to have the following elements (output data):
+% 1. Spike_rasters: Neural data matrix, size [Time (to chosen resolution) x #neurons]
+% 2. labels: Label vector which describes the behavior at time t [Time (to chosen resolution) x 4]
 %       1st column includes all behaviors in "plain english"
 %       2nd column behavior number code
 %       3rd column unique behavior code (when two occur
 %       simultaneously, we chose one, see below for details)
 %       4th column whether behavior happens in isolation or co-occurs
-%       with another.
-%       5th column binary code for behavior happening in isolation (1) or not (0)
+%       with another. String description.
+%       5th column numerical code for the type of co-occurrence
 %       6th column is the behavior "reciprocal" (i.e. partner behavior can
 %       be 100% predictted by subject behavior and vice-versa)
 %       7th column binary code reciprocal (1) vs. not (0)
 %       8th column is the behavior "social" or not (i.e. done with a
 %       conspecific)
 %       9th column binary code for social (1) or not (0).
-%       10th column indicates the block in which we are
+%       10th column indicates the block ID in which we are
 %       (Paired, "female" neighbor; Paired, "male" neighbor or "alone")
 %       11th column gives a corresponding numerical value to the block order.
 %       12th column is a numerical version of block ID.
-% 3. Label for partner behavior, same columns as subject labels
-% 4. Label for grooming, length of the session, with the following columns:
+% 3. labels_partner: same as above but for the partner
+% 4. behav_categ: behavioral categories
+% 5. block_times: Order and timing of blocks during the session
+% 6. monkey: ID of the subject monkey
+% 7. reciprocal_set: Set of reciprocal behaviors
+% 8. social_set: Set of social behaviors 
+% 9. ME_final: Motion energy for the session
+% 10.unit_count: Number of units per brain area
+% 11.groom_labels_all: Label of grooming category. Columns correspond to:
 %       1. Behavior label. If not grooming (7 groom give, 8 groom receive),
 %       then all categories below will be 0. If grooming, the bout can be
 %       qualified as:
 %       2. Is it the start (1), end (2) or middle (3) of grooming bout
-%       3. Grooming after a threat (1) or not (2)
-%       4. Grooming reciprocated (1) or not (2)
-%       5. Grooming initiated (1) or not (2)
+%       3. Grooming after a threat (2) or not (1)
+%       4. Grooming reciprocated (2) or not (1)
+%       5. Grooming initiated by subject (2) or not (1) 
+% 12.brain_label: brain area label for each unit 
 
-% Arguments: 
-%   filePath is the experimental data path
-%   Temp_resolution is the temporal resolution at which we would like to
-%   analyze the dat
-%   Channel_flag specifies with channels to include: only TEO array, only
-%   vlPFC array or all channels
-%   is_mac: specifies whether the code is run on a mac or pc
-%   with_NC: specifies whether the "noise cluster" (or the first cell of
-%   every channel) is included (1) or not (0). If with_NC=2 then we only
-%   inlcude the noise cluster (not the other neurons).
-%   isolatedOnly: specifies if only the well isolated units are considered.
 
 % Camille Testard - Nov. 2021
 
@@ -277,14 +287,22 @@ behav_categ = sort(behav_categ);
 behav_categ{length(behav_categ)+1}='Rest'; %Add rest as a behavior (no defined behavior ongoing)
 
 %For behaviors that often co-occur with other behaviors, determine priority
-double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR"))];% When co-occurring, other behaviors will take precedence over these ones %, find(matches(behav_categ,"HIS")), find(matches(behav_categ,"HIP"))];
-omv = find(matches(behav_categ,'Other monkeys vocalize')); %When co-occurring with toher behaviors, vocalizations take precedence
+double_behav_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"RR")), find(matches(behav_categ,'Other monkeys vocalize'))];% When co-occurring, other behaviors will take precedence over these ones 
+
+%annotation: omv = other monkeys vocalize
+%            grmpr = groom presentation
 grmpr = find(matches(behav_categ,'Grm prsnt'));
+omv = find(matches(behav_categ,'Other monkeys vocalize'));
+
+%Create set of reciprocal behaviors (i.e. behavior of partner can be 100%
+%predicted by behavior of subject)
 reciprocal_set = [find(matches(behav_categ,'RR')), find(matches(behav_categ,'Other monkeys vocalize')), find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"SS")), find(matches(behav_categ,"HIP")), find(matches(behav_categ,"HIS")), find(matches(behav_categ,"SP"))];
+
+%Create set of social behaviors (which happen with conspecifics)
 social_set = [find(matches(behav_categ,'Proximity')), find(matches(behav_categ,"Groom Give")), find(matches(behav_categ,"Groom Receive")),...
     find(matches(behav_categ,"Submission")), find(matches(behav_categ,"Approach")), find(matches(behav_categ,"Leave")), find(matches(behav_categ,"Butt sniff")),...
-    find(matches(behav_categ,"Grm prsnt")), find(matches(behav_categ,"Aggression")), find(matches(behav_categ,"Mounting"))];
+    find(matches(behav_categ,"Grm prsnt")), find(matches(behav_categ,"Aggression"))];
 
 
 %% Create behavior label vector (label every window of the session)
@@ -303,48 +321,56 @@ end_times_partner = behavior_log_partner{:,'end_time_round'};
 Intervals_partner = [start_times_partner end_times_partner];
 
 %%%%%% Create labels vector for SUBJECT monkey %%%%%%
-labels = cell(length_recording,11); %initialize dataframe
+labels = cell(length_recording,12); %initialize dataframe
 for s = 1:length_recording %for all secs in a session
     % this finds the index of the rows(2) that have x in between
     idx = find(s >= Intervals(:,1) & s < Intervals(:,2)); %find if this second belong to any interval
     %IMPORTANT note: interval includes lower bound but excludes upper boundary as is.
-    if ~isempty(idx) %if it belongs to an interval
+    if ~isempty(idx)%if it belongs to an interval
         labels{s,1} = behavior_log{idx,'Behavior'}; %add behavior label in [plain english]
         labels{s,2} = find(matches(behav_categ,labels{s,1})); %add behavior label in [number]
-        if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
-            if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity or RR
-                labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
-                labels{s,4} = 'co-occur with prox or RR';
-                labels{s,5} = 2;
-            else %If proximity & RR co-occur
-                labels{s,3}=find(matches(behav_categ,'Proximity')); % prioritize proximity
-                labels{s,4} = 'prox & RR co-occur';
-                labels{s,5} = 3;
+
+        if ~strcmp(labels{s,1},"Camera Sync") %if not camera sync
+            if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
+                if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity, other monkeys vocalize or RR
+                    labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
+                    labels{s,4} = 'co-occur with prox, omv or RR';
+                    labels{s,5} = 2;
+                elseif isempty(setdiff(labels{s,2}, double_behav_set(1:2))) && any(labels{s,3}==omv) %if RR or proximity co-occur with omv
+                    labels{s,3}=omv; % prioritize Other monkeyz vocalize
+                    labels{s,4} = 'omv co-occurs with prox & RR';
+                    labels{s,5} = 3;
+                else 
+                    isempty(setdiff(labels{s,2}, double_behav_set(1:2)));%If proximity and RR co-occur
+                    labels{s,3}=find(matches(behav_categ,'RR')); % prioritize Rowdy Room
+                    labels{s,4} = 'prox & RR co-occur';
+                    labels{s,5} = 4;
+                end
+            else %If only one behavior happens in that sec
+                labels{s,3} = labels{s,2};
+                labels{s,4} = 'single';
+                labels{s,5} = 1;
             end
-        else %If only one behavior happens in that sec
-            labels{s,3} = labels{s,2};
-            labels{s,4} = 'single';
-            labels{s,5} = 1;
-        end
-        if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include proximity or RR
-            if any(labels{s,3}==grmpr) % if one of the behavior includes groom present
-                labels{s,3}=grmpr; %Keep groom present
-                labels{s,4} = 'grmpr co-occur';
-                labels{s,5} = 4;
-            elseif any(labels{s,3}==omv) % if one of the behavior includes other monkey vocalize
-                labels{s,3}=omv; %Keep Other Monkey Vocalize
-                labels{s,4} = 'omv co-occur';
-                labels{s,5} = 5;
-            else %Otherwise just choose the second behavior for now...
-                %                 error('More than one behavior simultansouly')
-                %                 return
-                labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
-                labels{s,4} = 'Other key behav co-occur';
-                labels{s,5} = 6;
+            if length(labels{s,3})~=1 %If two behaviors are co-occurring which do not include omv, proximity or RR
+                if any(labels{s,3}==grmpr) % if one of the behavior includes groom present
+                    labels{s,3}=grmpr; %Keep groom present
+                    labels{s,4} = 'grmpr co-occur';
+                    labels{s,5} = 5;
+                else %Otherwise just choose the second behavior for now...
+                    %                 error('More than one behavior simultansouly')
+                    %                 return
+                    labels{s,3}= labels{s,3}(2); %2nd behavior (HIP/HIS take precedence over aggression)
+                    labels{s,4} = 'Other key behav co-occur';
+                    labels{s,5} = 6;
+                end
             end
+        else
+            labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
         end
-    else %if not
+
+    else %if second belongs to no interval, set it to "rest"
         labels{s,1} = NaN; labels{s,2} = length(behav_categ); labels{s,3} = length(behav_categ); labels{s,4} = 'NA'; labels{s,5} = 0;%Set behavior category to "NaN" and label to rest
+
     end
     %Add behavior information: reciprocal vs non-reciprocal. Reciprocal
     %behavior is the exact reverse of the subject behavior (i.e. we can
@@ -367,19 +393,43 @@ for s = 1:length_recording %for all secs in a session
     end
     %Add block information
     if s<=block_times{1,'end_time_round'}
-        labels{s,10} = string(block_times{1,'Behavior'});
-        labels{s,11} = 1;
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),2}); %identity of block (female neighbor, male neighbor or alone block)
+        labels{s,11} = 1; %block order
+
+        if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form of block identity
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+        end
+
     elseif s>block_times{1,'end_time_round'} && s<=block_times{2,'end_time_round'}
-        labels{s,10} = string(block_times{2,'Behavior'});
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),3});
         labels{s,11} = 2;
+
+        if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+        end
+
     elseif s>block_times{2,'end_time_round'}
-        labels{s,10} = string(block_times{3,'Behavior'});
+        labels{s,10} = string(block_log{strcmp(full_session_name, block_log{:,'session_name'}),4});
         labels{s,11} = 3;
+
+        if labels{s,10}=="female"
+            labels{s,12} = 1;%numerical form
+        elseif labels{s,10}=="male"
+            labels{s,12} = 2;
+        else
+            labels{s,12} = 3;
+        end
+
     end
 
-% % % % % % % % % %     %For motion energy
-% % % % % % % % % %     idx_ME = find(ME_final(s,3) >= Intervals_ME(:,1) & ME_final(s,3)< Intervals_ME(:,2)); 
-% % % % % % % % % %     labels{s,12} = idx_ME;
 end
 
 %%%%%% Create labels vector for PARTNER monkey %%%%%%

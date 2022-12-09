@@ -1,57 +1,55 @@
-%% Running Notes
-%As first pass analysis for trajectories/manifold idea, finding population
-%average (centroid) for each behavior and using this to predict moment to
-%moment behavioral state.
-
-%% Load in data and preprocess
-
-%Set path
-is_mac = 0; is_camille = 1;
-
-if is_camille
-    if is_mac
-        cd('~/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
-    else
-        cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/')
-    end
-    filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    
-    if is_mac
-        cd('~/Dropbox (Penn)/Datalogger/Results/')
-    else
-        cd('C:/Users/GENERAL/Dropbox (Penn)/Datalogger/Results/')
-    end
-    savePath = uigetdir('', 'Please select the result directory');
-    
+%Set session list
+is_mac = 1;
+if is_mac
+    home = '~';
 else
-    
-    %"[RON ADD PATHS]"
-    
-    addpath('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Behavior')
-    addpath('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger\Neural preprocessing')
-    cd('C:\Users\ronwd\Dropbox\Ready to analyze output');
-    
-    filePath = uigetdir('', 'Please select the experiment directory'); % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    
-    cd('C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_results')
-    
-    savePath = uigetdir('', 'Please select the results directory');
-  
+    home ='C:/Users/GENERAL';
+end
+cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
+sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
+
+%Set parameters
+with_partner =0;
+temp = 1; temp_resolution = 1;
+channel_flag = "all";
+randomsample=0; %subsample neurons to match between brain areas
+unq_behav=0; %If only consider epochs where only 1 behavior happens
+with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
+isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
+smooth= 1; %smooth the data
+sigma = 1;%set the smoothing window size (sigma)
+var_explained_threshold=90;
+num_iter = 500; num_units = 100;
+min_occurrences = 60;
+behav=5;%[1,5,18,29];
+
+%Select session range:
+if with_partner ==1
+    session_range = session_range_with_partner;
+    a_sessions = 1:3; h_sessions = 11:13;
+else
+    session_range = session_range_no_partner;
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-clearvars -except savePath filePath temp_resolution channel_flag is_mac
+dim=nan([length(session_range),2,length(behav),2,num_iter]);
 
-%Set temporal resolution
-temp = 1; temp_resolution = 1;
+s=1;
 
-%pre-choose number of features to use or use 85% variance threshold for PCA
-choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
-randomize = 0;
-for temp_resolution = [1, 2, 5, 10] %1sec, 500msec, 200msec, 100msec
-    %temp_resolution = [1/5, 1/2, 1, 5, 10] %5sec, 2sec, 1sec,500msec, 100msec
-    %1 for second resolution, 10 for 100msec resolution, 100 for 10msec resolution, 1000 for msec resolution. etc.
-    %0.1 for 10sec resolution, 1/5 for 5sec resolution
-    
+for s =session_range %1:length(sessions)
+
+    %Set path
+    filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Dimensionality_results/'];
+
+    chan = 1;
+
+    %pre-choose number of features to use or use 85% variance threshold for PCA
+    choose_numcom = 1; man_num = 20; %update 2021-12-06 this doesn't seem to effect the trend of vlPFC being worse prediction wise than TEO for the centroid analysis.
+    randomize = 0;
+
     %Set channels: 'TEO', 'vlPFC' or 'all'
     chan = 1; channel_flag = "all";
     for channel_flag = ["vlPFC", "TEO", "all"]
