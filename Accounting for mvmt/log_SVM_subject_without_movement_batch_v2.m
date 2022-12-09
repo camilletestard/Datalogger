@@ -16,18 +16,24 @@ sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
+%%%%%%%%%%%%%%%%%%%%
+% ISSUE WITH SESSION 11. Camera was stopped after the recording. Adjusted
+% the code to allow for that to happen.
+
+% Other weird observation is that decoding 
+
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 30; %set temp resolution at the camera temp resolution (FPS)
+temp_resolution = 29.97; %set temp resolution at the camera temp resolution (FPS)
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 3;%Number of SVM iterations
+num_iter = 50;%Number of SVM iterations
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1*temp_resolution;%set the smoothing window size (sigma)
+sigma = 1*temp_resolution;%set the smoothing window size (sigma) to 1sec
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
 agg_precedence=0;
@@ -41,12 +47,12 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=15;
+s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
+    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Mvmt_results/'];
 
     chan = 1;
     %for channel_flag = ["vlPFC", "TEO", "all"]
@@ -65,29 +71,22 @@ for s =session_range %1:length(sessions)
                 is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
+        %Load DLC
+        dlc = readtable('mvmt_data.csv');% Load DLC key point data
+        length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
+
         %Trim neural data and behavioral to align with video data
         camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
-        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
-        labels_trimmed = labels(camera_start_time:end,:);
-
-        cd(filePath)
-
-        %Load ME
-        load('hooke0819_motion_energy.mat')
-        top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
-
-        %Load DLC
-        dlc = readtable('hooke0819_dlc_head_alone.csv');% Load DLC key point data
-        dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
-
-        logger_bottom = table2array(dlc(:,2:4)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
-        logger_top = table2array(dlc(:,5:7)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
-        nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
-
-        %Load head derived measures
-        head_derived_measures = load('hooke0819_head_direction.mat');
-        head_direction = head_derived_measures.head_orientation_dlc; head_direction = head_direction(1:end-1,:);
-        quad_position = head_derived_measures.updown_position; quad_position = quad_position(1:end-1,:);
+        camera_end_time = camera_start_time + size(dlc,1) -1;
+        
+        try 
+            Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:camera_end_time);
+            labels_trimmed = labels(camera_start_time:camera_end_time,:);
+        catch %If camera went on past end of recording (occurs in 2 sessions because of an error at the end)
+            Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
+            labels_trimmed = labels(camera_start_time:end,:);
+            dlc = dlc(1:size(labels_trimmed,1),:);
+        end
 
         disp('Data Loaded')
 
@@ -96,29 +95,15 @@ for s =session_range %1:length(sessions)
         % Get alone block
         %For behavior labels
         lbls = cell2mat(labels_trimmed(:,3)); 
-        lbls=lbls(1:size(dlc,1)); lbls_not_categ = lbls;
         lbls = categorical(lbls); 
 
         tabulate(lbls)
 
         %For spike data
-        Spike_rasters_final =  zscore(Spike_rasters_trimmed(:,1:size(dlc,1)),0,2)';
+        Spike_rasters_final =  zscore(Spike_rasters_trimmed,0,2)';
 
         %Combine mvmt predictors
-        logger_top_x = logger_top(:,1);
-        logger_top_y = logger_top(:,2);
-        mvmt_logger_top_x = [0; diff(logger_top(:,1))];
-        mvmt_logger_top_y = [0; diff(logger_top(:,2))];
-        head_mvmt = [0; diff(head_direction)];
-
-        mvmt = [top_view_ME, side_view_ME,...
-            logger_top_x, logger_top_y,...
-            mvmt_logger_top_x, mvmt_logger_top_y,...
-            head_direction, head_mvmt,...
-            quad_position];
-
-        %mvmt = [top_view_ME, side_view_ME,quad_position];
-
+        mvmt = table2array(dlc);
 
         %Get missing data (from deeplabcut)
         [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
@@ -128,19 +113,9 @@ for s =session_range %1:length(sessions)
 
         %Remove missing data
         Y = Spike_rasters_final;
-        Y_final = Y(idx_to_keep,:);  lbls_not_categ = lbls_not_categ(idx_to_keep,:);
+        Y_final  = Y(idx_to_keep,:);
         lbls_final = removecats(lbls(idx_to_keep));
-        top_view_ME_final = zscore(top_view_ME(idx_to_keep));
-        side_view_ME_final = zscore(side_view_ME(idx_to_keep));
-        logger_top_x_final = zscore(logger_top_x(idx_to_keep));
-        logger_top_y_final = zscore(logger_top_y(idx_to_keep));
-        mvmt_logger_top_x_final = zscore(mvmt_logger_top_x(idx_to_keep));
-        mvmt_logger_top_y_final = zscore(mvmt_logger_top_y(idx_to_keep));
-        head_direction_final=zscore(head_direction(idx_to_keep));
-        head_mvmt_final = zscore(head_mvmt(idx_to_keep));
-        quad_position_final = quad_position(idx_to_keep);
-        %mvmt_final = mvmt(idx_to_keep,:);
-
+        mvmt_final = mvmt(idx_to_keep,:);
 
         %% Run regression
         % Use adjusted Rsquared
@@ -148,19 +123,26 @@ for s =session_range %1:length(sessions)
 
         for unit = 1:size(Y_final,2) %for now one unit at a time.
 
-            %Set up predictor matrices
-            X_mvmt = table(top_view_ME_final, side_view_ME_final,...
-                logger_top_x_final,logger_top_y_final,...
-                mvmt_logger_top_x_final, mvmt_logger_top_y_final,...
-                head_direction_final,head_mvmt_final,quad_position_final,...
-                Y_final(:,unit));
+            %unroll mvmt predictors (format for the multilinear regression)
+            toplogger_x = mvmt_final(:,1);
+            toplogger_y = mvmt_final(:,2);
+            bottomlogger_x = mvmt_final(:,3);
+            bottomlogger_y = mvmt_final(:,4);
+            head_orientation_dlc = mvmt_final(:,5);
+            dist_traveled = mvmt_final(:,6);
+            acceleration = mvmt_final(:,7);
+
+            %Set up predictor matrix
+            X_mvmt = table(toplogger_x, toplogger_y,...
+                bottomlogger_x, bottomlogger_y, head_orientation_dlc,...
+                dist_traveled, acceleration, Y_final(:,unit));
 
             Results.(['unit' num2str(unit)]) = fitlm(X_mvmt); %run linear model with mvmt only for specific unit
-            Y_residuals(:, unit) = Results.(['unit' num2str(unit)]).Residuals.Raw;
+            Y_residuals{s}(:, unit) = Results.(['unit' num2str(unit)]).Residuals.Raw;
 
             X_lbls = table(lbls_final, Y_final(:,unit));
             ResultsBehav.(['unit' num2str(unit)]) = fitlm(X_lbls); %run linear model with behavior lbls only for specific unit
-            Y_residuals_behav(:, unit) = ResultsBehav.(['unit' num2str(unit)]).Residuals.Standardized;
+            Y_residuals_behav{s}(:, unit) = ResultsBehav.(['unit' num2str(unit)]).Residuals.Raw;
 
             if mod(unit,10)==0
                 disp(unit)
@@ -168,9 +150,10 @@ for s =session_range %1:length(sessions)
 
         end
 
+        clear Results ResultsBehav
+
+        lbls_not_categ = double(string(lbls_final));
         behavior_labels = lbls_not_categ; %Extract unique behavior info for subject
-        behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-        behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
 
@@ -179,9 +162,7 @@ for s =session_range %1:length(sessions)
             %Lump all aggressive interactions together
             behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
             behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
-
+         
             %Lump all travel together
             behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
             behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
@@ -195,10 +176,10 @@ for s =session_range %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 30;
+        min_occurrences = 100;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
-        % Remove behaviors that are ill-defined or to not characterized well enough
+        % Remove behaviors that are ill-defined or not characterized well enough
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));%excluding scratch which is a source of confusion.
@@ -227,9 +208,9 @@ for s =session_range %1:length(sessions)
             if res ==1 %firing rate
                 Spike_count_raster_final = Y_final(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
             elseif res==2 %residuals after regressing out movement
-                Spike_count_raster_final = Y_residuals(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+                Spike_count_raster_final = Y_residuals{s}(idx,:);
             elseif res==3 %residuals after regressing out behavior
-                Spike_count_raster_final = Y_residuals_behav(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+                Spike_count_raster_final = Y_residuals_behav{s}(idx,:);
             end
 
             behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
@@ -265,7 +246,7 @@ for s =session_range %1:length(sessions)
                 Labels = labels_temp;
 
                 num_trials = hist(Labels,numericLabels); %number of trials in each class
-                minNumTrials = 300;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
+                minNumTrials = 100;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
                 chosen_trials = [];
                 for i = 1:NumOfClasses %for each class
                     idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -290,15 +271,15 @@ for s =session_range %1:length(sessions)
             disp([num2str(1000/temp_resolution) 'msec resolution, channels: ' channel '. DONE'])
             disp('****************************************************************************')
 
-            mean_hitrate{s}(chan,res) = mean(hitrate)
-            sd_hitrate{s}(chan,res) = std(hitrate);
-            mean_hitrate_shuffled{s}(chan,res) = mean(hitrate_shuffled)
-            sd_hitrate_shuffled{s}(chan,res) = std(hitrate_shuffled);
+            mean_hitrate{s}(res) = mean(hitrate)
+            sd_hitrate{s}(res) = std(hitrate);
+            mean_hitrate_shuffled{s}(res) = mean(hitrate_shuffled)
+            sd_hitrate_shuffled{s}(res) = std(hitrate_shuffled);
 
             C_concat=cat(3,C{:}); %Get confusion matrix
             confusion_mat_avg{s, chan}=round(mean(C_concat,3)*100); %Average over SVM iterations
-            rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
-            C_table{s, chan} = array2table(confusion_mat_avg{s, chan},'RowNames',rowNames{s},'VariableNames',colNames{s});
+%             rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
+%             C_table{s, chan} = array2table(confusion_mat_avg{s, chan},'RowNames',rowNames{s},'VariableNames',colNames{s});
 
             
             clear labels_id
@@ -328,6 +309,23 @@ end %End of session for loop
 %% Plot all sessions results
 
 %Change savePath for all session results folder:
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
-%load('SVM_results_subjectBehav.mat')
+cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/']);
+save('SVM_results_mvmtControlled_rawRes.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+load('SVM_results_mvmtControlled_rawRes.mat')
+
+
+figure; hold on
+data = cell2mat(mean_hitrate');
+data_shuffle = cell2mat(mean_hitrate_shuffled');
+bp = bar([mean(data(:,:)), mean(data_shuffle(:,1))],'FaceAlpha',0.2);
+
+sp1 = scatter(ones(size(data,1))*1,data(:,1), 'filled','b');
+sp1 = scatter(ones(size(data,1))*2,data(:,2), 'filled','r');
+sp1 = scatter(ones(size(data,1))*3,data(:,3), 'filled','y');
+sp1 = scatter(ones(size(data,1))*4,data_shuffle(:,1), 'filled','g');
+
+ylabel('Decoding Accuracy'); ylim([0 1])
+xticks([1:4]); xticklabels({'Real', 'Regress out mvmt', 'Regress out behavior', 'Chance'}); xlim([0.25 4.75])
+ax = gca;
+ax.FontSize = 16;
+saveas(gcf, 'SVM_regressingOut_Mvmt.pdf')

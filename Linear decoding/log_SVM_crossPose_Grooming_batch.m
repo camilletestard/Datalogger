@@ -1,4 +1,4 @@
-%% Log_SVM_subject_batch
+%% Log_SVM_crossPose_Grooming_batch
 % Run a linear decoder on the neural activity for the subject's behavior
 % (only including behaviors with a minimum # occurrence)
 % Batch version of script

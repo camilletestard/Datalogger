@@ -19,17 +19,17 @@ session_range_with_partner=[1:6,11:13,15:16];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 29.97;
+temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 10;%Number of SVM iterations
+num_iter = 100;%Number of SVM iterations
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1*temp_resolution;%set the smoothing window size (sigma)
+sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
-simplify=0;%lump similar behavioral categories together to increase sample size.
+simplify=1;%lump similar behavioral categories together to increase sample size.
 agg_precedence =0;
 
 %Select session range:
@@ -49,7 +49,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
-    for channel_flag = ["vlPFC", "TEO", "all"]
+    %for channel_flag = ["vlPFC", "TEO", "all"]
 
 
         %% Get data with specified temporal resolution and channels
@@ -109,25 +109,8 @@ for s =session_range %1:length(sessions)
 
         %% Select behaviors to decode
 
-        %Compute freq of behavior for the session
-        behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
-
-        % Select behaviors with a minimum # of occurrences
-        min_occurrences = 100;
-        behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-
-        % Remove behaviors that are ill-defined
-        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));%excluding scratch which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Vocalization')));%excluding scratch which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
-        behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
-
-
-        % OR select behaviors manually
-        %behav = [5,18];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        % select behaviors manually
+        behav = [1,5,7,18,29];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -171,7 +154,7 @@ for s =session_range %1:length(sessions)
             Labels = labels_temp;
 
             num_trials = hist(Labels,numericLabels); %number of trials in each class
-            minNumTrials = min_occurrences; %30; %find the minimum one %CT change to have 30 of each class
+            minNumTrials = min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
             chosen_trials = [];
             for i = 1:NumOfClasses %for each class
                 idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -205,71 +188,10 @@ for s =session_range %1:length(sessions)
         confusion_mat_avg{s, chan}=round(mean(C_concat,3)*100); %Average over SVM iterations
         rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
         C_table{s, chan} = array2table(confusion_mat_avg{s, chan},'RowNames',rowNames{s},'VariableNames',colNames{s});
+        diagonal_confMat(s,:) = diag(confusion_mat_avg{s, chan})';
 
         chan = chan +1;
         clear labels_id
-
-    end %end of channel for loop
-
-    cd(savePath)
-
-    %% Plot confusion matrices
-
-% %     figure; set(gcf,'Position',[150 250 1500 500]);
-% %     subplot(1,2,1)
-% %     hp=heatmap(confusion_mat_avg{s, 1},'Colormap', jet); caxis([0 100]);
-% %     hp.XDisplayLabels = rowNames{s}; hp.YDisplayLabels = colNames{s}; title(['vlPFC'])
-% %     ylabel('Real'); xlabel('Predicted')
-% %     ax = gca;
-% %     ax.FontSize = 14;
-% %     
-% %     subplot(1,2,2)
-% %     hp=heatmap(confusion_mat_avg{s, 2},'Colormap', jet); caxis([0 100]);
-% %     hp.XDisplayLabels = rowNames{s}; hp.YDisplayLabels = colNames{s}; title(['TEO'])
-% %     ylabel('Real'); xlabel('Predicted')
-% %     ax = gca;
-% %     ax.FontSize = 14;
-% %     saveas(gcf,['ConfusionMatrix.pdf'])
-
-
-%     vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
-%     D{s} = vlpfc-TEO;
-%     CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
-%     subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
-%     subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
-%     subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
-%     subplot(2,2,4); h = heatmap(D{s},'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);
-    %close all
-
-    %% Plot session result
-
-%     rowNames = ["1sec"]; colNames = ["vlPFC","TEO","all"];
-%     result_hitrate = array2table(mean_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
-%     result_hitrate_shuffled = array2table(mean_hitrate_shuffled{s},'RowNames',rowNames,'VariableNames',colNames);
-%     result_sdhitrate = array2table(sd_hitrate{s},'RowNames',rowNames,'VariableNames',colNames);
-
-    %     save([savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.mat'], 'mean_hitrate', 'sd_hitrate', 'C_table', 'result_hitrate', 'result_sdhitrate', 'behavs_eval')
-    %     writetable(result_hitrate,[savePath '\SVM_results_' num2str(length(behav)) 'behav_NOsubsample_unique.csv'],'WriteRowNames',true,'WriteVariableNames',true);
-
-% % %     %Plotting results decoding accuracy for all behaviors at 1sec and lower resolution
-% % %     figure; hold on; set(gcf,'Position',[150 250 700 500])
-% % %     cmap = hsv(size(mean_hitrate,1));
-% % %     for b = 1:size(mean_hitrate,1)
-% % %         y = mean_hitrate{s}(b,:);
-% % %         std_dev = sd_hitrate{s}(b,:);
-% % %         errorbar(y,std_dev,'s','MarkerSize',10,...
-% % %             'MarkerEdgeColor',cmap(b,:),'MarkerFaceColor',cmap(b,:))
-% % %         %plot(x,y,'Color','k')
-% % %     end
-% % %     chance_level = 1/length(behav);
-% % %     yline(chance_level,'--','Chance level', 'FontSize',16)
-% % %     xticks([0.8 1 2 3 3.2]); xlim([0.8 3.2]); ylim([0 1])
-% % %     xticklabels({'','vlPFC','TEO','all',''})
-% % %     ax = gca;
-% % %     ax.FontSize = 14;
-% % %     ylabel('Deconding accuracy','FontSize', 18); xlabel('Brain area','FontSize', 18)
-% % %     title('Decoding accuracy for subject current behavioral states','FontSize', 14)
-
 
 end %End of session for loop
 
@@ -277,42 +199,19 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_confusionMat.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 %load('SVM_results_subjectBehav.mat')
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Bar plot decoding accuracy
-
+sesh=[1:6,11:13,15];
+behav_lbls=behav_categ(behav);
+diagonal_confMat(diagonal_confMat==0)=nan;
+mean_decoding = nanmean(diagonal_confMat);
+[~, idx_sorted]=sort(mean_decoding);
 figure; hold on
-data = cell2mat(mean_hitrate');
-data_shuffle = cell2mat(mean_hitrate_shuffled');
-bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+for s=sesh
+    scatter(1:length(behav_lbls), diagonal_confMat(s,idx_sorted), 'filled')
+end
+scatter(1:length(behav_lbls), mean_decoding(idx_sorted), 100,'_')
+xticks(1:length(behav_lbls)); xticklabels(behav_lbls(idx_sorted))
+xlim([0.5 length(behav_lbls)+0.5])
 
-sp1 = scatter(ones(size(data,1))*0.77,data(:,1), 'filled','b');
-sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
-
-sp1 = scatter(ones(size(data,1))*1.77,data_shuffle(:,1), 'filled','b');
-sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
-
-legend(bp,{'vlPFC','TEO','all'},'Location','best')
-
-ylabel('Decoding Accuracy'); ylim([0 1])
-xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
-ax = gca;
-ax.FontSize = 16;
-
-saveas(gcf,['SVM_results_subjectBehav.pdf'])
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % % % %Confusion matrices
-% % % % % vlpfc = table2array(C_table{s,1,1}); TEO = table2array(C_table{s,1,2}); all_units = table2array(C_table{s,1,3});
-% % % % % D{s} = vlpfc-TEO;
-% % % % % CustomAxisLabels = string(C_table{s,1,1}.Properties.VariableNames); figure; set(gcf,'Position',[150 250 1500 800]);
-% % % % % subplot(2,2,1); pfc = heatmap(vlpfc,'Colormap', hot); pfc.XDisplayLabels = CustomAxisLabels; pfc.YDisplayLabels = CustomAxisLabels; title(pfc,'vlpfc confusion matrix'); caxis([0, 100]);
-% % % % % subplot(2,2,2); teo = heatmap(TEO,'Colormap', hot); teo.XDisplayLabels = CustomAxisLabels; teo.YDisplayLabels = CustomAxisLabels; title(teo,'TEO confusion matrix'); caxis([0, 100]);
-% % % % % subplot(2,2,3); all = heatmap(all_units,'Colormap', hot); all.XDisplayLabels = CustomAxisLabels; all.YDisplayLabels = CustomAxisLabels; title(all,'All units confusion matrix'); caxis([0, 100]);
-% % % % % subplot(2,2,4); h = heatmap(D,'Colormap', cool); h.XDisplayLabels = CustomAxisLabels; h.YDisplayLabels = CustomAxisLabels; title(h,'vlpfc-TEO confusion matrix');caxis([-50, 50]);

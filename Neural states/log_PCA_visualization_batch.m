@@ -7,30 +7,34 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:3,11:13];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 5;%set the smoothing window size (sigma)
+sigma = 1*temp_resolution;%set the smoothing window size (sigma)
+null=0;%Set whether we want the null 
+simplify=1; %lump similar behavioral categories together
+agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
+
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -40,48 +44,41 @@ for s =session_range %1:length(sessions)
     chan = 1;
 
     for channel_flag = ["vlPFC", "TEO"]
-        %channel_flag = "vlPFC";
+        %channel_flag = "TEO";
+
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly);
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
         else
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         disp('Data Loaded')
 
+        %Raw data
         Spike_count_raster = Spike_rasters';
 
 
-        %PCA
-        [coeff,score,latent,tsquared,explained] = pca(Spike_count_raster);
-        var_explained = cumsum(explained); idxl = find(var_explained>=80); dim = min(idxl);
-        Spike_count_raster = score(:,1:15);
-
-        %         %FA
-        %         [lambda,psi,T,stats,F] = factoran(Spike_count_raster,3)
-        %         Spike_count_raster = F;
-
-
         %% Select behaviors to decode
-        %Compute freq of behavior for the session
+
+         %Extract behavior labels and frequency
         behavior_labels = cell2mat({labels{:,3}}');
-        behavior_labels(behavior_labels==21)=9;
-        behavior_labels(behavior_labels==22)=10;
-        behavior_labels(behavior_labels==19)=29;
-        block_labels = cell2mat({labels{:,11}}');
+        behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+        
+        %Lump all travel together
+        behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
+        behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
 
-        behav_freq_table = tabulate(behavior_labels);
-        behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=0,:); % Discard 0 (non-defined behaviors)
-        block_categ = string(block_times{:,1})';
-
+        %Extract block labels
+        block_labels = cell2mat({labels{:,12}}');
+        
         % Select behaviors
 
         %Compute freq of behavior for the session
@@ -91,6 +88,8 @@ for s =session_range %1:length(sessions)
         % Select behaviors with a minimum # of occurrences
         min_occurrences = 30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
+
+        %Remove behaviors we're not interested in for now
         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding Rowdy Room which is a source of confusion.
@@ -98,7 +97,7 @@ for s =session_range %1:length(sessions)
         behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
 
         % OR select behaviors manually
-        %behav = unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
+        %behav =[29] ;%unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -108,11 +107,16 @@ for s =session_range %1:length(sessions)
 
         %Subset data to only consider epochs of interest
         idx= find(ismember(behavior_labels,behav));
-
-        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking dat
         behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
         block_labels_final =  block_labels(idx);
         behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+
+        %run PCA
+        [coeff,score,latent,tsquared,explained] = pca(zscore(Spike_count_raster_final));
+        var_explained = cumsum(explained); idxl = find(var_explained>=80); dim = min(idxl);
+        pca_plot_final = score(:,1:15);
+        
 
         %% Plot PCA
 
@@ -130,8 +134,8 @@ for s =session_range %1:length(sessions)
         figure; hold on; set(gcf,'Position',[150 250 1500 500])
 
         %Plot PCA results color-coded by behavior
-        ax1=subplot(1,3,1);
-        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap(behavior_labels_final,:),'filled')
+        ax1=subplot(1,2,1);
+        scatter3(pca_plot_final(:,1), pca_plot_final(:,2),pca_plot_final(:,3),12,Cmap(behavior_labels_final,:),'filled')
         sum(explained(1:3))
         xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -140,17 +144,17 @@ for s =session_range %1:length(sessions)
         %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
         %pause(5)
 
-        %Plot UMAP results color-coded by time
-        ax2=subplot(1,3,2);
-        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_time,'filled')
-        xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Time')
-        set(gca,'FontSize',12);
+%         %Plot UMAP results color-coded by time
+%         ax2=subplot(1,3,2);
+%         scatter3(pca_plot_final(:,1), pca_plot_final(:,2),pca_plot_final(:,3),8,Cmap_time,'filled')
+%         xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
+%         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+%         title('Time')
+%         set(gca,'FontSize',12);
 
         %Color-coded by block
-        ax3=subplot(1,3,3);
-        scatter3(Spike_count_raster_final(:,1), Spike_count_raster_final(:,2),Spike_count_raster_final(:,3),8,Cmap_block(block_labels_final,:),'filled')
+        ax2=subplot(1,2,2);
+        scatter3(pca_plot_final(:,1), pca_plot_final(:,2),pca_plot_final(:,3),12,Cmap_block(block_labels_final,:),'filled')
         xlabel('PCA 1'); ylabel('PCA 2'); zlabel('PCA 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
         title('Block')
@@ -159,7 +163,7 @@ for s =session_range %1:length(sessions)
 
         sgtitle([channel_flag ' units, PCA'])
 
-        hlink = linkprop([ax1,ax2,ax3],{'CameraPosition','CameraUpVector'});
+        hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
         rotate3d on
 
         %clearvars -except temp chan savePath filePath temp_resolution is_mac

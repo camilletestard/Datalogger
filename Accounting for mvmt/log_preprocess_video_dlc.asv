@@ -101,7 +101,7 @@ for s =session_range %1:length(sessions)
 
     head_orientation_dlc = atan2d((toplogger(:,2)-bottomlogger(:,2))*-1, toplogger(:,1)-bottomlogger(:,1)); % looking right is 0 deg, looking left is 180 deg
     
-    prop_missing_data(s) = length(find(isnan(head_orientation_dlc)))/length(head_orientation_dlc)%proportion missing data
+    prop_missing_data length(find(isnan(head_orientation_dlc)))/length(head_orientation_dlc)%proportion missing data
     %figure; plot(head_orientation_dlc)
 
     %distance traveled by head
@@ -134,16 +134,7 @@ for s =session_range %1:length(sessions)
 
     disp(['Session ' sessions(s).name ' done.'])
 
-    clearvars -except home sessions s session_range prop_missing_data
-
 end
-
-prop_missing_data(prop_missing_data==0)=nan;
-nanmean(prop_missing_data)
-nanstd(prop_missing_data)
-
-%Mean missing data across sessions: 52.21%
-%Std missing data: 6.29%
 %=================================
 
 %Hooke_2021-08-19

@@ -23,7 +23,7 @@ dist_traveled(toplogger(:,3) <.8 | bottomlogger(:,3) <.8) = NaN;
 figure; plot(dist_traveled)
 
 %velocity of the head
-sampling_interval = .0333; %video frame rate (30Hz)
+sampling_interval = 1/29.97; %video frame rate (29.97Hz)
 velocity = dist_traveled/sampling_interval;
 figure; plot(velocity)
 

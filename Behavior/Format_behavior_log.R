@@ -110,25 +110,27 @@ new_log_final_plot$Behavior=factor(new_log_final_plot$Behavior,
                               levels=c("Aggression","Proximity", "Threat to partner","Foraging", "Vocalization","Groom partner", "Mounting",
                                       "Approach","Yawning","Self-groom","Threat to subject","Other monkeys vocalize", 
                                        "Getting groomed","Leave","Drinking","Travel","Scratch","Alert", "Limb presentation","Camera Sync"))
+#Remove camera sync for plotting
+new_log_final_plot = new_log_final_plot[2:nrow(new_log_final_plot),]
 
-#Plot
-behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
-  geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
-  geom_vline(xintercept = block_end[1])+
-  geom_vline(xintercept = block_end[2])+
-  #scale_fill_viridis(option="turbo", discrete = TRUE)+
-  theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
-  xlab('Time since start of recording (in s)')+
-  theme(axis.text.y= element_blank(),
-        axis.ticks.y = element_blank())#+
-#scale_x_continuous(breaks=c(0,600,2000,4000,6000))
-
-#Save plot
-if (length(grep('partner',file))>0) {
-  setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',m.monkey,date,'/Behavior_results/',sep=""))
-  ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep="")) }else
-  {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
-    ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep=""))}
+# #Plot
+# behavior.log<-ggplot(new_log_final_plot, aes(xmin=start.time, xmax= end.time, ymin=group.min, ymax=group.max))+
+#   geom_rect(aes(fill=Behavior))+#, colour = "grey50")+
+#   geom_vline(xintercept = block_end[1])+
+#   geom_vline(xintercept = block_end[2])+
+#   #scale_fill_viridis(option="turbo", discrete = TRUE)+
+#   theme_classic(base_size = 16)+ ylim(0,1)+xlim(0,max(new_log$end.time))+
+#   xlab('Time since start of recording (in s)')+
+#   theme(axis.text.y= element_blank(),
+#         axis.ticks.y = element_blank())#+
+# #scale_x_continuous(breaks=c(0,600,2000,4000,6000))
+# 
+# #Save plot
+# if (length(grep('partner',file))>0) {
+#   setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',m.monkey,date,'/Behavior_results/',sep=""))
+#   ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep="")) }else
+#   {setwd(paste(home,'/Dropbox (Penn)/Datalogger/Results/',monkey,date,'/Behavior_results/',sep=""))
+#     ggsave(behavior.log,filename = paste("behavior_log_plot_",monkey,date,".pdf", sep=""))}
 
 #Add block limits
 blocklim = data.frame(matrix(NA, nrow = 3, ncol = ncol(new_log_final))); names(blocklim)=names(new_log_final)

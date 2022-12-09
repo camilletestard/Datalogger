@@ -27,17 +27,17 @@ for b=1:length(behav)
 
     bp = bar([nanmean(data_AlonePaired(:,:)); nanmean(data_NeighborID(:,:)); nanmean(data_shuffled(:,:))],'FaceAlpha',0.2);
 
-    sp1 = scatter(ones(size(data_AlonePaired,1))*0.77,data_AlonePaired(:,1), 'filled','b');
-    sp1 = scatter(ones(size(data_AlonePaired,1)),data_AlonePaired(:,2), 'filled','r');
-    sp1 = scatter(ones(size(data_AlonePaired,1))*1.22,data_AlonePaired(:,3), 'filled','y');
+    sp1 = scatter(ones(size(data_AlonePaired,1))*0.77,data_AlonePaired(:,1),8, 'filled','b');
+    sp1 = scatter(ones(size(data_AlonePaired,1)),data_AlonePaired(:,2),8, 'filled','r');
+    sp1 = scatter(ones(size(data_AlonePaired,1))*1.22,data_AlonePaired(:,3),8, 'filled','y');
 
-    sp1 = scatter(ones(size(data_NeighborID,1))*1.77,data_NeighborID(:,1), 'filled','b');
-    sp1 = scatter(ones(size(data_NeighborID,1))*2,data_NeighborID(:,2), 'filled','r');
-    sp1 = scatter(ones(size(data_NeighborID,1))*2.22,data_NeighborID(:,3), 'filled','y');
+    sp1 = scatter(ones(size(data_NeighborID,1))*1.77,data_NeighborID(:,1),8, 'filled','b');
+    sp1 = scatter(ones(size(data_NeighborID,1))*2,data_NeighborID(:,2),8, 'filled','r');
+    sp1 = scatter(ones(size(data_NeighborID,1))*2.22,data_NeighborID(:,3),8, 'filled','y');
 
-    sp1 = scatter(ones(size(data_NeighborID,1))*2.77,data_shuffled(:,1), 'filled','b');
-    sp1 = scatter(ones(size(data_NeighborID,1))*3,data_shuffled(:,2), 'filled','r');
-    sp1 = scatter(ones(size(data_NeighborID,1))*3.22,data_shuffled(:,3), 'filled','y');
+    sp1 = scatter(ones(size(data_NeighborID,1))*2.77,data_shuffled(:,1),8, 'filled','b');
+    sp1 = scatter(ones(size(data_NeighborID,1))*3,data_shuffled(:,2),8, 'filled','r');
+    sp1 = scatter(ones(size(data_NeighborID,1))*3.22,data_shuffled(:,3),8, 'filled','y');
 
     %legend(bp,{'vlPFC','TEO','all'},'Location','best')
     title(behav_categ(behav(b)))
@@ -48,4 +48,4 @@ for b=1:length(behav)
     ax.FontSize = 16;
 
 end
-saveas(gcf,['SVM_results_allSessions_allBehavs_SocialContext.pdf'])
+saveas(gcf,['Decoding_SocialContext.pdf'])

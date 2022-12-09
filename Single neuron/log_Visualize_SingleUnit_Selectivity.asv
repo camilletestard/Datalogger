@@ -67,20 +67,14 @@ for s =session_range %1:length(sessions)
 
         Spike_count_raster = zscore(Spike_rasters');
 
-        %Extract behavior labels
-        behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
+        
 
-        %Set colormap
-        Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.3 0.7 1];[0 0.7 0];[1 0 1];[0 1 1];...
-            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
-            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
-
+        %Spike_count_raster(Spike_count_raster>5)=nan;
 
         session_with_buffer = [250*temp_resolution:size(Spike_count_raster,1)-250*temp_resolution];
 
-        figure; imagesc(Spike_count_raster(session_with_buffer,:)'); xline(block_times.start_time(2),'LineWidth',2); xline(block_times.start_time(3),'LineWidth',2); colorbar; caxis([-2 2])
-        figure; imagesc(behavior_labels(session_with_buffer,:)'); xline(block_times.start_time(2),'LineWidth',4); xline(block_times.start_time(3),'LineWidth',4);colormap(Cmap); colorbar
+        figure; imagesc(Spike_count_raster(session_with_buffer,:)'); colorbar; caxis([-2 2])
+        figure; imagesc(behavior_labels(session_with_buffer,:)'); colormap(Cmap); colorbar
 
         y=mean(Spike_count_raster(session_with_buffer,:)');
         y_std=std(Spike_count_raster(session_with_buffer,:)');
@@ -105,7 +99,9 @@ for s =session_range %1:length(sessions)
 %         figure; imagesc(Spike_count_raster(session_with_buffer,idx_order)'); colorbar; caxis([-3 3])
 
         %% Pre-process behavior
-  
+        %Extract behavior labels
+        behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
+
         %Simplify behavioral categories
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
 

@@ -40,7 +40,7 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %       9th column binary code for social (1) or not (0).
 %       10th column indicates the block ID in which we are
 %       (Paired, "female" neighbor; Paired, "male" neighbor or "alone")
-%       11th column gives a corresponding numerical value to the block order (1st, 2nd 3rd).
+%       11th column gives a corresponding numerical value to the block order in time (1st, 2nd 3rd).
 %       12th column is a numerical version of block ID (social context).
 %       13th column whether individual is paired (1) or alone (0)
 % 3. labels_partner: same as above but for the partner
@@ -481,17 +481,21 @@ groom_labels_all=zeros(size(labels,1),5); %Initiliaze
 %3rd row: Is grooming bout after a threat event (within 1min after threat)
 %4th row: Is grooming bout reciprocated (within 30sec of previous grooming bout)
 %5th row: Is grooming bout sollicited (within 30sec of an approach or groom present)
+%6th row: Neighbor ID
 
 %set paramaters:
-time_start_end = 5*temp_resolution; %in sec
-time_postthreat = 45*temp_resolution;
-time_recip = 10*temp_resolution;
-time_postrecip = 20*temp_resolution;
-time_sollicited = 5*temp_resolution;
-time_postsollicit = 20*temp_resolution;
+time_start_end = round(5*temp_resolution); %in sec
+time_postthreat = round(45*temp_resolution);
+time_recip = round(10*temp_resolution);
+time_postrecip = round(20*temp_resolution);
+time_sollicited = round(5*temp_resolution);
+time_postsollicit = round(20*temp_resolution);
 
 %Set first column as the behavior labels
 groom_labels_all(:,1) = cell2mat({labels{:,3}}');
+
+%Set last column as the neighbor ID
+groom_labels_all(:,6)=cell2mat({labels{:,12}}');
 
 %get all grooming bouts
 all_groom_bouts = sort([find(strcmp(table2array(behavior_log(:,'Behavior')),'Groom Give'));...
@@ -596,6 +600,7 @@ for g = 1:length(all_groom_bouts) %For all grooming bouts
     %     groom_labels_all(idx_not_initiated,5)=1; groom_labels_all(idx_initiated,5)=2;
 
 end
+
 groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
 
 

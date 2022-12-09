@@ -1,7 +1,6 @@
-%% log_mvmt_regression
+%% log_mvmt_regression_perReg
 % Run a multinear regression to figure out the proportion of variance
 % explained by the different predictors
-
 
 %Set session list
 is_mac = 1;
@@ -17,7 +16,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 30; %frame rate
+temp = 1; temp_resolution = 29.97; %frame rate
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -25,8 +24,9 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
-sigma_list= [1/temp_resolution, 1, 10, 30];
+%sigma_list= [1/temp_resolution, 1, 10, 30];
 num_iter = 500;
+agg_precedence = 1;
 
 %Select session range:
 if with_partner ==1
@@ -37,7 +37,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=15; units_to_remove = [];
+s=1; units_to_remove = [];
 for s =15%session_range %1:length(sessions)
 
     %Set path
@@ -47,10 +47,8 @@ for s =15%session_range %1:length(sessions)
     %Set channels: 'TEO', 'vlPFC' or 'all'
     chan = 1; channel_flag = "all";
 
-    for sig = 1:length(sigma_list)
-
-
-        sigma = sigma_list(sig)*temp_resolution;
+    %for sig = 1:length(sigma_list)
+%         sigma = sigma_list(sig)*temp_resolution;
 
         %% Get data with specified temporal resolution and channels
 
@@ -63,33 +61,26 @@ for s =15%session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         cd(filePath)
 
+        %Load DLC
+        dlc = readtable('mvmt_data.csv');% Load DLC key point data
+        length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
+
         %Trim neural data and behavioral to align with video data
         camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
-        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
-        labels_trimmed = labels(camera_start_time:end,:);
+        camera_end_time = camera_start_time + size(dlc,1) -1;
+        Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:camera_end_time);
+        labels_trimmed = labels(camera_start_time:camera_end_time,:);
 
-        %Load ME
-        load('hooke0819_motion_energy.mat')
-        top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
+% % %         %Load ME
+% % %         load('hooke0819_motion_energy.mat')
+% % %         top_view_ME = [0; top_view_ME]; side_view_ME = [0; side_view_ME];
 
-        %Load DLC
-        dlc = readtable('hooke0819_dlc_head_alone.csv');% Load DLC key point data
-        dlc=dlc(1:end-1,:); %There is an extra datapoint than frame.. for now ignore the first data point
-
-        logger_top = table2array(dlc(:,2:4)); logger_top(logger_top(:,3)<0.8,1:2)=nan;
-        logger_bottom = table2array(dlc(:,5:7)); logger_bottom(logger_bottom(:,3)<0.8,1:2)=nan;
-        nose = table2array(dlc(:,8:10)); nose(nose(:,3)<0.8,1:2)=nan;
-
-        %Load head derived measures
-        head_derived_measures = load('hooke0819_head_direction.mat');
-        head_direction = head_derived_measures.head_orientation_dlc; head_direction = head_direction(1:end-1,:);
-        quad_position = head_derived_measures.updown_position; quad_position = quad_position(1:end-1,:);
-
+ 
         disp('Data Loaded')
 
 
@@ -99,13 +90,12 @@ for s =15%session_range %1:length(sessions)
         % Get alone block
         %For behavior labels
         lbls = cell2mat(labels_trimmed(:,3));
-        lbls=lbls(1:size(dlc,1));
         lbls = categorical(lbls);
 
         tabulate(lbls)
 
         %For spike data
-        Spike_rasters_final =  zscore(Spike_rasters_trimmed(:,1:size(dlc,1)),0,2)';
+        Spike_rasters_final =  zscore(Spike_rasters_trimmed,0,2)';
 
         %Combine mvmt predictors
         logger_top_x = logger_top(:,1);
@@ -198,13 +188,13 @@ for s =15%session_range %1:length(sessions)
 
 
 
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        disp(sigma)
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
+%         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
+%         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
+%         disp(sigma)
+%         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
+%         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-    end
+%     end
 
     %Change savePath for all session results folder:
     cd(savePath);

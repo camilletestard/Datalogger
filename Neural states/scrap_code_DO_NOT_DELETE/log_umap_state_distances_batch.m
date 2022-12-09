@@ -37,7 +37,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=2; chan=1;
+s=1; chan=1;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -133,12 +133,17 @@ for s =session_range %1:length(sessions)
 %         [umap_result{s,chan}]=run_umap(data, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3,'label_column', 'end'); %Run umap to get 2d embedded states
 
         %Unsupervised
-        [umap_result]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 20); %Run umap to get 2d embedded states
+        [umap_result]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 50); %Run umap to get 2d embedded states
         close
 
-        channel = char(channel_flag);
+        %% Run PCA
+        [~, pca_results] = pca(Spike_count_raster_final);
 
-        %Set colormap
+
+
+        %% Plot UMAP projection in 3D space
+
+                %Set colormap
         Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
             [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
             [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
@@ -146,39 +151,39 @@ for s =session_range %1:length(sessions)
 
         Cmap_block = [[0.9 0.7 0.12];[0 0.6 0.8];[0.5 0 0]];
 
-
-        %% Plot UMAP projection in 3D space
-
-        figure; hold on; set(gcf,'Position',[150 250 1200 500])
-
-        %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,2,1);
-        scatter3(umap_result(:,1), umap_result(:,2),umap_result(:,3),12,Cmap(behavior_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Behavior')
-        set(gca,'FontSize',12);
-        %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
-        %pause(5)
-
-        %Color-coded by block
-        ax2=subplot(1,2,2);
-        scatter3(umap_result(:,1), umap_result(:,2),umap_result(:,3),12,Cmap_block(block_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Block')
-        set(gca,'FontSize',12);
-
-        sgtitle([channel ' units, UMAP, ' sessions(s).name])
-
-        hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
-        rotate3d on
+% % %         figure; hold on; set(gcf,'Position',[150 250 1200 500])
+% % % 
+% % %         %Plot UMAP results color-coded by behavior
+% % %         ax1=subplot(1,2,1);
+% % %         scatter3(umap_result(:,1), umap_result(:,2),umap_result(:,3),12,Cmap(behavior_labels_final,:),'filled')
+% % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+% % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+% % %         title('Behavior')
+% % %         set(gca,'FontSize',12);
+% % %         %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
+% % %         %pause(5)
+% % % 
+% % %         %Color-coded by block
+% % %         ax2=subplot(1,2,2);
+% % %         scatter3(umap_result(:,1), umap_result(:,2),umap_result(:,3),12,Cmap_block(block_labels_final,:),'filled')
+% % %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+% % %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+% % %         title('Block')
+% % %         set(gca,'FontSize',12);
+% % % 
+% % %         sgtitle([channel ' units, UMAP, ' sessions(s).name])
+% % % 
+% % %         hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
+% % %         rotate3d on
 
 
         %% Visualize distances between beahvior states
 
         plot_behav_labels = behavior_labels_final(block_labels_final==1);
-        plot_neural_states = umap_result(block_labels_final==1,:);
+        plot_neural_states = Spike_count_raster_final(block_labels_final==1,:);
+        plot_neural_states_umap = umap_result(block_labels_final==1,:);
+        plot_neural_states_pca = pca_results(block_labels_final==1,1:50);
+
         idx_groom = find(ismember(plot_behav_labels,7));
         idx_travel = find(ismember(plot_behav_labels,18));
         idx_getgroom = find(ismember(plot_behav_labels,8));
@@ -196,19 +201,25 @@ for s =session_range %1:length(sessions)
                        idx_travel(randsample(length(idx_travel),idx_length));...
                        idx_hip(randsample(length(idx_hip),idx_length));...
                        idx_his(randsample(length(idx_his),idx_length))];
-        D_subsample(iter,:)=pdist(plot_neural_states(idx_ordered,:));
+        D_subsample_umap(iter,:)=pdist(plot_neural_states_umap(idx_ordered,:));
+        D_subsample_pca(iter,:)=pdist(plot_neural_states_pca(idx_ordered,:));
         end
 
-        D = D_subsample(randsample(500,1),:);%mean(D_subsample);
-        Z_behav{s} = squareform(D); Z_behav{s}(eye(size(Z_behav{s}))==1) = nan; 
-        figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_behav{s},'Colormap',flipud(hot))
-%         saveas(gcf,[savePath '/DistanceBetweenStates_behavior.pdf'])
+        %D = D_subsample(randsample(500,1),:);
+        D_umap = mean(D_subsample_umap); clear D_subsample_umap
+        D_pca = mean(D_subsample_pca); clear D_subsample_pca
+        Z_behav_umap{s} = squareform(D_umap); Z_behav_umap{s}(eye(size(Z_behav_umap{s}))==1) = nan; 
+        Z_behav_pca{s} = squareform(D_pca); Z_behav_pca{s}(eye(size(Z_behav_pca{s}))==1) = nan; 
         
-        Z_behav_lowRes{s} = sepblockfun(Z_behav{s},[idx_length,idx_length],@nanmean);
+        figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_behav_umap{s},'Colormap',flipud(hot))
+        figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_behav_pca{s},'Colormap',flipud(hot))
+        %saveas(gcf,[savePath '/DistanceBetweenStates_behavior.pdf'])
+        
+        Z_behav_lowRes{s} = sepblockfun(Z_behav_umap{s},[idx_length,idx_length],@nanmean);
         %figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_behav_lowRes{s},'Colormap',flipud(jet))
 
         %Visualize distances paired vs. alone
-        plot_neural_states = umap_result;
+        plot_neural_states_umap = umap_result;
 
         idx_block1= find(block_labels_final==1);
         idx_block2= find(block_labels_final==2);
@@ -220,12 +231,13 @@ for s =session_range %1:length(sessions)
         idx_ordered = [idx_block1(randsample(length(idx_block1),idx_length));...
                        idx_block2(randsample(length(idx_block2),idx_length));...
                        idx_block3(randsample(length(idx_block3),idx_length))];
-        D_subsample_block(iter,:)=pdist(plot_neural_states(idx_ordered,:), 'cityblock');
+        D_subsample_block(iter,:)=pdist(plot_neural_states_umap(idx_ordered,:), 'cityblock');
         end
 
-        D = D_subsample_block(randsample(500,1),:);%mean(D_subsample_block);
-        Z_block{s} = squareform(D); Z_block{s}(eye(size(Z_block{s}))==1) = nan; 
-        figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_block{s},'Colormap',flipud(cool))
+        %D = D_subsample_block(randsample(500,1),:);
+        D_umap = mean(D_subsample_block); clear D_subsample_block
+        Z_block{s} = squareform(D_umap); Z_block{s}(eye(size(Z_block{s}))==1) = nan; 
+        %figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_block{s},'Colormap',flipud(cool))
         %saveas(gcf,[savePath '/DistanceBetweenStates_PairedAloneContext.pdf'])
 
         Z_block_lowRes{s} = sepblockfun(Z_block{s},[idx_length,idx_length],@nanmean);
@@ -233,7 +245,7 @@ for s =session_range %1:length(sessions)
 
         %Visualize distances between social context given a particular
         %behavior
-        beh=8;
+        beh=1;
 
         if ismember(beh,1)
             %Pull threats to partner and subject together
@@ -243,7 +255,7 @@ for s =session_range %1:length(sessions)
 
         plot_behav_labels = behavior_labels_final(behavior_labels_final==beh);
         plot_block_labels = block_labels_final(behavior_labels_final==beh);
-        plot_neural_states = umap_result(behavior_labels_final==beh,:);
+        plot_neural_states_umap = umap_result(behavior_labels_final==beh,:);
 
         idx_block1= find(plot_block_labels==1);
         idx_block2= find(plot_block_labels==2);
@@ -260,12 +272,13 @@ for s =session_range %1:length(sessions)
                     idx_block2(randsample(length(idx_block2),idx_length));...
                     idx_block3(randsample(length(idx_block3),idx_length))];
             end
-            D_subsample_blockBehav(iter,:)=pdist(plot_neural_states(idx_ordered,:), 'cityblock');
+            D_subsample_blockBehav(iter,:)=pdist(plot_neural_states_umap(idx_ordered,:), 'cityblock');
         end
 
-        D = D_subsample_blockBehav(randsample(500,1),:); % mean(D_subsample_blockBehav);
-        Z_blockBehav{s} = squareform(D); Z_blockBehav{s}(eye(size(Z_blockBehav{s}))==1) = nan; 
-        figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_blockBehav{s},'Colormap',flipud(cool))
+        %D = D_subsample_blockBehav(randsample(500,1),:); 
+        D_umap = mean(D_subsample_blockBehav);clear D_subsample_blockBehav
+        Z_blockBehav{s} = squareform(D_umap); Z_blockBehav{s}(eye(size(Z_blockBehav{s}))==1) = nan; 
+        %figure; set(gcf,'Position',[150 250 800 600]); heatmap(Z_blockBehav{s},'Colormap',flipud(cool))
         %saveas(gcf,[savePath '/DistanceBetweenStates_NeighborContext.pdf'])
 
         Z_blockBehav_lowRes{s} = sepblockfun(Z_blockBehav{s},[idx_length,idx_length],@nanmean);
@@ -275,21 +288,106 @@ for s =session_range %1:length(sessions)
 
 end %end of session for loop
 
-savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results/'];
+cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results/'])
+save('State_distances.mat', "behav_categ","Z_behav_umap","Z_behav_lowRes","Z_block","Z_block_lowRes","Z_blockBehav","Z_blockBehav_lowRes")
+load('State_distances.mat')
+
+behav=[5,7,8,18,9];
+data = cat(3,Z_behav_lowRes{:}); data = squeeze(data(6,1:5,:));
+[~, idx_sorted]=sort(nanmean(data,2),1,'ascend');
+figure; hold on
+bp = bar([nanmean(data(idx_sorted,:),2)],'FaceAlpha',0.2);
+xticks([1:5]); xticklabels(behav_categ(behav(idx_sorted)))
+ylabel('Eucledian distance to Threat to Subject')
+scatter(ones(size(data,2))*1,data(idx_sorted(1),:), 'filled','r');
+scatter(ones(size(data,2))*2,data(idx_sorted(2),:), 'filled','y');
+scatter(ones(size(data,2))*3,data(idx_sorted(3),:), 'filled','g');
+scatter(ones(size(data,2))*4,data(idx_sorted(4),:), 'filled','b');
+scatter(ones(size(data,2))*5,data(idx_sorted(5),:), 'filled','c');
+saveas(gcf,['DistanceBetweenBehavStates_allSessions.pdf'])
 
 D_behav= mean(cat(3,Z_behav_lowRes{:}),3);
 AxesLabels = {'Forage','Groom','Get groomed','Travel','Threat partner','Threat subject'};
-figure; set(gcf,'Position',[150 250 800 600]); hp= heatmap(D_behav,'Colormap',flipud(jet));
+idx = tril(D_behav);
+D_behav(~idx) = nan;
+figure; set(gcf,'Position',[150 250 800 600]); hp= heatmap(D_behav,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
 hp.XDisplayLabels = AxesLabels; hp.YDisplayLabels = AxesLabels;
-saveas(gcf,[savePath '/DistanceBetweenBehav_allSessions.pdf'])
+saveas(gcf,['DistanceBetweenBehav_allSessions.pdf'])
+
+%Behavior, separated by monkey
+figure; set(gcf,'Position',[150 250 1500 300]); subplot(1,2,1);
+behav_order = [2,3,4,1,5,6];
+D_behav= mean(cat(3,Z_behav_lowRes{a_sessions}),3);
+D_behav= D_behav(behav_order,behav_order);
+AxesLabels = {'Forage','Groom','Get groomed','Travel','Threat partner','Threat subject'};
+AxesLabels_ordered = AxesLabels(behav_order);
+idx = tril(D_behav);
+D_behav(~idx) = nan;
+hp= heatmap(D_behav,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([0 10]); title('Amos')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;
+
+subplot(1,2,2);
+D_behav= mean(cat(3,Z_behav_lowRes{h_sessions(1:end-1)}),3);
+D_behav= D_behav(behav_order,behav_order);
+idx = triu(D_behav);
+D_behav(~idx) = nan;
+hp= heatmap(D_behav,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([0 10]); title('Hooke')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;
+saveas(gcf,['DistanceBetweenBehav_allSessions.pdf'])
         
+%%%%%%%%%%%%%%%%%
+% By block
 D_block= mean(cat(3,Z_block_lowRes{:}),3);
 AxesLabels = {'Female Neighbor','Male Neighbor','Alone'};
-figure; set(gcf,'Position',[150 250 800 600]); hp= heatmap(D_block,'Colormap',flipud(jet));
+figure; set(gcf,'Position',[150 250 800 600]); hp= heatmap(D_block,'Colormap',hot);
 hp.XDisplayLabels = AxesLabels; hp.YDisplayLabels = AxesLabels;
-saveas(gcf,[savePath '/DistanceBetweenBlocks_allSessions.pdf'])
-        
-D_blockBehav= mean(cat(3,Z_blockBehav_lowRes{:}),3);
-AxesLabels = {'Female Neighbor','Male Neighbor'};
-figure; set(gcf,'Position',[150 250 800 600]); hp= heatmap(D_blockBehav,'Colormap',flipud(jet));
-hp.XDisplayLabels = AxesLabels; hp.YDisplayLabels = AxesLabels;
+saveas(gcf,['DistanceBetweenBlocks_allSessions.pdf'])
+
+%Block, separated by monkey
+figure; set(gcf,'Position',[150 250 1500 300]); subplot(1,2,1);
+behav_order = [1,2,3];
+D_block= mean(cat(3,Z_block_lowRes{a_sessions}),3);
+D_block= D_block(behav_order,behav_order);
+AxesLabels = {'Female Neighbor','Male Neighbor','Alone'};
+AxesLabels_ordered = AxesLabels(behav_order);
+idx = tril(D_block);
+D_block(~idx) = nan;
+hp= heatmap(D_block,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([5 12]); title('Amos')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;
+
+subplot(1,2,2);
+D_block= mean(cat(3,Z_block_lowRes{h_sessions(1:end-1)}),3);
+D_block= D_block(behav_order,behav_order);
+idx = triu(D_block);
+D_block(~idx) = nan;
+hp= heatmap(D_block,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([5 12]); title('Hooke')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Behav and block
+
+%Block by behav, separated by monkey
+figure; set(gcf,'Position',[150 250 1500 300]); subplot(1,2,1);
+behav_order = [1,2,3];
+D_blockBehav= mean(cat(3,Z_blockBehav_lowRes{a_sessions}),3);
+D_blockBehav= D_blockBehav(behav_order,behav_order);
+AxesLabels = {'Female Neighbor','Male Neighbor','Alone'};
+AxesLabels_ordered = AxesLabels(behav_order);
+idx = tril(D_blockBehav);
+D_blockBehav(~idx) = nan;
+hp= heatmap(D_blockBehav,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([1 6]); title('Amos')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;
+
+subplot(1,2,2);
+D_blockBehav= mean(cat(3,Z_blockBehav_lowRes{h_sessions(1:end-1)}),3);
+D_blockBehav= D_blockBehav(behav_order,behav_order);
+idx = triu(D_blockBehav);
+D_blockBehav(~idx) = nan;
+hp= heatmap(D_blockBehav,'Colormap',hot, 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ");
+caxis([1 6]); title('Hooke')
+hp.XDisplayLabels = AxesLabels_ordered; hp.YDisplayLabels = AxesLabels_ordered;

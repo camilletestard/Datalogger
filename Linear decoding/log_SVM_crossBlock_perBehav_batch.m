@@ -30,6 +30,7 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
 simplify=1;%lump similar behavioral categories together to increase sample size.
+agg_precedence=0;
 
 %Select session range:
 if with_partner ==1
@@ -48,7 +49,7 @@ for s =session_range %1:length(sessions)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
-    for channel_flag = ["vlPFC", "TEO", "all"]
+    %for channel_flag = ["vlPFC", "TEO", "all"]
 
 
         %% Get data with specified temporal resolution and channels
@@ -61,16 +62,13 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         disp('Data Loaded')
 
         %Raw data
         Spike_count_raster = Spike_rasters';
-
-        %Low-pass filter data
-        %Spike_count_raster = lowpass(Spike_rasters',0.05,1);
 
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
         %         behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
@@ -86,8 +84,6 @@ for s =session_range %1:length(sessions)
             %Lump all aggressive interactions together
             behavior_labels(behavior_labels==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
             behavior_labels(behavior_labels==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Aggression");
-            behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Aggression");
 
             %Lump all travel together
             behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
@@ -141,6 +137,7 @@ for s =session_range %1:length(sessions)
         block2_behav = tabulate(testlbls);
 
         if length(unique(testlbls))==length(behav) && length(unique(trainlbls))==length(behav)
+
             if all(block1_behav(behav,2)>15) && all(block2_behav(behav,2)>15)
 
 
@@ -235,7 +232,7 @@ for s =session_range %1:length(sessions)
 
             end
         end
-    end %end of channel for loop
+    %end %end of channel for loop
 
     cd(savePath)
 
@@ -278,20 +275,21 @@ saveas(gcf,['SVM_results_crossBlocks.pdf'])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Plot cross-context generalizability performance per behavior
-ccgp_vlpfc=cat(3,confusion_mat_avg{:,1});
-ccgp_teo=cat(3,confusion_mat_avg{:,2});
-ccgp_all=cat(3,confusion_mat_avg{:,3});
+% ccgp_vlpfc=cat(3,confusion_mat_avg{:,1});
+% ccgp_teo=cat(3,confusion_mat_avg{:,2});
+% ccgp_all=cat(3,confusion_mat_avg{:,3});
+ccgp_all=cat(3,confusion_mat_avg{:,1});
 
 data = ccgp_all;
 
 figure; hold on
 [sorted_data, idx]=sort(diag(mean(data,3)));
-scatter(1:5,sorted_data,100,'filled')
-scatter(ones(size(data,3))*1,reshape(data(idx(1),idx(1),:),1,size(data,3)), 'filled','k');
-scatter(ones(size(data,3))*2,reshape(data(idx(2),idx(2),:),1,size(data,3)), 'filled','y');
-scatter(ones(size(data,3))*3,reshape(data(idx(3),idx(3),:),1,size(data,3)), 'filled','r');
-scatter(ones(size(data,3))*4,reshape(data(idx(4),idx(4),:),1,size(data,3)), 'filled','g');
-scatter(ones(size(data,3))*5,reshape(data(idx(5),idx(5),:),1,size(data,3)), 'filled','b');
+scatter(1:5,sorted_data,150,'_')
+scatter(ones(size(data,3))*1,reshape(data(idx(1),idx(1),:),1,size(data,3)),80, 'filled','k');
+scatter(ones(size(data,3))*2,reshape(data(idx(2),idx(2),:),1,size(data,3)),80, 'filled','y');
+scatter(ones(size(data,3))*3,reshape(data(idx(3),idx(3),:),1,size(data,3)),80, 'filled','r');
+scatter(ones(size(data,3))*4,reshape(data(idx(4),idx(4),:),1,size(data,3)),80, 'filled','g');
+scatter(ones(size(data,3))*5,reshape(data(idx(5),idx(5),:),1,size(data,3)),80, 'filled','b');
 ylabel('Decoding Accuracy'); ylim([0 100])
 xticks([1 2 3 4 5]); xticklabels({'Rest','Travel', 'Aggression','Foraging','Grooming'}); xlim([0.25 5.75])
 ax = gca;

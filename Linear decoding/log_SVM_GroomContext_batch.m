@@ -5,6 +5,7 @@
 % 2. Post-threat or not
 % 3. Reciprocated or not
 % 4. Initiated or not
+% 5. Neighbor ID
 % Batch version to run across sessions.
 %Camille Testard, March 2022
 
@@ -23,7 +24,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp_resolution = 10; %Temporal resolution of firing rate. 1sec
+temp_resolution = 1; %Temporal resolution of firing rate. 1sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 randomsample=0;
@@ -33,6 +34,7 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
+agg_precedence = 0;
 
 %Initialize
 % mean_hitrate = cell(length(sessions),3);
@@ -42,10 +44,10 @@ simplify=0;%lump similar behavioral categories together to increase sample size.
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
@@ -69,7 +71,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
         disp('Data Loaded')
@@ -83,7 +85,7 @@ for s =session_range %1:length(sessions)
         %Grooming after reciprocation or not
         %Groom received after grm Prsnt or not
 
-        groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated'}; %label grooming categ
+        groom_categ_label = {'Star.vs.end', 'Post-threat','Reciprocated','Initiated','Neighbor ID'}; %label grooming categ
 
         beh = 1;
         for behav = [7,8] %For both groom give and groom receive
@@ -91,7 +93,7 @@ for s =session_range %1:length(sessions)
             %behav = [7,8];
             groom_behav={'Give','Receive'};
 
-            for groom_categ = 2:4 %For all grooming contexts
+            for groom_categ = 2:5 %For all grooming contexts
                 %Note: after threat, almost always groom RECEIVE, not given by
                 %subject. Also, grooming after groom present is only for groom
                 %RECEIVE.
@@ -206,46 +208,48 @@ for s =session_range %1:length(sessions)
 
     %% Plotting results decoding accuracy for grooming context
 
-    figure;  set(gcf,'Position',[150 250 1300 400])
-    subplot(1,2,1);hold on; %Groom Give
-    for c = 1:3
-        y = mean_hitrate(1,2:4,c,s);
-        std_dev = sd_hitrate(1,2:4,c,s);
-        scatter(1:3,y,60,'filled', 'MarkerFaceAlpha',0.7)
-        errorbar(y,std_dev,'s')
-    end
-    leg = legend(["vlPFC","TEO","All"]);
-    title(leg,'Brain Area')
-    chance_level = 1/2;
-    yline(chance_level,'--','Chance level', 'FontSize',16)
-    xticks([1:3]); xlim([0.8 3.2]); ylim([0.4 1])
-    xticklabels(groom_categ_label(2:4))
-    ax = gca;
-    ax.FontSize = 14;
-    ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
-    title('Decoding accuracy for the context of groom give','FontSize', 14)
-
-    subplot(1,2,2);hold on %Groom Receive
-    for c = 1:3
-        y = mean_hitrate(2,2:4,c,s);
-        std_dev = sd_hitrate(2,2:4,c,s);
-        scatter(1:3,y,60,'filled', 'MarkerFaceAlpha',0.7)
-        errorbar(y,std_dev,'s')
-    end
-    leg = legend(["vlPFC","TEO","All"]);
-    title(leg,'Brain Area')
-    chance_level = 1/2;
-    yline(chance_level,'--','Chance level', 'FontSize',16)
-    xticks([1:3]); xlim([0.8 3.2]); ylim([0.4 1])
-    xticklabels(groom_categ_label(2:4))
-    ax = gca;
-    ax.FontSize = 14;
-    ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
-    title('Decoding accuracy for the context of groom receive','FontSize', 14)
-
-    cd(savePath)
-    saveas(gcf,['Decoding grooming given context.png'])
+%     figure;  set(gcf,'Position',[150 250 1300 400])
+%     subplot(1,2,1);hold on; %Groom Give
+%     for c = 1:3
+%         y = mean_hitrate(1,2:5,c,s);
+%         std_dev = sd_hitrate(1,2:5,c,s);
+%         scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
+%         %errorbar(y,std_dev,'s')
+%     end
+%     leg = legend(["vlPFC","TEO","All"],'Location','best');
+%     title(leg,'Brain Area')
+%     chance_level = 1/2;
+%     yline(chance_level,'--','Chance level', 'FontSize',16)
+%     xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
+%     xticklabels(groom_categ_label(2:5))
+%     ax = gca;
+%     ax.FontSize = 14;
+%     ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Give Context','FontSize', 18)
+%     title('Decoding accuracy for the context of groom give','FontSize', 14)
+% 
+%     subplot(1,2,2);hold on %Groom Receive
+%     for c = 1:3
+%         y = mean_hitrate(2,2:5,c,s);
+%         std_dev = sd_hitrate(2,2:5,c,s);
+%         scatter(1:4,y,60,'filled', 'MarkerFaceAlpha',0.7)
+%         %errorbar(y,std_dev,'s')
+%     end
+%     leg = legend(["vlPFC","TEO","All"],'Location','best');
+%     title(leg,'Brain Area')
+%     chance_level = 1/2;
+%     yline(chance_level,'--','Chance level', 'FontSize',16)
+%     xticks([1:4]); xlim([0.8 4.2]); ylim([0.4 1])
+%     xticklabels(groom_categ_label(2:5))
+%     ax = gca;
+%     ax.FontSize = 14;
+%     ylabel('Mean decoding accuracy','FontSize', 18); xlabel('Grooming Receive Context','FontSize', 18)
+%     title('Decoding accuracy for the context of groom receive','FontSize', 14)
+% 
+%     cd(savePath)
+%     saveas(gcf,['Decoding grooming given context.png'])
     close all
+
+    disp('Session done')
 
 end %End of session for loop
 
@@ -257,31 +261,46 @@ load('SVM_results_groomingCateg.mat')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bar plot decoding accuracy
 
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 mean_hitrate(mean_hitrate==0)=nan;
 mean_hitrate_shuffled(mean_hitrate_shuffled==0)=nan;
 
-for groomcat = 2:4
-    figure; hold on
-    data = squeeze(mean_hitrate(1,groomcat,:,:))';
-    data_shuffled = squeeze(mean_hitrate_shuffled(1,groomcat,:,:))';
+figure; hold on; set(gcf,'Position',[150 250 1000 700]); b=1;
+for groomcat = 2:5
+
+    subplot(2,2,b); hold on
+
+    %Note: beh--> 1 = grooming partner; 2=getting groomed
+    %groomcat --> 1 = Star.vs.end; 2=Post-threat; 3=Reciprocated; 4=Initiated; 5=Neighbor ID
+
+    % plot decoding context for getting groomed 
+    % except for grooming initiation which should be groom partner (getting
+    % groomed is too much initiated by one single individual)
+    if groomcat == 4
+        data = squeeze(mean_hitrate(1,groomcat,:,:))';
+        data_shuffled = squeeze(mean_hitrate_shuffled(1,groomcat,:,:))';
+    else
+        data = squeeze(mean_hitrate(2,groomcat,:,:))';
+        data_shuffled = squeeze(mean_hitrate_shuffled(2,groomcat,:,:))';
+    end
+
     bp = bar([nanmean(data); nanmean(data_shuffled)],'FaceAlpha',0.2);
 
     sp1 = scatter(ones(size(data,1))*0.78,data(:,1), 'filled','b');
     sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
     sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
 
-    sp1 = scatter(ones(size(data,1))*1.78,data_shuffle(:,1), 'filled','b');
-    sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
-    sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
+    sp1 = scatter(ones(size(data,1))*1.78,data_shuffled(:,1), 'filled','b');
+    sp1 = scatter(ones(size(data,1))*2,data_shuffled(:,2), 'filled','r');
+    sp1 = scatter(ones(size(data,1))*2.22,data_shuffled(:,3), 'filled','y');
 
     legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
-    ylabel('Decoding Accuracy'); ylim([0.4 1])
+    ylabel('Decoding Accuracy'); ylim([0.45 1])
     xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
     ax = gca;
     ax.FontSize = 16;
 
     title(groom_categ_label(groomcat))
+    b=b+1;
 
 end
