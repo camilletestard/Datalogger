@@ -114,6 +114,11 @@ for s =session_range %1:length(sessions)
     %Combine mvmt predictors
     mvmt = table2array(dlc);
 
+    %Get missing data (from deeplabcut)
+    [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
+    %We get ~50-60% missing data.
+    idx_to_keep = setdiff(1:length(lbls), unique(nanrow));
+
     %Remove missing data
     lbls_final = lbls;%(idx_to_keep);
     mvmt_final = mvmt;%(idx_to_keep,:);
@@ -270,9 +275,10 @@ for s =session_range %1:length(sessions)
     % subject have undefined behaviors? only one of the two?
 
     %Get missing data (from deeplabcut)
-    [nanrow, nancol]=find(isnan(mvmt_final)); length(unique(nanrow))/length(lbls)
+    [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
     %We get ~50-60% missing data.
-    all_nan_inds = unique(nanrow);
+    idx_to_keep = setdiff(1:length(lbls), unique(nanrow));
+    all_nan_inds = find(behavior_labels_subject==length(behav_categ));
     percent_lost_to_nans = size(all_nan_inds,1)/size(Vc,1);
 
     %remove from predictors and neural data
@@ -300,10 +306,6 @@ for s =session_range %1:length(sessions)
     low_events_idx= find(sum(behavR,1)<10);
     behavR(:,low_events_idx)=[];
     behavIdx(low_events_idx)=[];
-
-    low_events_idx= find(sum(moveR,1)<10);
-    moveR(:,low_events_idx)=[];
-    moveIdx(low_events_idx)=[];
 
     %% Combine Design Matrix
 
@@ -334,8 +336,8 @@ for s =session_range %1:length(sessions)
     %% Orthogonalization of movement variables
 
     %Get all movement variables (i.e. everything except task regressors)
-%     allMoveR = fullR(:,length(behavIdx)+1:end); %get instructed + uninstrcuted movements
-%     allMove_RegIdx = regIdx(length(behavIdx)+1:end);
+    allMoveR = fullR(:,length(behavIdx)+1:end); %get instructed + uninstrcuted movements
+    allMove_RegIdx = regIdx(length(behavIdx)+1:end);
     %     disp('Orthogonalize uninstructed variables with respect to instructed movements via QR decomposition')
     %
     %     %Run QR to orthogonalize video variables against all other movement variables
@@ -354,10 +356,10 @@ for s =session_range %1:length(sessions)
 
     %% run QR and check for rank-defficiency. This will show whether a given regressor is highly collinear with other regressors in the design matrix.
 
-% % %     % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-% % %     %only consider behavior regressor (not movement)
-% % %     fullR_orthog = behavR;
-% % %     regIdx_orthog = behavIdx;
+    % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    %only consider behavior regressor (not movement)
+    fullR_orthog = behavR;
+    regIdx_orthog = behavIdx;
 
     %Run QR for fully orthogonalized uninstructed movement regressors
     disp('Start QR check for colinear regressors')
@@ -425,9 +427,9 @@ for s =session_range %1:length(sessions)
     disp('Start full model cross validation')
     tic %This is for timing how long it takes to run the entire analysis
 
-    [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
-    Vfull = Vfull';
-    CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull); %compute model results
+    [Vfull{s,chan}, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc{s,chan}, regLabels, regIdx_orthog, regLabels, opts.folds);
+    Vfull{s,chan} = Vfull{s,chan}';
+    CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull{s,chan}); %compute model results
     RsqFull(s, chan) = CV_ResultsFull.r_value.^2
 
     %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
