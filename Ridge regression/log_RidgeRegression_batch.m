@@ -427,7 +427,7 @@ for s =session_range %1:length(sessions)
 
     [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
     Vfull = Vfull';
-    CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull); %compute model results
+    CV_ResultsFull  = modelCorr(Vc,Vfull); %compute model results
     RsqFull(s, chan) = CV_ResultsFull.r_value.^2
 
     %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
