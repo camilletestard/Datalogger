@@ -19,7 +19,7 @@ session_range_with_partner=[1:6,11:13,15:16];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 29.97;
+temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
