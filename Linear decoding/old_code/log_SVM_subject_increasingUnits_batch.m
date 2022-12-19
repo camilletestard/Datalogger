@@ -14,7 +14,7 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:6,11:13,15:16];
+session_range_with_partner=[1:3,11:13];
 
 
 %Set parameters
@@ -26,45 +26,32 @@ unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 num_iter = 500;%Number of SVM iterations
-smooth= 1; % 1: smooth the data; 0: do not smooth
-sigma = 1*temp_resolution;%set the smoothing window size (sigma)
-null=0;%Set whether we want the null 
-simplify=0;%lump similar behavioral categories together to increase sample size.
-agg_precedence =0;
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:3; h_sessions = 11:13;
 else
     session_range = session_range_no_partner;
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
 s=1;
-unit_num_range = [1, 5, 20, 50, 80, 120, 150, 200];
-
-for s =session_range(2:end) %1:length(sessions)
+for s =session_range %1:length(sessions)
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
-    %for channel_flag = ["vlPFC", "TEO", "all"]
+    for channel_flag = ["vlPFC", "TEO"]
 
 
         %% Get data with specified temporal resolution and channels
         if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
         else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly);
         end
 
         disp('Data Loaded')
@@ -112,7 +99,7 @@ for s =session_range(2:end) %1:length(sessions)
 
 
         %% Run SVM over increasing numbers of units, over multiple iterations
-        u = 1; 
+        u = 1; unit_num_range = round(linspace(1,min(unit_count),20));
         for unit_num = unit_num_range
 
             disp('Start running SVM...')
@@ -121,7 +108,7 @@ for s =session_range(2:end) %1:length(sessions)
 
                 %Select unit to run SVM
                 Labels = behavior_labels_final;
-                Input_matrix = Spike_count_raster_final(:,randsample(size(Spike_count_raster_final,2), unit_num));
+                Input_matrix = Spike_count_raster_final(:,randsample(unit_count(chan), unit_num));
 
 
                 %Balance number of trials per class
@@ -181,18 +168,18 @@ for s =session_range(2:end) %1:length(sessions)
         end %End of unit number loop
         chan = chan+1;
 
-    %end %end of channel for loop
+    end %end of channel for loop
 
     cd(savePath)
 
     %Plotting results decoding accuracy for all behaviors at 1sec and lower resolution
     figure; hold on; set(gcf,'Position',[150 250 700 500])
     y1 = mean_hitrate{s,1};
-    %y2 = mean_hitrate{s,2};
+    y2 = mean_hitrate{s,2};
     std_dev1 = sd_hitrate{s,1};
-    %std_dev2 = sd_hitrate{s,2};
+    std_dev2 = sd_hitrate{s,2};
     errorbar(y1,std_dev1,'s','MarkerSize',10)
-    %errorbar(y2,std_dev2,'s','MarkerSize',10)
+    errorbar(y2,std_dev2,'s','MarkerSize',10)
     chance_level = 1/behav;
     yline(chance_level,'--','Chance level', 'FontSize',16)
     xticks([1:length(unit_num_range)]); xlim([0.8 length(unit_num_range)+0.2]); ylim([0 1])
@@ -214,42 +201,42 @@ cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 save('IncreasingUnits.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
-figure;  set(gcf,'Position',[150 250 600 700]);
+figure;  set(gcf,'Position',[150 250 700 700]);
 subplot(2,1,1);hold on;
-cmap = hsv(size(mean_hitrate,1));
+cmap = hsv(size(mean_hitrate,2));
 for s = a_sessions
-    y = mean_hitrate{s};
-    %std_dev = sd_hitrate(s,:);
+    y = mean_hitrate_ratio(s,:);
+    %std_dev = sd_hitrate_ratio(s,:);
     scatter(1:length(y),y,40,'MarkerFaceColor',cmap(s,:), 'MarkerEdgeColor','k','MarkerFaceAlpha',0.4)
 end
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([0.8 1:length(unit_num_range) length(unit_num_range)+.2]);
-xlim([0.8 length(unit_num_range)+.2]); ylim([0 1])
+xlim([0.8 length(unit_num_range)+.2]); ylim([0 12])
 xticklabels({'',unit_num_range,''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('mean Hitrate/Shuffled hitrate','FontSize', 16); xlabel('Number of units','FontSize', 16)
+ylabel('mean Hitrate/Shuffled hitrate','FontSize', 18); xlabel('Number of units','FontSize', 18)
 title('Hitrate ratio with increasing #units, Monkey A','FontSize', 14)
 
 subplot(2,1,2);hold on;
 for s = h_sessions
-    y = mean_hitrate{s};
-    %std_dev = sd_hitrate(s,:);
+    y = mean_hitrate_ratio(s,:);
+    %std_dev = sd_hitrate_ratio(s,:);
     scatter(1:length(y),y,40,'MarkerFaceColor',cmap(s,:), 'MarkerEdgeColor','k','MarkerFaceAlpha',0.4)
 end
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([0.8 1:length(unit_num_range) length(unit_num_range)+.2]);
-xlim([0.8 length(unit_num_range)+.2]); ylim([0 1])
+xlim([0.8 length(unit_num_range)+.2]); ylim([0 12])
 xticklabels({'',unit_num_range,''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('mean Hitrate/Shuffled hitrate','FontSize', 16); xlabel('Number of units','FontSize', 16)
+ylabel('mean Hitrate/Shuffled hitrate','FontSize', 18); xlabel('Number of units','FontSize', 18)
 title('Hitrate ratio with increasing #units, Monkey H','FontSize', 14)
 
 saveas(gcf,'Decoding_subject_increasing_units_allSessions.png')
-save('IncreasingUnits.mat','mean_hitrate','sd_hitrate','behav','unit_num_range','h_sessions','a_sessions')
+save('IncreasingUnits.mat','mean_hitrate','mean_hitrate_shuffled','mean_hitrate_shuffled','sd_hitrate','sd_hitrate_ratio','sd_hitrate_shuffled')
 close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

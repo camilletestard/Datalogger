@@ -39,7 +39,7 @@ end
 Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
     [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
     [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-    [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.8 0.8 0.8]];
+    [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
 
 if simplify ==1
     dim = nan(max(session_range),2,5,num_iter);
@@ -271,7 +271,7 @@ dim_hooke = squeeze(nanmean(dim(h_sessions,:,:,:),1));
 dim_all = squeeze(nanmean(dim,1));
 
 %All Pooled
-figure; hold on; lowlimit=17; uplimit=35;
+figure; hold on; lowlimit=29; uplimit=36;
 mean_dim = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
 violin(squeeze(dim_all(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
 xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
@@ -281,73 +281,73 @@ ax.FontSize = 14;
 ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
 
 
-% % % % %Separate per brain area, pooling both monkeys
-% % % % figure; hold on; set(gcf,'Position',[150 250 1000 500]); lowlimit=20; uplimit=35;
-% % % % subplot(1,2,1); hold on
-% % % % mean_dim = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
-% % % % violin(squeeze(dim_all(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('vlPFC')
-% % % % 
-% % % % subplot(1,2,2); hold on
-% % % % mean_dim_teo = squeeze(mean(dim_all(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
-% % % % violin(squeeze(dim_all(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('TEO')
-% % % % saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')
-% % % % 
-% % % % 
-% % % % %Separated by monkey and brain area
-% % % % figure; hold on; set(gcf,'Position',[150 250 1000 800]); lowlimit=25; uplimit=45;
-% % % % 
-% % % % %Amos
-% % % % subplot(2,2,1); hold on
-% % % % mean_dim = squeeze(mean(dim_amos(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
-% % % % violin(squeeze(dim_amos(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('Amos, vlPFC')
-% % % % 
-% % % % subplot(2,2,2); hold on
-% % % % mean_dim_teo = squeeze(mean(dim_amos(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
-% % % % violin(squeeze(dim_amos(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('Amos, TEO')
-% % % % 
-% % % % %Hooke
-% % % % subplot(2,2,3); hold on
-% % % % mean_dim = squeeze(mean(dim_hooke(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
-% % % % violin(squeeze(dim_hooke(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('Hooke, vlPFC')
-% % % % 
-% % % % subplot(2,2,4); hold on
-% % % % mean_dim_teo = squeeze(mean(dim_hooke(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
-% % % % violin(squeeze(dim_hooke(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-% % % % xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-% % % % xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-% % % % ax = gca;
-% % % % ax.FontSize = 14;
-% % % % ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-% % % % title('Hooke, TEO')
-% % % % 
-% % % % saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')
+%Separate per brain area, pooling both monkeys
+figure; hold on; set(gcf,'Position',[150 250 1000 500]); lowlimit=20; uplimit=35;
+subplot(1,2,1); hold on
+mean_dim = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
+violin(squeeze(dim_all(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('vlPFC')
+
+subplot(1,2,2); hold on
+mean_dim_teo = squeeze(mean(dim_all(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
+violin(squeeze(dim_all(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('TEO')
+saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')
+
+
+%Separated by monkey and brain area
+figure; hold on; set(gcf,'Position',[150 250 1000 800]); lowlimit=25; uplimit=45;
+
+%Amos
+subplot(2,2,1); hold on
+mean_dim = squeeze(mean(dim_amos(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
+violin(squeeze(dim_amos(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('Amos, vlPFC')
+
+subplot(2,2,2); hold on
+mean_dim_teo = squeeze(mean(dim_amos(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
+violin(squeeze(dim_amos(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('Amos, TEO')
+
+%Hooke
+subplot(2,2,3); hold on
+mean_dim = squeeze(mean(dim_hooke(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
+violin(squeeze(dim_hooke(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('Hooke, vlPFC')
+
+subplot(2,2,4); hold on
+mean_dim_teo = squeeze(mean(dim_hooke(2,:,:),3)); [~, orderIdx] = sort(mean_dim_teo);
+violin(squeeze(dim_hooke(2,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
+xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
+ax = gca;
+ax.FontSize = 14;
+ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+title('Hooke, TEO')
+
+saveas(gcf,'DimensionalityPerBehav_GroomCateg.pdf')

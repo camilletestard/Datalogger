@@ -100,7 +100,7 @@ for s =session_range %1:length(sessions)
         behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));
 
         % OR select behaviors manually
-        %behav =[29] ;%unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
+        behav =[29] ;%unique(behavior_labels); %[4,5,7,8,9,10,24];% [4:10, 23]; %[4:8,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -149,7 +149,7 @@ for s =session_range %1:length(sessions)
         figure; hold on; set(gcf,'Position',[150 250 1500 500])
 
         %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,2,1);
+        ax1=subplot(1,3,1);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -160,7 +160,7 @@ for s =session_range %1:length(sessions)
 
 
         %Color-coded by block
-        ax2=subplot(1,2,2);
+        ax2=subplot(1,3,2);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -168,13 +168,13 @@ for s =session_range %1:length(sessions)
         set(gca,'FontSize',12);
 
 
-%         %Color-coded by time
-%         ax3=subplot(1,3,3);
-%         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
-%         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-%         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-%         title('Block')
-%         set(gca,'FontSize',12);
+        %Color-coded by time
+        ax3=subplot(1,3,3);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Block')
+        set(gca,'FontSize',12);
 
         sgtitle([channel ' units, UMAP, ' sessions(s).name])
 

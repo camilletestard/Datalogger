@@ -12,7 +12,6 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
-%session_range_no_partner=[1:3,11:13];
 %session_range_no_partner=[4:6,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
@@ -161,10 +160,6 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 end %end of session for loop
 
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results']);
-save('NeuralDistancesThreat.mat','distance_to_baseline_umap_paired','distance_to_baseline_umap_alone',...
-    'distance_to_baseline_pca_paired','distance_to_baseline_pca_alone')
-
 paired=cell2mat(distance_to_baseline_umap_paired');
 alone=cell2mat(distance_to_baseline_umap_alone');
 
@@ -192,16 +187,12 @@ plot(nanmean(alone),'Color',[0.5 0 0],'LineWidth',6)
 
 xline(time_before_threat+2,'LineStyle','--')
 xline(time_before_threat+30+2,'LineStyle','--')
-ylabel('Distance to baseline state in UMAP space')
-xlabel('Time (in s)')
+ylabel('Distance to baseline state')
+xlabel('Time')
 %legend('Threat when paired','Threat when alone','Threat onset')
 set(gca,'FontSize',16);
 
-for i=2:length(alone)
-    [h(i),pval(i)]=ttest2(alone(:,i), paired(:,i));
-end
-
-scatter(find(h==1), 6.75*ones(size(find(h==1))),30,'k','*')
+[h,p]=ttest2(alone(:,41), paired(:,41))
 
 % % % %PCA
 % % % figure; hold on
