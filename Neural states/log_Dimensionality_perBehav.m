@@ -183,7 +183,7 @@ for s =session_range %1:length(sessions)
 
                 end % end of interation loop
 
-                var_explained_mean(:,b)= mean(var_explained{b},2);
+                var_explained_mean{s}(:,b)= mean(var_explained{b},2);
 
             end %end of behavior loop
 
@@ -196,30 +196,30 @@ for s =session_range %1:length(sessions)
     %% Plot results for the session
 
 
-    figure; hold on
-    for b=1:size(var_explained_mean,2)
-        plot(var_explained_mean(:,b),'LineWidth',3, 'Color', Cmap(behav(b),:))
-    end
-    yline(90,'LineStyle','--')
-    xline(3,'LineStyle',':')
-    xlabel('Dimensions')
-    ylabel('Var. explained')
-    legend(behav_categ(behav))
-    ax = gca;
-    ax.FontSize = 14;
-    %saveas(gcf,[savePath '/DimensionalityPerBehav_allExplainedVar.pdf'])
-
-        figure; hold on; set(gcf,'Position',[150 250 600 400])
-    
-        dim_plot = squeeze(squeeze(dim(s,1,:,:)))';
-        mean_dim = squeeze(mean(dim(s,1,:,:),4)); [~, orderIdx] = sort(mean_dim);
-        violin(dim_plot(:,orderIdx), 'facecolor',Cmap(behav(orderIdx),:))
-        xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-        xticklabels(behav_categ(behav(orderIdx))); %ylim([0 35])
-        ax = gca;
-        ax.FontSize = 14;
-        ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
-        title('Dimensionality across behaviors')
+% % % %     figure; hold on
+% % % %     for b=1:size(var_explained_mean{s},2)
+% % % %         plot(var_explained_mean{s}(:,b),'LineWidth',3, 'Color', Cmap(behav(b),:))
+% % % %     end
+% % % %     yline(90,'LineStyle','--')
+% % % %     xline(3,'LineStyle',':')
+% % % %     xlabel('Dimensions')
+% % % %     ylabel('Var. explained')
+% % % %     legend(behav_categ(behav))
+% % % %     ax = gca;
+% % % %     ax.FontSize = 14;
+% % % %     %saveas(gcf,[savePath '/DimensionalityPerBehav_allExplainedVar.pdf'])
+% % % % 
+% % % %         figure; hold on; set(gcf,'Position',[150 250 600 400])
+% % % %     
+% % % %         dim_plot = squeeze(squeeze(dim(s,1,:,:)))';
+% % % %         mean_dim = squeeze(mean(dim(s,1,:,:),4)); [~, orderIdx] = sort(mean_dim);
+% % % %         violin(dim_plot(:,orderIdx), 'facecolor',Cmap(behav(orderIdx),:))
+% % % %         xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
+% % % %         xticklabels(behav_categ(behav(orderIdx))); %ylim([0 35])
+% % % %         ax = gca;
+% % % %         ax.FontSize = 14;
+% % % %         ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+% % % %         title('Dimensionality across behaviors')
     %
     %     saveas(gcf,[savePath '/DimensionalityPerBehav_2categ.pdf'])
 
@@ -280,6 +280,31 @@ ax = gca;
 ax.FontSize = 14;
 ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
 
+
+
+mean_alldims = mean(cat(3,(var_explained_mean{:})),3);
+sd_alldims =  std(cat(3,(var_explained_mean{:})),[],3);
+    figure; hold on
+    for b=1:size(mean_alldims,2)
+        y=mean_alldims(:,b);
+        sd=sd_alldims(:,b);
+        upper_lim=y+sd;
+        lower_lim=y-sd;
+%         p = fill([1:length(y) length(y):-1:1],[upper_lim; flip(lower_lim)],'red');
+%         p.FaceColor = Cmap(behav(b),:);
+%         p.FaceAlpha = 0.3;
+%         p.EdgeColor = 'none';
+
+        plot(y,'LineWidth',3, 'Color', Cmap(behav(b),:))
+    end
+    yline(90,'LineStyle','--')
+    xline(3,'LineStyle',':')
+    xlabel('Dimensions')
+    ylabel('Var. explained')
+    legend(behav_categ(behav))
+    ax = gca;
+    ax.FontSize = 14;
+    %saveas(gcf,[savePath '/DimensionalityPerBehav_allExplainedVar.pdf'])
 
 % % % % %Separate per brain area, pooling both monkeys
 % % % % figure; hold on; set(gcf,'Position',[150 250 1000 500]); lowlimit=20; uplimit=35;

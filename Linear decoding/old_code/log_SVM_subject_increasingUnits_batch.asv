@@ -13,8 +13,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:6,11:13,15:16];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
@@ -35,10 +35,10 @@ agg_precedence =0;
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
@@ -214,42 +214,42 @@ cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
 save('IncreasingUnits.mat')
 
 %Plot decoding accuracy for all sessions, separated by monkey
-figure;  set(gcf,'Position',[150 250 600 700]);
+figure;  set(gcf,'Position',[150 250 700 700]);
 subplot(2,1,1);hold on;
-cmap = hsv(size(mean_hitrate,1));
+cmap = hsv(size(mean_hitrate,2));
 for s = a_sessions
-    y = mean_hitrate{s};
+    y = mean_hitrate(s,:);
     %std_dev = sd_hitrate(s,:);
     scatter(1:length(y),y,40,'MarkerFaceColor',cmap(s,:), 'MarkerEdgeColor','k','MarkerFaceAlpha',0.4)
 end
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([0.8 1:length(unit_num_range) length(unit_num_range)+.2]);
-xlim([0.8 length(unit_num_range)+.2]); ylim([0 1])
+xlim([0.8 length(unit_num_range)+.2]); ylim([0 12])
 xticklabels({'',unit_num_range,''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('mean Hitrate/Shuffled hitrate','FontSize', 16); xlabel('Number of units','FontSize', 16)
+ylabel('mean Hitrate/Shuffled hitrate','FontSize', 18); xlabel('Number of units','FontSize', 18)
 title('Hitrate ratio with increasing #units, Monkey A','FontSize', 14)
 
 subplot(2,1,2);hold on;
 for s = h_sessions
-    y = mean_hitrate{s};
-    %std_dev = sd_hitrate(s,:);
+    y = mean_hitrate_ratio(s,:);
+    %std_dev = sd_hitrate_ratio(s,:);
     scatter(1:length(y),y,40,'MarkerFaceColor',cmap(s,:), 'MarkerEdgeColor','k','MarkerFaceAlpha',0.4)
 end
-chance_level = 1/length(behav);
+chance_level = 1;
 yline(chance_level,'--','Chance level', 'FontSize',16)
 xticks([0.8 1:length(unit_num_range) length(unit_num_range)+.2]);
-xlim([0.8 length(unit_num_range)+.2]); ylim([0 1])
+xlim([0.8 length(unit_num_range)+.2]); ylim([0 12])
 xticklabels({'',unit_num_range,''})
 ax = gca;
 ax.FontSize = 14;
-ylabel('mean Hitrate/Shuffled hitrate','FontSize', 16); xlabel('Number of units','FontSize', 16)
+ylabel('mean Hitrate/Shuffled hitrate','FontSize', 18); xlabel('Number of units','FontSize', 18)
 title('Hitrate ratio with increasing #units, Monkey H','FontSize', 14)
 
 saveas(gcf,'Decoding_subject_increasing_units_allSessions.png')
-save('IncreasingUnits.mat','mean_hitrate','sd_hitrate','behav','unit_num_range','h_sessions','a_sessions')
+save('IncreasingUnits.mat','mean_hitrate','mean_hitrate_shuffled','mean_hitrate_shuffled','sd_hitrate','sd_hitrate_ratio','sd_hitrate_shuffled')
 close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
