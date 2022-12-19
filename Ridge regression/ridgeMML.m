@@ -147,7 +147,6 @@ if computeL
   
   convergenceFailures = false(1, pY);
   for i = 1:pY
-      
     [L(i), flag] = ridgeMMLOneY(q, d2, n, YVar(i), alpha2(:, i));
     convergenceFailures(i) = (flag < 1);
   end

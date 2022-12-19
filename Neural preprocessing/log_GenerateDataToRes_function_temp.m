@@ -68,10 +68,6 @@ function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monke
 %% Load data
 
 cd(filePath)
-%RWD going to put this inside here to avoid having to change function calls
-%in other code.  If path errors simply switch to zero
-
-is_ron =0;
 
 if is_mac
     split = '/';
@@ -101,17 +97,7 @@ else
 end
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
-if is_ron
-    
-    num_unit_allsessions = readtable('C:\Users\ronwd\Dropbox\Results\All_sessions\Number of units\Session_log_num_units.csv');
-    
-else
-    
-    num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
-
-end
-
-
+num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 
