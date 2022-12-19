@@ -4,26 +4,16 @@
 
 %Set session list
 is_mac = 1;
-<<<<<<< HEAD
-
-if is_mac
-    home = '~';    
-=======
 if is_mac
     home = '~';
->>>>>>> parent of f29e70a (Merge branch 'main' of https://github.com/camilletestard/Datalogger)
 else
     home ='C:/Users/GENERAL';
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
-<<<<<<< HEAD
-
-sessions = dir(home); sessions = sessions(5:end,:);
-=======
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
->>>>>>> parent of f29e70a (Merge branch 'main' of https://github.com/camilletestard/Datalogger)
 session_range_no_partner=[1:6,11:13,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
+
 
 %Set parameters
 with_partner =0;
@@ -37,6 +27,7 @@ smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
 simplify=0;
 agg_precedence =1;
+is_plot=0
 
 %Select session range:
 if with_partner ==1
@@ -47,24 +38,19 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-<<<<<<< HEAD
 s=1;
-=======
-s=15; sesh=1;
->>>>>>> parent of f29e70a (Merge branch 'main' of https://github.com/camilletestard/Datalogger)
 for s =session_range %1:length(sessions)
-
     %Set path
-<<<<<<< HEAD
    
     
-=======
->>>>>>> parent of f29e70a (Merge branch 'main' of https://github.com/camilletestard/Datalogger)
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Mvmt_results'];
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
-    chan = 1; channel_flag = "all";
+    chan = 1; channel_flag = "all"; %2022-12-13: Probably not, but let's check if its a brain region thing/number of neurons thing
+    %First trying just TEO, then trying just vlPFC, then just putting in
+    %random data as well and seeing if there is still a hold.  Random data
+    %works
 
     %for sig = 1:length(sigma_list)
 
@@ -83,11 +69,28 @@ for s =session_range %1:length(sessions)
             is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
     end
 
-    cd(filePath)
+    cd(filePath) 
+% 
+%     %2022-12-13: trying totally random data instead.  That runs.  Now
+%     %trying non-random behavior data.  This works as well.  So it is
+%     %something with Vc that is causing the problem/the neural data in
+%     %general.
+%     Spike_rasters = poissrnd(.0001,size(Spike_rasters));
+%     Spike_rasters(Spike_rasters<0) = 0;
 
+% %Did some simulation work, now setting threshold that cells must be active
+% %for at least 0.1% (i.e. 0.001 * session length) of session to be included
+% %and seeing if this fixes the issue.
+%     criterion = 0.001;
+%     low_firing = ((sum(Spike_rasters'>0)/length(Spike_rasters))<criterion);
+%     Spike_rasters(low_firing>0,:) = [];
+%This doesn't seem to fix the issue.  Might be dropping below activity
+%after removing nans, so going to check Vc (neural activity variable)
+%before using model
+    
     %Load DLC
     dlc = readtable('mvmt_data.csv');% Load DLC key point data
-    length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
+    length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1); %proportion of full data
 
 
     %Trim neural and behavioral data to align with video data
@@ -305,7 +308,7 @@ for s =session_range %1:length(sessions)
 
     %remove empty regressors
     if ~isempty(zero_regressors_behav)
-        behavR(:,zero_regressors_behav) = [];
+        behavR(:,zero_regressors_behav) = []; %2022-12-13 RWD: Do you do below here then?  Nvm, done in next cell
         behavIdx(zero_regressors_behav) = []; %CT: Make sure you remove regIdx every time regressors are removed from fullR
     end
     if ~isempty(zero_regressors_move)
@@ -328,10 +331,16 @@ for s =session_range %1:length(sessions)
     %% Combine Design Matrix
 
     %Combine Design Matrix
-    fullR=[behavR, moveR];
+    fullR=[behavR , moveR]; %2022-12-13 seeing if one or the other matrix is causing the hang.  Looks like it is moveR...nope it hangs with both of them.
+    %Let's try throwing in random, uncorrelated regressors
 
     %Collect all indecies together.
-    regIdx =[behavIdx; moveIdx'];
+    regIdx =[ behavIdx; moveIdx']; %see above
+
+% %2022-12-13 RWD trying random regressors to see if these hang.  If they do
+% %than issue is probably with neural data
+% fullR = normrnd(0,1,size(moveR));
+% regIdx = moveIdx';
 
     disp('Design Matrix Setup Done')
 
@@ -348,8 +357,16 @@ for s =session_range %1:length(sessions)
 
     %Churchland median centered the neuronal data, so we will do the same.
     Vc = (Vc - median(Vc,1));
+    
+    %2022-12-17 Making sure neurons with sufficient activity to be fit go
+    %into the model.  For reasonable tolerance remove any neurons that have
+    %less activity than the below criterion.
+    criterion = 0.0001; %has to be active for more than .1% of the session
+    low_firing = (sum(Vc>0)/length(Vc))<criterion;
+    Vc(:,low_firing>0) = []; %remove neurons below this criterion.
+    
 
-    disp('Data centered')
+    disp('Data centered.  Neurons below firing rate criterion removed')
 
     %% Orthogonalization of movement variables
 
@@ -384,12 +401,17 @@ for s =session_range %1:length(sessions)
     rejIdx = log_run_QR(fullR_orthog,0);
     %saveas(gcf, [savepath 'Colinearity values after rejection FULL MODEL.png'])
     %Note: second argument = plotting. If >0 function will output plot. Otherwise no plots.
-
+if is_plot
+    
+else
     figure;
     histHandle1 = histogram(regIdx_orthog,'BinWidth',1,'FaceAlpha',0.4); hold on
     histHandle1.BinEdges = histHandle1.BinEdges - histHandle1.BinWidth/2;
     histHandle1.BinEdges(length(histHandle1.BinEdges)+1)=max(regIdx_orthog)+0.5;
+    
+end
     if ~isempty(regIdx_orthog(rejIdx))
+        if ~is_plot
         histHandle2 = histogram(regIdx_orthog(rejIdx),'BinWidth',1,'FaceColor',[1 0 0],'FaceAlpha',0.4); %distribution of degenerate regressors
         histHandle2.BinEdges = histHandle2.BinEdges - histHandle2.BinWidth/2;
         histHandle2.BinEdges(length(histHandle2.BinEdges)+1)=max(regIdx_orthog(rejIdx))+0.5;
@@ -397,16 +419,19 @@ for s =session_range %1:length(sessions)
         legend('all','rejected')
         %saveas(gcf,[savepath 'Regressors deletion distribution.png'])
         %What reglabels do they correspond to?
+        end
         unique(regLabels(regIdx_orthog(rejIdx)))%which regressors are degenerate
 
         %Remove rejected regressors
         fullR_orthog(:,rejIdx) = [];
-        regIdx_orthog(rejIdx,:) = [];
+        regIdx_orthog(rejIdx) = []; %2022-12-13 RWD update this was (rejIdx, :) but regIdx is a 1 x regressor vector
+        if ~is_plot
         figure;
         histHandle3 = histogram(regIdx_orthog,'BinWidth',1,'FaceAlpha',0.4); title('Regressors after deletion')
         histHandle3.BinEdges = histHandle3.BinEdges - histHandle3.BinWidth/2;
         histHandle3.BinEdges(length(histHandle3.BinEdges)+1)=max(regIdx_orthog)+0.5;
         %saveas(gcf,[savepath 'Regressors after deletion.png'])
+        end
     end
     close all
 
@@ -448,95 +473,96 @@ for s =session_range %1:length(sessions)
     [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
     Vfull = Vfull';
     CV_ResultsFull  = modelCorr(Vc,Vfull); %compute model results
-    RsqFull(s, chan) = CV_ResultsFull.r_value.^2
+    RsqFull(s, chan) = CV_ResultsFull.r_value;
+    toc
 
     %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
     %% (2) regressor group dR^2 (shuffle only the regressor of interest, unique contribution)
 
-    % % % % % %         %Save copy of all regressors before shuffling other model fits.
-    % % % % % %         fullR_Hold = fullR;
-    % % % % % %         groups_of_interest=1:size(regGroups,2);
-    % % % % % %
-    % % % % % %         for group = groups_of_interest
-    % % % % % %
-    % % % % % %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % % % % % %             %%%%% FULL CONTRIBUTION (cvR^2) %%%%%
-    % % % % % %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % % % % % %             %2020-12-27 CT: when computing full contribution use the non-orthogonalized matrix
-    % % % % % %             % (except for video variables)
-    % % % % % %
-    % % % % % %             fullR = fullR_Hold; %reset fullR to the original design matrix with all regressors
-    % % % % % %
-    % % % % % %             %Get and shuffle everything that is NOT the regressor group of interest
-    % % % % % %             shuffleIdx = ismember(regIdx, find(~ismember(regLabels,regGroups{2,group}))); %get index for regressors of interest
-    % % % % % %             idx = find(shuffleIdx);
-    % % % % % %             shuffling_R = nan(length(fullR), length(idx));
-    % % % % % %             for cur_col = 1:length(idx) %for all regressor indices (i.e. columns) that need to be shuffled
-    % % % % % %
-    % % % % % %                 shuffling_R(:,cur_col) = fullR(randperm(length(shuffling_R)),idx(cur_col)); %shuffle in time each column
-    % % % % % %
-    % % % % % %             end
-    % % % % % %             fullR(:,shuffleIdx) = shuffling_R; %put shuffled columns into full R
-    % % % % % %
-    % % % % % %             %Fit group model
-    % % % % % %             disp(['Start model for group' num2str(group) ', FULL contribution'])
-    % % % % % %             [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx, regLabels, opts.folds);
-    % % % % % %
-    % % % % % %             CV_Results_full(group) =  modelCorr(Vc,V');
-    % % % % % %             Rsq_full(group) =CV_Results_full(group).r_value.^2 %compute explained variance
-    % % % % % %             %Rsq_full_adjusted(group) = 1-[(1-Rsq_full(group))*(size(fullR,1)-1)/(size(fullR,1)-size(fullR,2)-1)]
-    % % % % % %
-    % % % % % %             % % % %         save([savepath 'Only' regGroups{1,group} '_v2.mat'], 'V', 'Beta', 'R', 'Idx', 'Ridge', 'Labels'); %save some results
-    % % % % % %
-    % % % % % %             disp(['Full contribution model for group' num2str(group) ' cross validation done'])
-    % % % % % %             regGroups{3,group}=Rsq_full(group);
-    % % % % % %
-    % % % % % %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % % % % % %             %%%%% UNIQUE CONTRIBUTION (dR^2) %%%%%
-    % % % % % %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % % % % % %             %2020-12-27 CT: when computing unique contribution use fully orthogonalized matrix
-    % % % % % %
-    % % % % % %             fullR = fullR_orthog; %reset fullR to the original design matrix with all regressors
-    % % % % % %
-    % % % % % %             %Get and shuffle ONLY the regressor group of interest
-    % % % % % %             shuffleIdx = ismember(regIdx_orthog, find(ismember(regLabels,regGroups{2,group}))); %get index for regressors of interest
-    % % % % % %             idx = find(shuffleIdx);
-    % % % % % %             shuffling_R = nan(length(fullR), length(idx));
-    % % % % % %             for cur_col = 1:length(idx) %for all regressor indices (i.e. columns) that need to be shuffled
-    % % % % % %
-    % % % % % %                 shuffling_R(:,cur_col) = fullR(randperm(length(shuffling_R)),idx(cur_col)); %shuffle in time each column
-    % % % % % %
-    % % % % % %             end
-    % % % % % %             fullR(:,shuffleIdx) = shuffling_R; %put shuffled columns into full R
-    % % % % % %
-    % % % % % %             %Fit group model
-    % % % % % %             disp(['Start model for group' num2str(group) ', UNIQUE contribution'])
-    % % % % % %             [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
-    % % % % % %
-    % % % % % %             CV_Results_unique(group) =  modelCorr(Vc,V');
-    % % % % % %             Rsq_unique(group) =RsqFull-CV_Results_unique(group).r_value.^2 %compute explained variance
-    % % % % % %             Rsq_unique_adjusted(group) = 1-[(1-Rsq_unique(group))*(size(fullR,1)-1)/(size(fullR,1)-size(fullR,2)-1)]
-    % % % % % %
-    % % % % % %             % % % %         save([savepath 'Except' regGroups{1,group} '_v2.mat'], 'V', 'Beta', 'R', 'Idx', 'Ridge', 'Labels'); %save some results
-    % % % % % %
-    % % % % % %             disp(['Unique contribution model for group' num2str(group) ' cross validation done'])
-    % % % % % %             regGroups{4,group}=Rsq_unique(group);
-    % % % % % %
-    % % % % % %
-    % % % % % %         end
-    % % % % % %
-    % % % % % %         %%%%%%%%%%%%%%%%%%%
-    % % % % % %         %%% Save output %%%
-    % % % % % %         %%%%%%%%%%%%%%%%%%%
-    % % % % % %
-    % % % % % %         output = cell2table(regGroups(3:size(regGroups,1),groups_of_interest),'VariableNames',regGroups(1,groups_of_interest),...
-    % % % % % %             'RowNames',{'Full (cvR^2)','Unique (dR^2)'});
-    % % % % % %         output.Full = [RsqFull;NaN;];
-    % % % % % %         writetable(output,[savePath 'RidgeRegression_results.csv'],'WriteRowNames',true); %save some results
+    %Save copy of all regressors before shuffling other model fits.
+    fullR_Hold = fullR;
+    groups_of_interest=1:size(regGroups,2);
+
+    for group = groups_of_interest
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%% FULL CONTRIBUTION (cvR^2) %%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %2020-12-27 CT: when computing full contribution use the non-orthogonalized matrix
+        % (except for video variables)
+
+        fullR = fullR_Hold; %reset fullR to the original design matrix with all regressors
+
+        %Get and shuffle everything that is NOT the regressor group of interest
+        shuffleIdx = ismember(regIdx, find(~ismember(regLabels,regGroups{2,group}))); %get index for regressors of interest
+        idx = find(shuffleIdx);
+        shuffling_R = nan(length(fullR), length(idx));
+        for cur_col = 1:length(idx) %for all regressor indices (i.e. columns) that need to be shuffled
+
+            shuffling_R(:,cur_col) = fullR(randperm(length(shuffling_R)),idx(cur_col)); %shuffle in time each column
+
+        end
+        fullR(:,shuffleIdx) = shuffling_R; %put shuffled columns into full R
+
+        %Fit group model
+        disp(['Start model for group' num2str(group) ', FULL contribution'])
+        [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx, regLabels, opts.folds);
+
+        CV_Results_full(group) =  modelCorr(Vc,V');
+        Rsq_full(group) =CV_Results_full(group).r_value; %compute explained variance
+        %Rsq_full_adjusted(group) = 1-[(1-Rsq_full(group))*(size(fullR,1)-1)/(size(fullR,1)-size(fullR,2)-1)]
+
+        % % % %         save([savepath 'Only' regGroups{1,group} '_v2.mat'], 'V', 'Beta', 'R', 'Idx', 'Ridge', 'Labels'); %save some results
+
+        disp(['Full contribution model for group' num2str(group) ' cross validation done'])
+        regGroups{3,group}=Rsq_full(group);
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%% UNIQUE CONTRIBUTION (dR^2) %%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %2020-12-27 CT: when computing unique contribution use fully orthogonalized matrix
+
+        fullR = fullR_orthog; %reset fullR to the original design matrix with all regressors
+
+        %Get and shuffle ONLY the regressor group of interest
+        shuffleIdx = ismember(regIdx_orthog, find(ismember(regLabels,regGroups{2,group}))); %get index for regressors of interest
+        idx = find(shuffleIdx);
+        shuffling_R = nan(length(fullR), length(idx));
+        for cur_col = 1:length(idx) %for all regressor indices (i.e. columns) that need to be shuffled
+
+            shuffling_R(:,cur_col) = fullR(randperm(length(shuffling_R)),idx(cur_col)); %shuffle in time each column
+
+        end
+        fullR(:,shuffleIdx) = shuffling_R; %put shuffled columns into full R
+
+        %Fit group model
+        disp(['Start model for group' num2str(group) ', UNIQUE contribution'])
+        [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
+
+        CV_Results_unique(group) =  modelCorr(Vc,V');
+        Rsq_unique(group) =RsqFull-CV_Results_unique(group).r_value.^2 %compute explained variance
+        Rsq_unique_adjusted(group) = 1-[(1-Rsq_unique(group))*(size(fullR,1)-1)/(size(fullR,1)-size(fullR,2)-1)]
+
+        % % % %         save([savepath 'Except' regGroups{1,group} '_v2.mat'], 'V', 'Beta', 'R', 'Idx', 'Ridge', 'Labels'); %save some results
+
+        disp(['Unique contribution model for group' num2str(group) ' cross validation done'])
+        regGroups{4,group}=Rsq_unique(group);
+
+
+    end
+
+    %%%%%%%%%%%%%%%%%%%
+    %%% Save output %%%
+    %%%%%%%%%%%%%%%%%%%
+
+    output = cell2table(regGroups(3:size(regGroups,1),groups_of_interest),'VariableNames',regGroups(1,groups_of_interest),...
+        'RowNames',{'Full (cvR^2)','Unique (dR^2)'});
+    output.Full = [RsqFull;NaN;];
+    writetable(output,[savePath 'RidgeRegression_results.csv'],'WriteRowNames',true); %save some results
 
     chan=chan+1;
 end %end of channel for loop
-end
+
 
 %% Plot some results
 

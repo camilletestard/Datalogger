@@ -14,6 +14,7 @@ sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
+
 %Set parameters
 with_partner =0;
 temp = 1; temp_resolution = 29.97; %frame rate
@@ -26,6 +27,7 @@ smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
 simplify=0;
 agg_precedence =1;
+is_plot=0
 
 %Select session range:
 if with_partner ==1
@@ -36,15 +38,19 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=15; sesh=1;
+s=1;
 for s =session_range %1:length(sessions)
-
     %Set path
+   
+    
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Mvmt_results'];
 
     %Set channels: 'TEO', 'vlPFC' or 'all'
-    chan = 1; channel_flag = "all";
+    chan = 1; channel_flag = "all"; %2022-12-13: Probably not, but let's check if its a brain region thing/number of neurons thing
+    %First trying just TEO, then trying just vlPFC, then just putting in
+    %random data as well and seeing if there is still a hold.  Random data
+    %works
 
     %for sig = 1:length(sigma_list)
 
@@ -63,11 +69,28 @@ for s =session_range %1:length(sessions)
             is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
     end
 
-    cd(filePath)
+    cd(filePath) 
+% 
+%     %2022-12-13: trying totally random data instead.  That runs.  Now
+%     %trying non-random behavior data.  This works as well.  So it is
+%     %something with Vc that is causing the problem/the neural data in
+%     %general.
+%     Spike_rasters = poissrnd(.0001,size(Spike_rasters));
+%     Spike_rasters(Spike_rasters<0) = 0;
 
+% %Did some simulation work, now setting threshold that cells must be active
+% %for at least 0.1% (i.e. 0.001 * session length) of session to be included
+% %and seeing if this fixes the issue.
+%     criterion = 0.001;
+%     low_firing = ((sum(Spike_rasters'>0)/length(Spike_rasters))<criterion);
+%     Spike_rasters(low_firing>0,:) = [];
+%This doesn't seem to fix the issue.  Might be dropping below activity
+%after removing nans, so going to check Vc (neural activity variable)
+%before using model
+    
     %Load DLC
     dlc = readtable('mvmt_data.csv');% Load DLC key point data
-    length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
+    length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1); %proportion of full data
 
 
     %Trim neural and behavioral data to align with video data
@@ -113,11 +136,6 @@ for s =session_range %1:length(sessions)
 
     %Combine mvmt predictors
     mvmt = table2array(dlc);
-
-    %Get missing data (from deeplabcut)
-    [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
-    %We get ~50-60% missing data.
-    idx_to_keep = setdiff(1:length(lbls), unique(nanrow));
 
     %Remove missing data
     lbls_final = lbls;%(idx_to_keep);
@@ -275,10 +293,9 @@ for s =session_range %1:length(sessions)
     % subject have undefined behaviors? only one of the two?
 
     %Get missing data (from deeplabcut)
-    [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
+    [nanrow, nancol]=find(isnan(mvmt_final)); length(unique(nanrow))/length(lbls)
     %We get ~50-60% missing data.
-    idx_to_keep = setdiff(1:length(lbls), unique(nanrow));
-    all_nan_inds = find(behavior_labels_subject==length(behav_categ));
+    all_nan_inds = unique(nanrow);
     percent_lost_to_nans = size(all_nan_inds,1)/size(Vc,1);
 
     %remove from predictors and neural data
@@ -291,7 +308,7 @@ for s =session_range %1:length(sessions)
 
     %remove empty regressors
     if ~isempty(zero_regressors_behav)
-        behavR(:,zero_regressors_behav) = [];
+        behavR(:,zero_regressors_behav) = []; %2022-12-13 RWD: Do you do below here then?  Nvm, done in next cell
         behavIdx(zero_regressors_behav) = []; %CT: Make sure you remove regIdx every time regressors are removed from fullR
     end
     if ~isempty(zero_regressors_move)
@@ -307,13 +324,23 @@ for s =session_range %1:length(sessions)
     behavR(:,low_events_idx)=[];
     behavIdx(low_events_idx)=[];
 
+    low_events_idx= find(sum(moveR,1)<10);
+    moveR(:,low_events_idx)=[];
+    moveIdx(low_events_idx)=[];
+
     %% Combine Design Matrix
 
     %Combine Design Matrix
-    fullR=[behavR, moveR];
+    fullR=[behavR , moveR]; %2022-12-13 seeing if one or the other matrix is causing the hang.  Looks like it is moveR...nope it hangs with both of them.
+    %Let's try throwing in random, uncorrelated regressors
 
     %Collect all indecies together.
-    regIdx =[behavIdx; moveIdx'];
+    regIdx =[ behavIdx; moveIdx']; %see above
+
+% %2022-12-13 RWD trying random regressors to see if these hang.  If they do
+% %than issue is probably with neural data
+% fullR = normrnd(0,1,size(moveR));
+% regIdx = moveIdx';
 
     disp('Design Matrix Setup Done')
 
@@ -330,14 +357,22 @@ for s =session_range %1:length(sessions)
 
     %Churchland median centered the neuronal data, so we will do the same.
     Vc = (Vc - median(Vc,1));
+    
+    %2022-12-17 Making sure neurons with sufficient activity to be fit go
+    %into the model.  For reasonable tolerance remove any neurons that have
+    %less activity than the below criterion.
+    criterion = 0.0001; %has to be active for more than .1% of the session
+    low_firing = (sum(Vc>0)/length(Vc))<criterion;
+    Vc(:,low_firing>0) = []; %remove neurons below this criterion.
+    
 
-    disp('Data centered')
+    disp('Data centered.  Neurons below firing rate criterion removed')
 
     %% Orthogonalization of movement variables
 
     %Get all movement variables (i.e. everything except task regressors)
-    allMoveR = fullR(:,length(behavIdx)+1:end); %get instructed + uninstrcuted movements
-    allMove_RegIdx = regIdx(length(behavIdx)+1:end);
+%     allMoveR = fullR(:,length(behavIdx)+1:end); %get instructed + uninstrcuted movements
+%     allMove_RegIdx = regIdx(length(behavIdx)+1:end);
     %     disp('Orthogonalize uninstructed variables with respect to instructed movements via QR decomposition')
     %
     %     %Run QR to orthogonalize video variables against all other movement variables
@@ -356,22 +391,27 @@ for s =session_range %1:length(sessions)
 
     %% run QR and check for rank-defficiency. This will show whether a given regressor is highly collinear with other regressors in the design matrix.
 
-    % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    %only consider behavior regressor (not movement)
-    fullR_orthog = behavR;
-    regIdx_orthog = behavIdx;
+% % %     % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+% % %     %only consider behavior regressor (not movement)
+% % %     fullR_orthog = behavR;
+% % %     regIdx_orthog = behavIdx;
 
     %Run QR for fully orthogonalized uninstructed movement regressors
     disp('Start QR check for colinear regressors')
     rejIdx = log_run_QR(fullR_orthog,0);
     %saveas(gcf, [savepath 'Colinearity values after rejection FULL MODEL.png'])
     %Note: second argument = plotting. If >0 function will output plot. Otherwise no plots.
-
+if is_plot
+    
+else
     figure;
     histHandle1 = histogram(regIdx_orthog,'BinWidth',1,'FaceAlpha',0.4); hold on
     histHandle1.BinEdges = histHandle1.BinEdges - histHandle1.BinWidth/2;
     histHandle1.BinEdges(length(histHandle1.BinEdges)+1)=max(regIdx_orthog)+0.5;
+    
+end
     if ~isempty(regIdx_orthog(rejIdx))
+        if ~is_plot
         histHandle2 = histogram(regIdx_orthog(rejIdx),'BinWidth',1,'FaceColor',[1 0 0],'FaceAlpha',0.4); %distribution of degenerate regressors
         histHandle2.BinEdges = histHandle2.BinEdges - histHandle2.BinWidth/2;
         histHandle2.BinEdges(length(histHandle2.BinEdges)+1)=max(regIdx_orthog(rejIdx))+0.5;
@@ -379,16 +419,19 @@ for s =session_range %1:length(sessions)
         legend('all','rejected')
         %saveas(gcf,[savepath 'Regressors deletion distribution.png'])
         %What reglabels do they correspond to?
+        end
         unique(regLabels(regIdx_orthog(rejIdx)))%which regressors are degenerate
 
         %Remove rejected regressors
         fullR_orthog(:,rejIdx) = [];
-        regIdx_orthog(rejIdx,:) = [];
+        regIdx_orthog(rejIdx) = []; %2022-12-13 RWD update this was (rejIdx, :) but regIdx is a 1 x regressor vector
+        if ~is_plot
         figure;
         histHandle3 = histogram(regIdx_orthog,'BinWidth',1,'FaceAlpha',0.4); title('Regressors after deletion')
         histHandle3.BinEdges = histHandle3.BinEdges - histHandle3.BinWidth/2;
         histHandle3.BinEdges(length(histHandle3.BinEdges)+1)=max(regIdx_orthog)+0.5;
         %saveas(gcf,[savepath 'Regressors after deletion.png'])
+        end
     end
     close all
 
@@ -427,20 +470,12 @@ for s =session_range %1:length(sessions)
     disp('Start full model cross validation')
     tic %This is for timing how long it takes to run the entire analysis
 
-<<<<<<< HEAD
     [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
     Vfull = Vfull';
-<<<<<<< Updated upstream
+    CV_ResultsFull  = modelCorr(Vc,Vfull)
     CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull); %compute model results
-=======
-    CV_ResultsFull  = modelCorr(Vc,Vfull); %compute model results
->>>>>>> Stashed changes
-=======
-    [Vfull{s,chan}, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc{s,chan}, regLabels, regIdx_orthog, regLabels, opts.folds);
-    Vfull{s,chan} = Vfull{s,chan}';
-    CV_ResultsFull  = modelCorr(Vc{s,chan},Vfull{s,chan}); %compute model results
->>>>>>> parent of f29e70a (Merge branch 'main' of https://github.com/camilletestard/Datalogger)
     RsqFull(s, chan) = CV_ResultsFull.r_value.^2
+    toc
 
     %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
     %% (2) regressor group dR^2 (shuffle only the regressor of interest, unique contribution)
@@ -526,9 +561,9 @@ for s =session_range %1:length(sessions)
     % % % % % %         output.Full = [RsqFull;NaN;];
     % % % % % %         writetable(output,[savePath 'RidgeRegression_results.csv'],'WriteRowNames',true); %save some results
 
-    chan=chan+1;
+    chan=chwan+1;
 end %end of channel for loop
-end
+
 
 %% Plot some results
 
