@@ -3,19 +3,15 @@
 % Testard C. Feb 2022
 
 %Set session list
-is_mac = 0;
-is_ron = 0;
+is_mac = 1;
+
 if is_mac
-    home = '~';
-elseif is_ron
-    
-    home = 'C:\Users\ronwd\Dropbox\Ready to analyze output (1)';
-    
+    home = '~';    
 else
     home ='C:/Users/GENERAL';
 end
-%cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
-cd(home)
+cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
+
 sessions = dir(home); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
@@ -42,20 +38,14 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-
+s=1;
 for s =session_range %1:length(sessions)
     %Set path
    
-    if is_ron
-        
-        filePath = [home '\', sessions(s).name];
-        savePath = 'C:\Users\ronwd\OneDrive\Documents\GitHub\Datalogger_results\Mvmt_results';
-        
-    else
+    
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Mvmt_results'];
 
-    end
     %Set channels: 'TEO', 'vlPFC' or 'all'
     chan = 1; channel_flag = "all"; %2022-12-13: Probably not, but let's check if its a brain region thing/number of neurons thing
     %First trying just TEO, then trying just vlPFC, then just putting in
