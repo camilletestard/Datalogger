@@ -1,6 +1,6 @@
-%% log_umap_visualization_batch
-% This script applied unsupervised umap on smoothed firing
-% Ref: Connor Meehan, Jonathan Ebrahimian, Wayne Moore, and Stephen Meehan (2022). Uniform Manifold Approximation and Projection (UMAP) (https://www.mathworks.com/matlabcentral/fileexchange/71902), MATLAB Central File Exchange.
+%% log_umap_state_distances_threat
+% This script applies UMAP to the data and computes the distance between
+% threat data points to a baseline state (centre of mass for rest).
 
 %Set session list
 is_mac = 1;
@@ -161,9 +161,10 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 end %end of session for loop
 
-cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results']);
+cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results']);
 save('NeuralDistancesThreat.mat','distance_to_baseline_umap_paired','distance_to_baseline_umap_alone',...
-    'distance_to_baseline_pca_paired','distance_to_baseline_pca_alone')
+    'distance_to_baseline_pca_paired','distance_to_baseline_pca_alone','time_before_threat','time_after_threat')
+load('NeuralDistancesThreat.mat')
 
 paired=cell2mat(distance_to_baseline_umap_paired');
 alone=cell2mat(distance_to_baseline_umap_alone');
@@ -180,6 +181,7 @@ p.FaceColor = [0.9 0.7 0.12];
 p.FaceAlpha = 0.3;
 p.EdgeColor = 'none';   
 plot(nanmean(paired),'Color',[0.9 0.7 0.12],'LineWidth',6)
+plot(paired','Color',[0.9 0.7 0.12],'LineWidth',1)
 
 
 upper_lim=nanmean(alone)+(nanstd(alone)/sqrt(size(alone,1)));
@@ -189,7 +191,9 @@ p.FaceColor = [0.5 0 0];
 p.FaceAlpha = 0.3;
 p.EdgeColor = 'none'; 
 plot(nanmean(alone),'Color',[0.5 0 0],'LineWidth',6)
+plot(alone','Color',[0.5 0 0],'LineWidth',1)
 
+xlim([2 length(alone)])
 xline(time_before_threat+2,'LineStyle','--')
 xline(time_before_threat+30+2,'LineStyle','--')
 ylabel('Distance to baseline state in UMAP space')
@@ -202,6 +206,39 @@ for i=2:length(alone)
 end
 
 scatter(find(h==1), 6.75*ones(size(find(h==1))),30,'k','*')
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%Plot in chronological order (see if there is habituation?)
+for s=1:6
+dates_a{s}=sessions(a_sessions(s)).name(end-4:end);
+dates_h{s}=sessions(h_sessions(s)).name(end-4:end);
+end
+
+chonological_order = [1,11,2,12,3,13,4,5,15,16,6,18];
+figure
+plot(alone(chonological_order,40)-paired(chonological_order,40))
+figure; hold on; timepoint=41;
+subplot(1,2,1); hold on; plot(alone(a_sessions,timepoint)-paired(a_sessions,timepoint)); yline(0,'--'); xticks(1:6); xticklabels(dates_a)
+subplot(1,2,2); hold on; plot(alone(h_sessions,timepoint)-paired(h_sessions,timepoint)); yline(0,'--'); xticks(1:6); xticklabels(dates_h)
+
+figure; hold on; timepoint=35:55;
+subplot(1,2,1); hold on; 
+plot(mean(alone(a_sessions,timepoint),2)-mean(paired(a_sessions,timepoint),2),'LineWidth',2); yline(0,'--'); 
+scatter(1:6,mean(alone(a_sessions,timepoint),2)-mean(paired(a_sessions,timepoint),2),'b','filled')
+% text(0.3,0.3,'alone > paired')
+% text(0.3,-0.3,'alone < paired')
+xticks(1:6); xticklabels(dates_a); xlabel('Date'); ylabel('Mean difference between alone and paired during threat'); ylim([-3 7])
+title('Amos')
+
+subplot(1,2,2); hold on; 
+plot(mean(alone(h_sessions,timepoint),2)-mean(paired(h_sessions,timepoint),2),'LineWidth',2,'Color','r'); yline(0,'--');
+scatter(1:6,mean(alone(h_sessions,timepoint),2)-mean(paired(h_sessions,timepoint),2),'r','filled')
+% text(0.3,0.3,'alone > paired')
+% text(0.3,-0.3,'alone < paired')
+xticks(1:6); xticklabels(dates_h); 
+ylim([-3 7])
+title('Hooke')
+
 
 % % % %PCA
 % % % figure; hold on

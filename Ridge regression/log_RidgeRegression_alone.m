@@ -38,7 +38,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=1;
+s=15;
 for s =session_range(6:end) %1:length(sessions)
     %Set path
 
@@ -92,22 +92,14 @@ for s =session_range(6:end) %1:length(sessions)
         %before using model
 
         %Load DLC
-        dlc = readtable('mvmt_data.csv');% Load DLC key point data
+        dlc = readtable('mvmt_data_alone.csv');% Load DLC key point data
         length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1); %proportion of full data
 
 
         %Trim neural and behavioral data to align with video data
-        camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
-        camera_end_time = camera_start_time + size(dlc,1) -1;
+            Spike_rasters_trimmed = Spike_rasters(:,1:size(dlc,1));
+            labels_trimmed = labels(1:size(dlc,1),:);
 
-        try
-            Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:camera_end_time);
-            labels_trimmed = labels(camera_start_time:camera_end_time,:);
-        catch %If camera went on past end of recording (occurs in 2 sessions because of an error at the end)
-            Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
-            labels_trimmed = labels(camera_start_time:end,:);
-            dlc = dlc(1:size(labels_trimmed,1),:);
-        end
 
         disp('Data Loaded')
 
@@ -222,7 +214,7 @@ for s =session_range(6:end) %1:length(sessions)
         %% Set up event types
 
         %Get variable names
-        behavEventNames = [behav_categ(1:end-1),string(block_times{:,"Behavior"})'];%, append('partner.',behav_categ(1:end-1)),string(block_times{:,"Behavior"})'];
+        behavEventNames = [behav_categ(1:end-1),string(block_times{:,"Behavior"}(1))'];%, append('partner.',behav_categ(1:end-1)),string(block_times{:,"Behavior"})'];
 
         %Set up event type here.
         behavEventTypes=ones(size(behavEventNames))*3;
@@ -241,14 +233,10 @@ for s =session_range(6:end) %1:length(sessions)
         %% Setup Design Matrix - Regressor labels
 
         regLabels = behavEventNames';
-        regLabels(length(allEventsInfo)+1) = {'toplogger_x'};
-        regLabels(length(allEventsInfo)+2) = {'toplogger_y'};
-        regLabels(length(allEventsInfo)+3) = {'bottomlogger_x'};
-        regLabels(length(allEventsInfo)+4) = {'bottomlogger_y'};
-        regLabels(length(allEventsInfo)+5) = {'head_orientation_dlc'};
-        regLabels(length(allEventsInfo)+6) = {'dist_traveled'};
-        regLabels(length(allEventsInfo)+7) = {'acceleration'};
-
+        colnames = dlc.Properties.VariableNames;
+        for i = 1:length(colnames)
+            regLabels(length(allEventsInfo)+i) = colnames(i);
+        end
 
 
         disp('Setup Design Matrix - Regressor labels done')

@@ -1,4 +1,4 @@
-%% log_neural_response_to_threat
+%% log_neural_cosyneSim_threat
 % This script extracts and compares the mean firing rate across different threat
 % instances (self vs. other; alone vs. paired).
 
@@ -12,8 +12,6 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
-%session_range_no_partner=[1:3,11:13];
-%session_range_no_partner=[4:6,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
@@ -71,6 +69,19 @@ for s =session_range %1:length(sessions)
         %Extract block labels
         block_labels = cell2mat({labels{:,13}}');
 
+        %Make proximity equal to rest
+        behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); 
+
+        %% Get center of mass of rest epochs.
+
+        idx_rest=find(behavior_labels==29); block_rest=block_labels(behavior_labels==29);
+        idx_rest_paired=idx_rest(block_rest==1); idx_rest_alone=idx_rest(block_rest==0);
+        
+        %get equal representation of rest during paired and alone blocks.
+        idx_equalBlocks=[randsample(idx_rest_paired,min(length(idx_rest_paired),length(idx_rest_alone))); randsample(idx_rest_alone,min(length(idx_rest_paired),length(idx_rest_alone)))];
+        
+        rest_com = mean(Spike_count_raster(idx_rest,:));
+
 
         %% Find threat to subject onset times
 
@@ -81,21 +92,29 @@ for s =session_range %1:length(sessions)
 
             idx = threat_to_subject_onset(event)-time_before_threat : threat_to_subject_onset(event)+time_after_threat;
 
-            Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-            behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
-            block_labels_final =  block_labels(idx);
+            Spike_count_raster_threat = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+            behavior_labels_threat = behavior_labels(idx);%Same as above but in behavior labels
+            block_labels_threat =  block_labels(idx);
+
+            for i=1:length(idx)
+                cosyneSim{s}(event,i)=getCosineSimilarity(rest_com, Spike_count_raster_threat(i,:));
+                rval=corrcoef(rest_com, Spike_count_raster_threat(i,:));
+                corrSim{s}(event,i)=rval(1,2);
+            end
+
+            %figure; hold on; plot(cosyneSim(event,:)); plot(corrSim(event,:))
            
-            mean_response{s}(event,:)=mean(Spike_count_raster_final,2);
-            std_response{s}(event,:)=std(Spike_count_raster_final,[],2);
-            block{s}(event)=unique(block_labels_final);
+            mean_response{s}(event,:)=mean(Spike_count_raster_threat,2);
+            std_response{s}(event,:)=std(Spike_count_raster_threat,[],2);
+            block{s}(event)=unique(block_labels_threat);
            
         end
     
         figure; hold on; set(gcf,'Position',[150 250 700 300]); 
-        plot(mean_response{s}(block{s}==1,:)','Color',[0.9 0.7 0.12],'LineWidth',2)
-        plot(mean_response{s}(block{s}==0,:)','Color',[0.5 0 0],'LineWidth',2)
+        plot(corrSim{s}(block{s}==1,:)','Color',[0.9 0.7 0.12],'LineWidth',2)
+        plot(corrSim{s}(block{s}==0,:)','Color',[0.5 0 0],'LineWidth',2)
         xline(time_before_threat+2,'LineStyle','--')
-        ylabel('Mean firing rate (Hz)')
+        ylabel('Correlation')
         xlabel('Time')
         legend('Threat when paired','','Threat when alone','','Threat onset')
         set(gca,'FontSize',16); 

@@ -28,6 +28,10 @@ for s =session_range %1:length(sessions)
 
     tdr_video = readtable('TopDownRight_DLC_filtered.csv');
     tdl_video = readtable('TopDownLeft_DLC_filtered.csv');
+    %Bottom right logger x,y,likelihood
+    %Toplogger 
+    %Bottomlogger
+    %forehead
 
     %Extract top and bottom logger locations
     tdl_logger_top = table2array(tdl_video(:,5:7)); tdl_logger_top(tdl_logger_top(:,3)<0.8,1:2)=nan;

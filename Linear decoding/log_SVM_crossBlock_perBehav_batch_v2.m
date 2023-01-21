@@ -25,7 +25,7 @@ randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
-num_iter = 5000;%Number of SVM iterations
+num_iter = 500;%Number of SVM iterations
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
@@ -71,9 +71,9 @@ for s =session_range %1:length(sessions)
         Spike_count_raster = Spike_rasters';
 
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
-        %         behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-        %         behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
-        %         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+        behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
+        behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
+        behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
 
         co_occurrence = cell2mat({labels{:,5}}');
 
@@ -90,33 +90,35 @@ for s =session_range %1:length(sessions)
             behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
 
             %Lump foraging and drinking
-            behavior_labels(behavior_labels==find(behav_categ=="Drinking"))=find(behav_categ=="Foraging");
+            %behavior_labels(behavior_labels==find(behav_categ=="Drinking"))=find(behav_categ=="Foraging");
 
             %Lump grooming together
-%             behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
+            %behavior_labels(behavior_labels==find(behav_categ=="Getting groomed"))=find(behav_categ=="Groom partner");
         end
 
         %% Select behaviors to decode
 
-% % %         %Compute freq of behavior for the session
-% % %         behav_freq_table = tabulate(behavior_labels);
-% % %         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
-% % % 
-% % %         % Select behaviors with a minimum # of occurrences
-% % %         min_occurrences = 50;
-% % %         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
-% % % 
-% % %         % Remove behaviors that are ill-defined
-% % %         behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
-% % %         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
-% % %         behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));%excluding scratch which is a source of confusion.
-% % %         behav = behav(behav~=find(matches(behav_categ,'Vocalization')));%excluding scratch which is a source of confusion.
-% % %         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
-% % %         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.
+        %Compute freq of behavior for the session
+        unq_behav = unique(behavior_labels);
+        behav_freq_table = crosstab(behavior_labels,blocks);
+        %behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
+        % Select behaviors with a minimum # of occurrences
+        min_occurrences = 30;
+        behav = find(all(behav_freq_table(:,1:2)>=min_occurrences,2));%Get behaviors with a min number of occurrences
+        behav=unq_behav(behav);
+
+        % Remove behaviors that are ill-defined
+        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Other monkeys vocalize')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Vocalization')));%excluding scratch which is a source of confusion.
+        behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding scratch which is a source of confusion.
+        
+        behav_save{s} = behav;
 
         % OR select behaviors manually
-        behav = [1,5,7,8,18,29];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
+        %behav = [4,5,7,8,9,10,18,24,29];%[4,5,17];% [7,8]%[5,7:10,21];%[4,5,7:10];%[4:8,17]; %[1:6,9:11,16,17]; %manually select behaviors of interest
 
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
@@ -136,9 +138,9 @@ for s =session_range %1:length(sessions)
         block1_behav = tabulate(trainlbls);
         block2_behav = tabulate(testlbls);
 
-        if length(unique(testlbls))==length(behav) && length(unique(trainlbls))==length(behav)
-
-            if all(block1_behav(behav,2)>15) && all(block2_behav(behav,2)>15)
+%         if length(unique(testlbls))==length(behav) && length(unique(trainlbls))==length(behav)
+% 
+%             if all(block1_behav(behav,2)>15) && all(block2_behav(behav,2)>15)
 
 
                 %% Run SVM over multiple iterations
@@ -224,14 +226,15 @@ for s =session_range %1:length(sessions)
                 C_concat=cat(3,C{:}); %Get confusion matrix
                 confusion_mat_avg{s,chan}=round(mean(C_concat,3)*100); %Average over SVM iterations
                 ccgp_per_behav{s,chan} = diag(confusion_mat_avg{s,chan});
+                ccgp_per_behav_ratio{s,chan} = diag(confusion_mat_avg{s,chan})./(mean_hitrate_shuffled{s}*100);
 %                 rowNames{s} = {labels_id{:,2}}; colNames{s} = {labels_id{:,2}}; %Get behavior names
 %                 C_table{s, temp, chan} = array2table(confusion_mat_avg,'RowNames',rowNames{s},'VariableNames',colNames{s});
 
                 chan = chan +1;
                 clear labels_id
-
-            end
-        end
+% 
+%             end
+%         end
     %end %end of channel for loop
 
     cd(savePath)
@@ -242,77 +245,69 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-% save('SVM_results_crossBlock.mat',"confusion_mat_avg","ccgp_per_behav", "mean_hitrate_baseline","mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+% save('SVM_results_crossBlock.mat',"confusion_mat_avg", "mean_hitrate_baseline","mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 load('SVM_results_crossBlock.mat')
-% % % 
-% % % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % % Bar plot decoding accuracy
-% % % 
-% % % figure; hold on
-% % % data_within = cell2mat(mean_hitrate_baseline');
-% % % data_cross = cell2mat(mean_hitrate');
-% % % data_shuffle = cell2mat(mean_hitrate_shuffled');
-% % % bp = bar([mean(data_within(:,:)); mean(data_cross(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
-% % % 
-% % % sp1 = scatter(ones(size(data_within,1))*0.78,data_within(:,1), 'filled','b');
-% % % sp1 = scatter(ones(size(data_within,1)),data_within(:,2), 'filled','r');
-% % % sp1 = scatter(ones(size(data_within,1))*1.22,data_within(:,3), 'filled','y');
-% % % 
-% % % sp1 = scatter(ones(size(data_cross,1))*1.78,data_cross(:,1), 'filled','b');
-% % % sp1 = scatter(ones(size(data_cross,1))*2,data_cross(:,2), 'filled','r');
-% % % sp1 = scatter(ones(size(data_cross,1))*2.22,data_cross(:,3), 'filled','y');
-% % % 
-% % % sp1 = scatter(ones(size(data_shuffle,1))*2.78,data_shuffle(:,1), 'filled','b');
-% % % sp1 = scatter(ones(size(data_shuffle,1))*3,data_shuffle(:,2), 'filled','r');
-% % % sp1 = scatter(ones(size(data_shuffle,1))*3.22,data_shuffle(:,3), 'filled','y');
-% % % 
-% % % legend(bp,{'vlPFC','TEO','all'},'Location','best')
-% % % 
-% % % ylabel('Decoding Accuracy'); ylim([0.1 1])
-% % % xticks([1 2 3]); xticklabels({'Within-context','Cross-context', 'Shuffled'}); xlim([0.25 3.75])
-% % % ax = gca;
-% % % ax.FontSize = 16;
-% % % %saveas(gcf,['SVM_results_crossBlocks.pdf'])
-% % % 
-% % % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % % % Plot cross-context generalizability performance per behavior
-% % % % ccgp_vlpfc=cat(3,confusion_mat_avg{:,1});
-% % % % ccgp_teo=cat(3,confusion_mat_avg{:,2});
-% % % % ccgp_all=cat(3,confusion_mat_avg{:,3});
-ccgp_all=cat(3,confusion_mat_avg{:,1});
 
-data = ccgp_all;
-behav_select = [1,5,7,8,18,29];
-colormap={'r','g','c','b','y','k'};
+% % % % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % % % % Bar plot decoding accuracy
+% % % % 
+% % % % figure; hold on
+% % % % data_within = cell2mat(mean_hitrate_baseline');
+% % % % data_cross = cell2mat(mean_hitrate');
+% % % % data_shuffle = cell2mat(mean_hitrate_shuffled');
+% % % % bp = bar([mean(data_within(:,:)); mean(data_cross(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
+% % % % 
+% % % % sp1 = scatter(ones(size(data_within,1))*0.78,data_within(:,1), 'filled','b');
+% % % % sp1 = scatter(ones(size(data_within,1)),data_within(:,2), 'filled','r');
+% % % % sp1 = scatter(ones(size(data_within,1))*1.22,data_within(:,3), 'filled','y');
+% % % % 
+% % % % sp1 = scatter(ones(size(data_cross,1))*1.78,data_cross(:,1), 'filled','b');
+% % % % sp1 = scatter(ones(size(data_cross,1))*2,data_cross(:,2), 'filled','r');
+% % % % sp1 = scatter(ones(size(data_cross,1))*2.22,data_cross(:,3), 'filled','y');
+% % % % 
+% % % % sp1 = scatter(ones(size(data_shuffle,1))*2.78,data_shuffle(:,1), 'filled','b');
+% % % % sp1 = scatter(ones(size(data_shuffle,1))*3,data_shuffle(:,2), 'filled','r');
+% % % % sp1 = scatter(ones(size(data_shuffle,1))*3.22,data_shuffle(:,3), 'filled','y');
+% % % % 
+% % % % legend(bp,{'vlPFC','TEO','all'},'Location','best')
+% % % % 
+% % % % ylabel('Decoding Accuracy'); ylim([0.1 1])
+% % % % xticks([1 2 3]); xticklabels({'Within-context','Cross-context', 'Shuffled'}); xlim([0.25 3.75])
+% % % % ax = gca;
+% % % % ax.FontSize = 16;
+% % % % saveas(gcf,['SVM_results_crossBlocks.pdf'])
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Plot cross-context generalizability performance per behavior
+% ccgp_vlpfc=cat(3,confusion_mat_avg{:,1});
+% ccgp_teo=cat(3,confusion_mat_avg{:,2});
+% ccgp_all=cat(3,confusion_mat_avg{:,3});
+% ccgp_all=cat(3,confusion_mat_avg{:,1});
+
+for s=session_range
+    ccgp_all(s,behav_save{s}) = ccgp_per_behav{s};
+    ccgp_all_ratio(s,behav_save{s}) = ccgp_per_behav_ratio{s};
+end
+ccgp_all(ccgp_all==0)=nan;
+ccgp_all_ratio(ccgp_all_ratio==0)=nan;
+
+behav_select = [1,5,7,18,29];%[4,5,7,8,9,10,24,29];
+data = ccgp_all(:,behav_select);
+mean_data = nanmedian(data);
+
 figure; hold on
-[sorted_data, idx]=sort(diag(median(data,3))); behav_sorted = behav_select(idx);
-scatter(1:length(behav_select),sorted_data,400,'_')
-scatter(ones(size(data,3))*1,reshape(data(idx(1),idx(1),:),1,size(data,3)),80, 'filled', colormap{idx(1)});
-scatter(ones(size(data,3))*2,reshape(data(idx(2),idx(2),:),1,size(data,3)),80, 'filled', colormap{idx(2)});
-scatter(ones(size(data,3))*3,reshape(data(idx(3),idx(3),:),1,size(data,3)),80, 'filled', colormap{idx(3)});
-scatter(ones(size(data,3))*4,reshape(data(idx(4),idx(4),:),1,size(data,3)),80, 'filled', colormap{idx(4)});
-scatter(ones(size(data,3))*5,reshape(data(idx(5),idx(5),:),1,size(data,3)),80, 'filled', colormap{idx(5)});
-scatter(ones(size(data,3))*6,reshape(data(idx(6),idx(6),:),1,size(data,3)),80, 'filled', colormap{idx(6)});
-ylabel('Decoding Accuracy'); ylim([0 100])
-xticks(1:length(behav_select)); xticklabels(behav_categ(behav_sorted)); xlim([0.25 length(behav_select)+0.75])
+[sorted_data, idx]=sort(mean_data); behav_sorted = behav_select(idx);
+scatter(1:length(behav_select),sorted_data,150,'_')
+scatter(ones(size(data,3))*1,data(:,idx(1)),80, 'filled','k');
+scatter(ones(size(data,3))*2,data(:,idx(2)),80, 'filled','y');
+scatter(ones(size(data,3))*3,data(:,idx(3)),80, 'filled','r');
+scatter(ones(size(data,3))*4,data(:,idx(4)),80, 'filled','g');
+scatter(ones(size(data,3))*5,data(:,idx(5)),80, 'filled','b');
+% scatter(ones(size(data,3))*6,data(:,idx(6)),80, 'filled','b');
+% scatter(ones(size(data,3))*7,data(:,idx(7)),80, 'filled','b');
+% scatter(ones(size(data,3))*8,data(:,idx(8)),80, 'filled','b');
+ylabel('Decoding Accuracy'); %ylim([0 100])
+xticks([1:length(behav_select)]); xticklabels(behav_categ(behav_sorted)); xlim([0.25 length(behav_select)+0.75])
 ax = gca;
 ax.FontSize = 16;
-% % % %(gcf,['CCGP_crossBlocks.pdf'])
-
-% % % data = cell2mat(ccgp_per_behav')';
-% % % mean_data = nanmedian(data);
-% % % figure; hold on
-% % % [sorted_data, idx]=sort(mean_data); behav_sorted = behav_select(idx);
-% % % scatter(1:length(behav_select),sorted_data,150,'_')
-% % % scatter(ones(size(data,3))*1,data(:,idx(1)),80, 'filled', colormap{idx(1)});
-% % % scatter(ones(size(data,3))*2,data(:,idx(2)),80, 'filled', colormap{idx(2)});
-% % % scatter(ones(size(data,3))*3,data(:,idx(3)),80, 'filled', colormap{idx(3)});
-% % % scatter(ones(size(data,3))*4,data(:,idx(4)),80, 'filled', colormap{idx(4)});
-% % % scatter(ones(size(data,3))*5,data(:,idx(5)),80, 'filled', colormap{idx(5)});
-% % % scatter(ones(size(data,3))*6,data(:,idx(6)),80, 'filled', colormap{idx(6)});
-% % % % scatter(ones(size(data,3))*7,data(:,idx(7)),80, 'filled','b');
-% % % % scatter(ones(size(data,3))*8,data(:,idx(8)),80, 'filled','b');
-% % % ylabel('Decoding Accuracy'); %ylim([0 100])
-% % % xticks([1:length(behav_select)]); xticklabels(behav_categ(behav_sorted)); xlim([0.25 length(behav_select)+0.75])
-% % % ax = gca;
-% % % ax.FontSize = 16;
+saveas(gcf,['CCGP_crossBlocks.pdf'])
