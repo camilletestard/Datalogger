@@ -34,7 +34,7 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
-agg_precedence = 0;
+threat_precedence = 0;
 
 %Initialize
 % mean_hitrate = cell(length(sessions),3);
@@ -71,7 +71,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence);
         end
 
         disp('Data Loaded')

@@ -71,10 +71,13 @@ for s =session_range %1:length(sessions)
         %Extract block labels
         block_labels = cell2mat({labels{:,13}}');
 
+        %Load threat quantification
+        threat_quant = readtable([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/Threat_reaction_quant.xlsx']);
+        threat_quant_session = threat_quant(threat_quant.session_id==s,:);    
 
         %% Get center of mass of rest epochs.
 
-        idx_rest=find(behavior_labels==29); block_rest=block_labels(behavior_labels==29);
+        idx_rest=find(behavior_labels==length(behav_categ)); block_rest=block_labels(behavior_labels==length(behav_categ));
         idx_rest_paired=idx_rest(block_rest==1); idx_rest_alone=idx_rest(block_rest==0);
         
         %get equal representation of rest during paired and alone blocks.
@@ -85,6 +88,13 @@ for s =session_range %1:length(sessions)
         %% Find threat to subject onset times
 
         threat_to_subject_onset = behavior_log.start_time_round(find(strcmp(behavior_log.Behavior, "HIS")));
+        threat_quant_subject = threat_quant_session(strcmp(threat_quant_session.target,"self"),:); 
+        [~, idx_sorted] = sort(threat_quant_subject.order);
+        threat_quant_subject =threat_quant_subject(idx_sorted,:);
+
+        %Exclude squeeze events
+        threat_to_subject_onset = threat_to_subject_onset(threat_quant_subject.squeeze==0,:);
+        threat_quant_subject = threat_quant_subject(threat_quant_subject.squeeze==0,:);
 
         e=1; e2=1;
         for event = 1:length(threat_to_subject_onset)
@@ -95,19 +105,23 @@ for s =session_range %1:length(sessions)
             behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
             block_labels_final =  block_labels(idx);
             behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+            preThreat_com = mean(Spike_count_raster_final(1:time_before_threat,:));
 
             %% Run umap
-            [umap_result]=run_umap([rest_com; Spike_count_raster_final], 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+%             [umap_result]=run_umap([rest_com; Spike_count_raster_final], 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 50); %Run umap to get 2d embedded states
+            [umap_result]=run_umap([preThreat_com; Spike_count_raster_final(time_before_threat+1:end,:)], 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 50); %Run umap to get 2d embedded states
             close
 
             %% Run PCA
-            [~, pca_result] = pca(zscore([rest_com; Spike_count_raster_final]));
+            %[~, pca_result] = pca(zscore([rest_com; Spike_count_raster_final]));
+            [~, pca_result] = pca(zscore([preThreat_com; Spike_count_raster_final(time_before_threat+1:end,:)]));
 
 
             umap_result_final = umap_result;%Only keep timepoints where the behaviors of interest occur in spiking data
             pca_result_final = pca_result(:,1:50);
 
             block{s}(event)=unique(block_labels_final);
+            agitation{s}(event)=threat_quant_subject.agitation(event);
 
             %% Calculate distances
             D_umap=pdist(umap_result_final);
@@ -125,32 +139,34 @@ for s =session_range %1:length(sessions)
                 distance_to_baseline_umap_paired{s}(e2,:) = Z_umap(1,:);
                 e2=e2+1;
             end
-
-            
+            distance_to_baseline_umap{s}(event,:) = Z_umap(1,:);
+            distance_to_baseline_pca{s}(event,:) = Z_pca(1,:);
 
         end
+
+%         distance_paired_alone{s}=mean(distance_to_baseline_umap_paired{s}) - mean(distance_to_baseline_umap_alone{s});
     
-        figure; hold on; set(gcf,'Position',[150 250 1200 300]); 
-
-        subplot(1,2,1); hold on
-        plot(distance_to_baseline_umap_paired{s}','Color',[0.9 0.7 0.12],'LineWidth',2)
-        plot(distance_to_baseline_umap_alone{s}','Color',[0.5 0 0],'LineWidth',2)
-        xline(time_before_threat+2,'LineStyle','--')
-        ylabel('Distance to baseline state')
-        xlabel('Time')
-        legend('Threat when paired','Threat when alone','Threat onset')
-        set(gca,'FontSize',16); title('UMAP')
-
-        subplot(1,2,2); hold on
-        plot(distance_to_baseline_pca_paired{s}','Color',[0.9 0.7 0.12],'LineWidth',2)
-        plot(distance_to_baseline_pca_alone{s}','Color',[0.5 0 0],'LineWidth',2)
-        xline(time_before_threat+2,'LineStyle','--')
-        ylabel('Distance to baseline state')
-        xlabel('Time')
-        legend('Threat when paired','Threat when alone','Threat onset')
-        set(gca,'FontSize',16); title('PCA')
-
-        sgtitle(['session:' sessions(s).name])
+%         figure; hold on; set(gcf,'Position',[150 250 1200 300]);
+% 
+%         subplot(1,2,1); hold on
+%         plot(distance_to_baseline_umap_paired{s}','Color',[0.9 0.7 0.12],'LineWidth',2)
+%         plot(distance_to_baseline_umap_alone{s}','Color',[0.5 0 0],'LineWidth',2)
+%         xline(time_before_threat+2,'LineStyle','--')
+%         ylabel('Distance to baseline state')
+%         xlabel('Time')
+%         legend('Threat when paired','Threat when alone','Threat onset')
+%         set(gca,'FontSize',16); title('UMAP')
+% 
+%         subplot(1,2,2); hold on
+%         plot(distance_to_baseline_pca_paired{s}','Color',[0.9 0.7 0.12],'LineWidth',2)
+%         plot(distance_to_baseline_pca_alone{s}','Color',[0.5 0 0],'LineWidth',2)
+%         xline(time_before_threat+2,'LineStyle','--')
+%         ylabel('Distance to baseline state')
+%         xlabel('Time')
+%         legend('Threat when paired','Threat when alone','Threat onset')
+%         set(gca,'FontSize',16); title('PCA')
+% 
+%         sgtitle(['session:' sessions(s).name])
 %     
 %         cd(savePath)
 %         saveas(gcf,'Distance threat paired vs. alone.pdf')
@@ -165,6 +181,19 @@ cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/UMAP_results']);
 save('NeuralDistancesThreat.mat','distance_to_baseline_umap_paired','distance_to_baseline_umap_alone',...
     'distance_to_baseline_pca_paired','distance_to_baseline_pca_alone','time_before_threat','time_after_threat')
 load('NeuralDistancesThreat.mat')
+
+
+response = cat(1,distance_to_baseline_umap{:});
+block_all = cat(2,block{:})';
+agitation_all=cat(2,agitation{:})';
+figure;
+scatter(agitation_all, response(:,41))
+for r=1:length(response)
+    [correlation(r) pval(r)]=corr(agitation_all, response(:,r));
+end
+figure;plot(correlation)
+figure; hold on; plot(pval); yline(0.05,'--')
+[rho p]=corr(agitation_all, mean(response(:,31:60),2))
 
 paired=cell2mat(distance_to_baseline_umap_paired');
 alone=cell2mat(distance_to_baseline_umap_alone');

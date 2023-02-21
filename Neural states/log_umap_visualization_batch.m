@@ -66,7 +66,7 @@ for s =session_range %1:length(sessions)
         disp('Data Loaded')
 
         %Raw data
-        Spike_count_raster = Spike_rasters';
+        Spike_count_raster = zscore(Spike_rasters');
 
 
         %% Select behaviors to visualize
@@ -129,19 +129,45 @@ for s =session_range %1:length(sessions)
 
         %Unsupervised
         [umap_result{s,chan}]=run_umap(Spike_count_raster_final, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
-        %close
+        close
 
         channel = char(channel_flag);
 
         %Set colormap
-        Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
-            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
-            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
+        Cmap = [[1 0 0];...%Aggression; red
+            [1 0.4 0.1];...%Approach; dark orange
+            [0 0 0];...%But sniff; NA
+            [0.3 0.7 1];...%Drinking; light blue
+            [0 0.7 0];...%Foraging; dark green
+            [1 0 1];...%Groom sollicitation; magenta
+            [0 1 1];...%Groom partner; cyan
+            [0 0 1];...%Getting groomed; dark blue
+            [0.8 0 0];...%Threat to partner; dark red
+            [1 0 0];...%Threat to subject; red
+            [0.9 0.9 0];...%leave; dark yellow
+            [0 0 0];...%Lipsmack
+            [0.2 0.9 0.76];...%Masturbating; turquoise
+            [0.7 0 1];...%Mounting; light purple
+            [0.9 0.5 0];...%Other monkeys vocalize; orange
+            [1 0.8 0.1];...%Travel; yellow orange
+            [0 0 0];...%Proximity; NA
+            [0 0 0];...%Rowdy room; NA
+            [0.6314 0.5059 0.0118];...%Scratch; maroon
+            [0.5 0.2 0.5];...%Self-groom; dark purple
+            [ 1 0.07 0.65];...%Submission; dark pink
+            [0 0.4 0.5];...%Vocalzation; blue green
+            [0 0 0];...%Yawning; NA
+            [0.8 0.8 0.8]];%Rest; grey
 
         Cmap_block = [[0.9 0.7 0.12];[0 0.6 0.8];[0.5 0 0]];
 
         Cmap_time = copper(length(idx));
+
+        mean_activity = int32(round(rescale(mean(Spike_count_raster_final,2)),2)*100); mean_activity(mean_activity==0)=1;
+        std_activity = int32(round(rescale(std(Spike_count_raster_final,[],2)),2)*100);std_activity(std_activity==0)=1;
+        Cmap_firingRate = jet(double(max(mean_activity)));
+        Cmap_firingRateStd = jet(double(max(std_activity)));
+        %Note: mean activity correlates with variation in activity.
 
 
         %% Plot UMAP projection in 3D space
@@ -149,7 +175,7 @@ for s =session_range %1:length(sessions)
         figure; hold on; set(gcf,'Position',[150 250 1500 500])
 
         %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,2,1);
+        ax1=subplot(1,3,1);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -157,15 +183,15 @@ for s =session_range %1:length(sessions)
         set(gca,'FontSize',12);
         %saveas(gcf,[savePath '/umap_supervised_ColorCodedByBehav_' channel 'Units.png'])
         %pause(5)
-
-
-        %Color-coded by block
-        ax2=subplot(1,2,2);
-        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
-        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
-        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-        title('Block')
-        set(gca,'FontSize',12);
+% 
+% 
+%         %Color-coded by block
+%         ax2=subplot(1,2,2);
+%         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
+%         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+%         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+%         title('Block')
+%         set(gca,'FontSize',12);
 
 
 %         %Color-coded by time
@@ -176,9 +202,25 @@ for s =session_range %1:length(sessions)
 %         title('Block')
 %         set(gca,'FontSize',12);
 
-        sgtitle([channel ' units, UMAP, ' sessions(s).name])
+        %Color-coded by mean activity
+        ax2=subplot(1,3,2);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_firingRate(mean_activity,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Mean activity')
+        set(gca,'FontSize',12);
 
-        hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
+        %Color-coded by std activity
+        ax3=subplot(1,3,3);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_firingRateStd(std_activity,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Variation in of activity')
+        set(gca,'FontSize',12);
+
+        %sgtitle([channel ' units, UMAP, ' sessions(s).name])
+
+        hlink = linkprop([ax1,ax2, ax3],{'CameraPosition','CameraUpVector'});
         rotate3d on
 
         %savefig([savePath 'Umap_3Dprojection_' channel '.fig'])

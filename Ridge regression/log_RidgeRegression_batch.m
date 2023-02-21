@@ -11,8 +11,6 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
@@ -30,16 +28,13 @@ agg_precedence =1;
 is_plot=0;
 
 %Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
+session_range = [3:6,11:13,15:16,18]; 
+a_sessions=[3:6]; h_sessions = [11:13,15:16,18];
+%Some sessions have too bad video data to be analyzed.
 
-s=1;
-for s =session_range(6:end) %1:length(sessions)
+regGroupSessions=struct;
+s=15;
+for s =session_range %1:length(sessions)
     %Set path
 
 
@@ -92,7 +87,7 @@ for s =session_range(6:end) %1:length(sessions)
         %before using model
 
         %Load DLC
-        dlc = readtable('mvmt_data.csv');% Load DLC key point data
+        dlc = readtable('mvmt_data_c04.csv');% Load DLC key point data
         length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1); %proportion of full data
 
 
@@ -241,26 +236,20 @@ for s =session_range(6:end) %1:length(sessions)
         %% Setup Design Matrix - Regressor labels
 
         regLabels = behavEventNames';
-        regLabels(length(allEventsInfo)+1) = {'toplogger_x'};
-        regLabels(length(allEventsInfo)+2) = {'toplogger_y'};
-        regLabels(length(allEventsInfo)+3) = {'bottomlogger_x'};
-        regLabels(length(allEventsInfo)+4) = {'bottomlogger_y'};
-        regLabels(length(allEventsInfo)+5) = {'head_orientation_dlc'};
-        regLabels(length(allEventsInfo)+6) = {'dist_traveled'};
-        regLabels(length(allEventsInfo)+7) = {'acceleration'};
-
-
+        colnames = dlc.Properties.VariableNames;
+        for i = 1:length(colnames)
+            regLabels(length(allEventsInfo)+i) = colnames(i);
+        end
 
         disp('Setup Design Matrix - Regressor labels done')
 
         %% Preprocessing - Grouping regressors for later cross-validation
         %For now only include behavior and motion energy
 
-        regGroups = {'BehavioralEvents' 'Movements'};
-        %regGroups = {'BehavioralEvents' 'block' 'Movements'};
+        regGroups = {'BehavioralEvents' 'VisualField' 'Movements'};
         regGroups{2,1} = behavEventNames';
-        %regGroups{2,2} = behavEventNames(length(behavEventNames)-3+1:end)';
-        regGroups{2,2} = regLabels(length(behavEventNames)+1:end);
+        regGroups{2,2} = regLabels([29,34:37]);
+        regGroups{2,3} = regLabels([27,28,30:33,38:length(regLabels)]);
 
         disp('Preprocessing - Grouping regressors for later cross-validation done')
 
@@ -291,9 +280,7 @@ for s =session_range(6:end) %1:length(sessions)
         disp('Setup Design Matrix - Movements done')
 
         %% Deal with Nans in the behavior data
-        %I.e. moments with undefined behaviors.
-        % Question: should i remove timepoints where both the partner and the
-        % subject have undefined behaviors? only one of the two?
+        %I.e. moments with undefined behaviors or no movement tracking
 
         %Get missing data (from deeplabcut)
         [nanrow, nancol]=find(isnan(mvmt_final));
@@ -474,7 +461,7 @@ for s =session_range(6:end) %1:length(sessions)
         [Vfull, fullBeta, ~, fullIdx, fullRidge, fullLabels] = log_crossValModel(fullR_orthog, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
         Vfull = Vfull';
         CV_ResultsFull  = modelCorr(Vc,Vfull); %compute model results
-        RsqFull(s, chan) = CV_ResultsFull.r_value
+        RsqFull(s, chan) = CV_ResultsFull.r_value.^2
         toc
 
         %% Sub_models: (1) regressor groups cvR^2 (shuffle all regressors other than the ones of interest, full contribution)
@@ -510,7 +497,7 @@ for s =session_range(6:end) %1:length(sessions)
             [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx, regLabels, opts.folds);
 
             CV_Results_full(group) =  modelCorr(Vc,V');
-            Rsq_full{chan}(s, group) =CV_Results_full(group).r_value %compute explained variance
+            Rsq_full{chan}(s, group) =CV_Results_full(group).r_value.^2 %compute explained variance
 
             disp(['Full contribution model for group' num2str(group) ' cross validation done'])
             regGroups{3,group}=Rsq_full{chan}(s, group);
@@ -538,7 +525,7 @@ for s =session_range(6:end) %1:length(sessions)
             [V, Beta, R, Idx, Ridge, Labels] = crossValModel(fullR, Vc, regLabels, regIdx_orthog, regLabels, opts.folds);
 
             CV_Results_unique(group) =  modelCorr(Vc,V');
-            Rsq_unique{chan}(s, group) =RsqFull(s, chan)-CV_Results_unique(group).r_value %compute explained variance
+            Rsq_unique{chan}(s, group) =abs(RsqFull(s, chan)-CV_Results_unique(group).r_value.^2) %compute explained variance
 
             disp(['Unique contribution model for group' num2str(group) ' cross validation done'])
             regGroups{4,group}=Rsq_unique{chan}(s, group);
@@ -546,18 +533,21 @@ for s =session_range(6:end) %1:length(sessions)
 
         end
 
+        name=sessions(s).name;
+        regGroupSessions(s).name = name;
+        regGroupSessions(s).Results = regGroups;
+
         %%%%%%%%%%%%%%%%%%%
         %%% Save output %%%
         %%%%%%%%%%%%%%%%%%%
 
-        save(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults.mat'], 'Rsq_unique','Rsq_full', 'RsqFull')
+        save(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults_v2_04.mat'],'regGroupSessions', 'Rsq_unique','Rsq_full', 'RsqFull')
 
 %         output = cell2table(regGroups(3:size(regGroups,1),groups_of_interest),'VariableNames',regGroups(1,groups_of_interest),...
 %             'RowNames',{'Full (cvR^2)','Unique (dR^2)'});
 %         output.Full = [RsqFull(s, chan);NaN;];
 %         writetable(output,[savePath 'RidgeRegression_results.csv'],'WriteRowNames',true); %save some results
 
-        chan=chan+1;
     %end %end of channel for loop
 
     disp('')
@@ -573,26 +563,30 @@ end %end of session for loop
 
 %% Plot some results
 
-load(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults.mat'])
+%load(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults_v2.mat'])
 
 figure; hold on
 subplot(1,2,1)
-data = [Rsq_full{1,1}(a_sessions,1), -Rsq_unique{1,1}(a_sessions,1), Rsq_full{1,1}(a_sessions,2), -Rsq_unique{1,1}(a_sessions,2), RsqFull(a_sessions,1)];
+data = [Rsq_full{1,1}(a_sessions,1), -Rsq_unique{1,1}(a_sessions,1),...
+    Rsq_full{1,1}(a_sessions,2), -Rsq_unique{1,1}(a_sessions,2), ...
+    Rsq_full{1,1}(a_sessions,3), -Rsq_unique{1,1}(a_sessions,3)];
 boxplot(data, 'Symbol','o','OutlierSize',4)
 yline(0,'LineStyle','--')
-ylim([-0.3 0.6])
-xticks([1,3,5]); xticklabels({'Behavior','Movements & FOV','Full'})
+ylim([-0.3 0.4])
+xticks([1,3,5,7]); xticklabels({'Behavior','FOV','Movements'})
 grid on
 title('Monkey A')
 
 subplot(1,2,2)
-data = [Rsq_full{1,1}(h_sessions,1), -Rsq_unique{1,1}(h_sessions,1), Rsq_full{1,1}(h_sessions,2), -Rsq_unique{1,1}(h_sessions,2), RsqFull(h_sessions,1)];
+data = [Rsq_full{1,1}(h_sessions,1), -Rsq_unique{1,1}(h_sessions,1),...
+    Rsq_full{1,1}(h_sessions,2), -Rsq_unique{1,1}(h_sessions,2), ...
+    Rsq_full{1,1}(h_sessions,3), -Rsq_unique{1,1}(h_sessions,3)];
 boxplot(data, 'Symbol','o','OutlierSize',4)
 yline(0,'LineStyle','--')
-ylim([-0.3 0.6])
-xticks([1,3,5]); xticklabels({'Behavior','Movements & FOV','Full'})
+ylim([-0.3 0.4])
+xticks([1,3,5,7]); xticklabels({'Behavior','FOV','Movements'})
 grid on
 title('Monkey H')
 
 cd('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/')
-saveas(gcf,'RidgeRegressionResults.pdf')
+saveas(gcf,'RidgeRegressionResults_c04.pdf')

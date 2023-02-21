@@ -27,7 +27,8 @@ isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated
 smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
 simplify=0;
-agg_precedence =1;
+threat_precedence =1;
+exclude_sq = 0;
 
 %Select session range:
 if with_partner ==1
@@ -62,13 +63,14 @@ for s =session_range %1:length(sessions)
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
             reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
             log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence,exclude_sq );
     end
+
 
     cd(filePath)
 
     %Load DLC
-    dlc = readtable('mvmt_data.csv');% Load DLC key point data
+    dlc = readtable('mvmt_data_dlc.csv');% Load DLC key point data
     length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
 
     
@@ -123,9 +125,12 @@ for s =session_range %1:length(sessions)
     idx_to_keep = setdiff(1:length(lbls), unique(nanrow));
 
     %Remove missing data
-    lbls_final = lbls;%(idx_to_keep);
+    lbls_numerical = lbls;%(idx_to_keep);
+    lbls_string = behav_categ(lbls_numerical);
     mvmt_final = mvmt;%(idx_to_keep,:);
-    block_final = blocks;%(idx_to_keep);
+    block_numerical = blocks;%(idx_to_keep);
+    block_id={"female","male","alone"};
+    block_string = block_id(block_numerical);
 
 
     %Extract data table for Seb plotting
@@ -136,7 +141,9 @@ for s =session_range %1:length(sessions)
     head_orientation_dlc = mvmt_final(:,5);
     dist_traveled = mvmt_final(:,6);
     acceleration = mvmt_final(:,7);
-    predictors_to_save{sesh} = table(lbls_final, block_final, toplogger_x, toplogger_y,...
+
+    predictors_to_save{sesh} = table(lbls_string',lbls_numerical,block_string', block_numerical, ...
+        toplogger_x, toplogger_y,...
         bottomlogger_x, bottomlogger_y, head_orientation_dlc,...
         dist_traveled, acceleration);
     Response_to_save{sesh}=Spike_rasters_trimmed;
@@ -310,6 +317,8 @@ for s =session_range %1:length(sessions)
 
    
 sesh=sesh+1;
+
+disp(sesh)
 
 end
 

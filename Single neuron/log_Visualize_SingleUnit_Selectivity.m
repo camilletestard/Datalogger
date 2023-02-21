@@ -20,7 +20,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp = 1; temp_resolution = 10;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -71,16 +71,54 @@ for s =session_range %1:length(sessions)
         behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
 
         %Set colormap
-        Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.3 0.7 1];[0 0.7 0];[1 0 1];[0 1 1];...
-            [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
-            [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-            [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.5 0.5 0.5]];
+        %uisetcolor([0.6 0.8 1])
+        Cmap = [[1 0 0];...%Aggression; red
+            [1 0.4 0.1];...%Approach; dark orange
+            [0 0 0];...%But sniff; NA
+            [0.3 0.7 1];...%Drinking; light blue
+            [0 0.7 0];...%Foraging; dark green
+            [1 0 1];...%Groom sollicitation; magenta
+            [0 1 1];...%Groom partner; cyan
+            [0 0 1];...%Getting groomed; dark blue
+            [0.8 0 0];...%Threat to partner; dark red
+            [1 0 0];...%Threat to subject; red
+            [0.9 0.9 0];...%leave; dark yellow
+            [0 0 0];...%Lipsmack
+            [0.2 0.9 0.76];...%Masturbating; turquoise
+            [0.7 0 1];...%Mounting; light purple
+            [0.9 0.5 0];...%Other monkeys vocalize; orange
+            [1 0.8 0.1];...%Travel; yellow orange
+            [0 0 0];...%Proximity; NA
+            [0 0 0];...%Rowdy room; NA
+            [0.6314 0.5059 0.0118];...%Scratch; maroon
+            [0.5 0.2 0.5];...%Self-groom; dark purple
+            [ 1 0.07 0.65];...%Submission; dark pink
+            [0 0.4 0.5];...%Vocalzation; blue green
+            [0 0 0];...%Yawning; NA
+            [0.8 0.8 0.8]];%Rest; grey
 
-
+        %Exclude axctivity at the very beginning and very end of the
+        %session
         session_with_buffer = [250*temp_resolution:size(Spike_count_raster,1)-250*temp_resolution];
+        activity_all = Spike_count_raster(session_with_buffer,:)';
+        activity_vlpfc = Spike_count_raster(session_with_buffer,strcmp(brain_label,'TEO'))';
+        activity_teo = Spike_count_raster(session_with_buffer,strcmp(brain_label,'vlPFC'))';
 
-        figure; imagesc(Spike_count_raster(session_with_buffer,:)'); xline(block_times.start_time(2),'LineWidth',2); xline(block_times.start_time(3),'LineWidth',2); colorbar; caxis([-2 2])
-        figure; imagesc(behavior_labels(session_with_buffer,:)'); xline(block_times.start_time(2),'LineWidth',4); xline(block_times.start_time(3),'LineWidth',4);colormap(Cmap); colorbar
+        %Sort activity using rastermap.
+        [isort1_all, isort2_all, amap_all] = mapTmap(activity_all); %all units considered
+        [isort1_teo, isort2_teo, amap_teo] = mapTmap(activity_teo); %just teo units
+        [isort1_vlpfc, isort2_vlpfc, amap_vlpfc] = mapTmap(activity_vlpfc); %just vlpfc units
+        sorted_activity_all = activity_all(isort1_all,:);
+        sorted_activity_byArea = [activity_vlpfc(isort1_vlpfc,:); activity_teo(isort1_teo,:)];
+
+        figure; imagesc(amap_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
+        figure; imagesc(sorted_activity_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
+        
+        figure; imagesc([amap_vlpfc;amap_teo]); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2,'LineStyle','-')
+        figure; imagesc(sorted_activity_byArea); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2)
+
+        figure; imagesc(Spike_count_raster(session_with_buffer,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
+        figure; imagesc(behavior_labels(session_with_buffer,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4);colormap(Cmap); colorbar
 
         y=mean(Spike_count_raster(session_with_buffer,:)');
         y_std=std(Spike_count_raster(session_with_buffer,:)');

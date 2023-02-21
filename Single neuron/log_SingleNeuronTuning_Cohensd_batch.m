@@ -21,7 +21,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 plot_toggle = 0; %0: suppress plotting; 1:plot
 select_behav=0; %If only plot heatmap for desired behavior
 with_partner = 0; %need partner info? 0: No; 1:yes
-temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
+temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered. vlPFC, TEO or all
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
@@ -30,10 +30,11 @@ cohend_cutoff=0.3; p_cutoff=0.01;%Set "significance" thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want a null response by simulating a behavioral sequence with similar statistics
-agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+threat_precedence=1; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+exclude_sq = 1;
 
 %Initialize session batch variables:
-n_behav = 28;
+n_behav = 23;
 mean_cohend_per_behav = nan(length(sessions), n_behav);
 median_cohend_per_behav = nan(length(sessions), n_behav);
 std_cohend_per_behav = nan(length(sessions), n_behav);
@@ -45,13 +46,13 @@ n_per_behav = nan(length(sessions),n_behav);
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
+    a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=1;
+s=1;    
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -69,7 +70,7 @@ for s =session_range %1:length(sessions)
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
             reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
             log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma,agg_precedence);
+            is_mac, with_NC, isolatedOnly, smooth, sigma,threat_precedence, exclude_sq);
     end
 
     disp('Data Loaded')
@@ -81,11 +82,7 @@ for s =session_range %1:length(sessions)
 
     %Simplify labels
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
-    %behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
-    %behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
-    behavior_labels(behavior_labels==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-    behavior_labels(behavior_labels==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
-
+ 
     %Exclude behavior of others
     behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=length(behav_categ)+1;
     behavior_labels(behavior_labels==find(behav_categ=="Other monkeys vocalize"))=length(behav_categ)+1;
@@ -137,6 +134,7 @@ for s =session_range %1:length(sessions)
 
             if n_per_behav(s,b)>min_occurrence % if behavior occurs at least during 'min_occurrence' time points
 
+                %For shuffled control
                 if length(idx)<length(idx_rest)% sample the same number of rest time points 
                     idx_rand = randsample(idx_rest,length(idx));
                 else
@@ -209,6 +207,8 @@ for s =session_range %1:length(sessions)
         figure; %set(gcf,'Position',[150 250 1000 500]);
         [nanrow nancol]=find(~isnan(cohend_sorted)); nancol = unique(nancol);
         order_units = [find(strcmp(brain_label,"TEO")), find(strcmp(brain_label,"vlPFC"))];
+%         ops.iPC=min(size(cohend_sorted));
+%         order_units = mapTmap(cohend_sorted);
         %unit_lim = length(find(strcmp(brain_label,"TEO")))+1; yline(unit_lim); %plot the
         %brain area limit
         hp=heatmap(cohend_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
@@ -318,10 +318,13 @@ for s =session_range %1:length(sessions)
 %         saveas(gcf, [savePath '/Distribution_cohend_all_units.png']); pause(2); close all
 
         %Number of behaviors a single neuron is selective for
-        figure; histogram(num_selective_behav_per_neuron{s})
+        figure; hold on; histogram(multiunit_data)
+        histogram(num_selective_behav_per_neuron{s})
+        legend({'Multi-unit','Well-isolated'})
         xlabel('Number of behavior a given neuron is selective to')
         ylabel('Number of neurons')
         title('Distribution of the number of behaviors single units are selective for')
+        set(gca,'FontSize',15);
 %          saveas(gcf, [savePath '/Distribution_number_selective_behavior_per_unit.png']); %pause(2); close all
 
     end
@@ -357,7 +360,10 @@ figure; %set(gcf,'Position',[150 250 1000 500]);
 hp=heatmap(all_sessions_data_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
 ax = gca;
 ax.FontSize = 14;
-saveas(gcf, [savePath '/Cohend_AllSessions.pdf']); close all
+% saveas(gcf, [savePath '/Cohend_AllSessions.pdf']); close all
+
+%Extract deviation from baseline during threat:
+nanmean(abs(all_sessions_data(:,10)));
 
 
 % % % % %Plot mean effect size per behavior across all sessions, separated by monkey

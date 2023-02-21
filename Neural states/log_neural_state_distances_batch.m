@@ -1,6 +1,7 @@
-%% log_umap_visualization_batch
+%% log_neural_state_distances_batch
 % This script applied unsupervised umap on smoothed firing
 % Ref: Connor Meehan, Jonathan Ebrahimian, Wayne Moore, and Stephen Meehan (2022). Uniform Manifold Approximation and Projection (UMAP) (https://www.mathworks.com/matlabcentral/fileexchange/71902), MATLAB Central File Exchange.
+% Sept 2022, C. Testard
 
 %Set session list
 is_mac = 1;
@@ -97,7 +98,6 @@ for s =session_range %1:length(sessions)
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
         %Remove behaviors we're not interested in for now
-        behav = behav(behav~=find(matches(behav_categ,'Proximity')));%excluding proximity which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Scratch')));%excluding scratch which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rowdy Room')));%excluding Rowdy Room which is a source of confusion.
         behav = behav(behav~=find(matches(behav_categ,'Rest')));%excluding rest which is a source of confusion.

@@ -36,7 +36,7 @@ for s =session_range %1:length(sessions)
     % right ear (14:16); left shoulder (17:19); right shoulder(20:22);
     % left elbow (23:25); right elbow (26:28); left wrist (29:31);
     % right wrist (32:34); left hip (35:37); right hip (38:40);
-    % left knee (41:43); right knee (44:46); left ankle (47:49
+    % left knee (41:43); right knee (44:46); left ankle (47:49)
 
     %Note: right ear has a lot of non-overlapping missing data.
 
@@ -96,7 +96,7 @@ for s =session_range %1:length(sessions)
     left_wrist_x=bodypose(:,29);
     left_wrist_y=bodypose(:,30);
     right_wrist_x=bodypose(:,32);
-    right_wrist_x=bodypose(:,33);
+    right_wrist_y=bodypose(:,33);
     left_hip_x=bodypose(:,35);
     left_hip_y=bodypose(:,36);
     right_hip_x=bodypose(:,38);

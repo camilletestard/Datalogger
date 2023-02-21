@@ -39,16 +39,12 @@ simplify=0;%lump similar behavioral categories together to increase sample size.
 agg_precedence=0;
 
 %Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
+session_range = [3:6,11:13,15:16,18]; 
+a_sessions=[3:6]; h_sessions = [11:13,15:16,18];
+%Some sessions have too bad video data to be analyzed.
 
-s=1;
-for s =session_range %1:length(sessions)
+s=15;
+for s =session_range 
 
     %Set path
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
@@ -71,13 +67,13 @@ for s =session_range %1:length(sessions)
                 is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
         end
 
-        %Load DLC
-        dlc = readtable('mvmt_data.csv');% Load DLC key point data
-        length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1) %proportion of full data
+        %Load mvmt data
+        mvmt = readtable('mvmt_data.csv');% Load DLC key point data
+        length(find(sum(isnan(table2array(mvmt)),2)==0))/size(mvmt,1) %proportion of full data
 
         %Trim neural data and behavioral to align with video data
         camera_start_time = behavior_log{strcmp(behavior_log{:,'Behavior'},"Camera Sync"),"start_time_round"};
-        camera_end_time = camera_start_time + size(dlc,1) -1;
+        camera_end_time = camera_start_time + size(mvmt,1) -1;
         
         try 
             Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:camera_end_time);
@@ -85,7 +81,7 @@ for s =session_range %1:length(sessions)
         catch %If camera went on past end of recording (occurs in 2 sessions because of an error at the end)
             Spike_rasters_trimmed = Spike_rasters(:,camera_start_time:end);
             labels_trimmed = labels(camera_start_time:end,:);
-            dlc = dlc(1:size(labels_trimmed,1),:);
+            mvmt = mvmt(1:size(labels_trimmed,1),:);
         end
 
         disp('Data Loaded')
@@ -103,7 +99,7 @@ for s =session_range %1:length(sessions)
         Spike_rasters_final =  zscore(Spike_rasters_trimmed,0,2)';
 
         %Combine mvmt predictors
-        mvmt = table2array(dlc);
+        mvmt = table2array(mvmt);
 
         %Get missing data (from deeplabcut)
         [nanrow, nancol]=find(isnan(mvmt)); length(unique(nanrow))/length(lbls)
@@ -115,6 +111,7 @@ for s =session_range %1:length(sessions)
         Y = Spike_rasters_final;
         Y_final  = Y(idx_to_keep,:);
         lbls_final = removecats(lbls(idx_to_keep));
+        lbls_final_notCateg = dummyvar(lbls_final);
         mvmt_final = mvmt(idx_to_keep,:);
 
         %% Run regression
@@ -123,26 +120,9 @@ for s =session_range %1:length(sessions)
 
         for unit = 1:size(Y_final,2) %for now one unit at a time.
 
-            %unroll mvmt predictors (format for the multilinear regression)
-            toplogger_x = mvmt_final(:,1);
-            toplogger_y = mvmt_final(:,2);
-            bottomlogger_x = mvmt_final(:,3);
-            bottomlogger_y = mvmt_final(:,4);
-            head_orientation_dlc = mvmt_final(:,5);
-            dist_traveled = mvmt_final(:,6);
-            acceleration = mvmt_final(:,7);
 
-            %Set up predictor matrix
-            X_mvmt = table(toplogger_x, toplogger_y,...
-                bottomlogger_x, bottomlogger_y, head_orientation_dlc,...
-                dist_traveled, acceleration, Y_final(:,unit));
-
-            Results.(['unit' num2str(unit)]) = fitlm(X_mvmt); %run linear model with mvmt only for specific unit
-            Y_residuals{s}(:, unit) = Results.(['unit' num2str(unit)]).Residuals.Raw;
-
-            X_lbls = table(lbls_final, Y_final(:,unit));
-            ResultsBehav.(['unit' num2str(unit)]) = fitlm(X_lbls); %run linear model with behavior lbls only for specific unit
-            Y_residuals_behav{s}(:, unit) = ResultsBehav.(['unit' num2str(unit)]).Residuals.Raw;
+            [~, ~, Y_residuals{s}(:, unit)] =regress(Y_final(:,unit), mvmt_final);
+            [~, ~, Y_residuals_behav{s}(:, unit)] =regress(Y_final(:,unit), lbls_final_notCateg);
 
             if mod(unit,10)==0
                 disp(unit)
@@ -150,10 +130,8 @@ for s =session_range %1:length(sessions)
 
         end
 
-        clear Results ResultsBehav
-
-        lbls_not_categ = double(string(lbls_final));
-        behavior_labels = lbls_not_categ; %Extract unique behavior info for subject
+        lbls = double(string(lbls_final));
+        behavior_labels = lbls; %Extract unique behavior info for subject
         behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
 
 
@@ -302,7 +280,7 @@ for s =session_range %1:length(sessions)
     ylim([0 1]); ylabel('Decoding accuracy')
     ax = gca;
     ax.FontSize = 14;
-    saveas(gcf, 'SVM_regressing_outMvmt.pdf')
+    %saveas(gcf, 'SVM_regressing_outMvmt.pdf')
 
 end %End of session for loop
 
@@ -314,16 +292,29 @@ save('SVM_results_mvmtControlled_rawRes.mat', "mean_hitrate","sd_hitrate","mean_
 load('SVM_results_mvmtControlled_rawRes.mat')
 
 
-figure; hold on
 data = cell2mat(mean_hitrate');
 data_shuffle = cell2mat(mean_hitrate_shuffled');
-bp = bar([mean(data(:,:)), mean(data_shuffle(:,1))],'FaceAlpha',0.2);
+data_relative(:,1) = data(:,2)./data(:,1);
+data_relative(:,2) = data(:,3)./data(:,1);
+data_relative(:,3) = data_shuffle(:,1)./data(:,1);
 
+%Relative to full
+figure; hold on
+bp = bar(mean(data_relative),'FaceAlpha',0.2);
+sp1 = scatter(ones(size(data_relative,1))*1,data_relative(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_relative,1))*2,data_relative(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_relative,1))*3,data_relative(:,3), 'filled','g');
+ylabel('Accuracy relative to full model'); ylim([0 1])
+xticks([1:3]); xticklabels({'Regress out mvmt', 'Regress out behavior', 'Chance'}); xlim([0.25 3.75])
+ax = gca;
+ax.FontSize = 16;
+
+figure; hold on
+bp = bar([mean(data(:,:)), mean(data_shuffle(:,1))],'FaceAlpha',0.2);
 sp1 = scatter(ones(size(data,1))*1,data(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1))*2,data(:,2), 'filled','r');
 sp1 = scatter(ones(size(data,1))*3,data(:,3), 'filled','y');
 sp1 = scatter(ones(size(data,1))*4,data_shuffle(:,1), 'filled','g');
-
 ylabel('Decoding Accuracy'); ylim([0 1])
 xticks([1:4]); xticklabels({'Real', 'Regress out mvmt', 'Regress out behavior', 'Chance'}); xlim([0.25 4.75])
 ax = gca;

@@ -12,14 +12,14 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:6,11:13,15:16];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
+temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
@@ -31,7 +31,7 @@ null=0;%Set whether we want the null
 agg_precedence =1;
 
 %Initialize session batch variables:
-n_behav = 28;
+n_behav = 24;
 mean_cohend_per_behav = nan(length(sessions), n_behav);
 median_cohend_per_behav = nan(length(sessions), n_behav);
 std_cohend_per_behav = nan(length(sessions), n_behav);
@@ -49,7 +49,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16];
 end
 
-s=18;
+s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -82,7 +82,7 @@ for s =session_range %1:length(sessions)
 
     if null
         %Simulate fake labels
-        [sim_behav] = GenSimBehavior(behavior_labels,behav_categ, temp_resolution);
+        [sim_behav] = GenSimBehavior(behavior_labels,behav_categ, temp_resolution, plot_toggle);
         behavior_labels = sim_behav;
     end
 

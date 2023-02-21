@@ -13,13 +13,13 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16];
-session_range_with_partner=[1:6,11:13,15:16];
+session_range_no_partner=[1:6,11:13,15:16,18];
+session_range_with_partner=[1:6,11:13,15:16,18];
 
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 1;
+temp = 1; temp_resolution = 10;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -30,15 +30,15 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
-agg_precedence =0;
+threat_precedence =0;
 
 %Select session range:
 if with_partner ==1
     session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 else
     session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
+    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
 s=1;
@@ -62,7 +62,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence);
         end
 
         disp('Data Loaded')
@@ -114,7 +114,7 @@ for s =session_range %1:length(sessions)
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 100;
+        min_occurrences = 30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
         % Remove behaviors that are ill-defined
@@ -277,8 +277,8 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
-%load('SVM_results_subjectBehav.mat')
+save('SVM_results_subjectBehav_100msec.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+load('SVM_results_subjectBehav.mat')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -304,7 +304,7 @@ xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;
 
-saveas(gcf,['SVM_results_subjectBehav.pdf'])
+saveas(gcf,['SVM_results_subjectBehav_100msec.pdf'])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

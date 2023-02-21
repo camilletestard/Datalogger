@@ -12,8 +12,6 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
-%session_range_no_partner=[1:3,11:13];
-%session_range_no_partner=[4:6,15:16,18];
 session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
@@ -28,9 +26,10 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
 simplify=1; %lump similar behavioral categories together
-agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 time_before_threat = 30*temp_resolution;
 time_after_threat = 60*temp_resolution;
+include_sq=0;
 
 %Select session range:
 if with_partner ==1
@@ -59,13 +58,13 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, include_sq);
         end
     
         disp('Data Loaded')
     
         %Raw data
-        Spike_count_raster = Spike_rasters';
+        Spike_count_raster = zscore(Spike_rasters');
         %Extract behavior labels
         behavior_labels = cell2mat({labels{:,3}}');
         %Extract block labels
@@ -73,33 +72,42 @@ for s =session_range %1:length(sessions)
 
 
         %% Find threat to subject onset times
-
-        threat_to_subject_onset = behavior_log.start_time_round(find(strcmp(behavior_log.Behavior, "HIS")));
-
-        e=1; e2=1;
-        for event = 1:length(threat_to_subject_onset)
-
-            idx = threat_to_subject_onset(event)-time_before_threat : threat_to_subject_onset(event)+time_after_threat;
-
-            Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-            behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
-            block_labels_final =  block_labels(idx);
-           
-            mean_response{s}(event,:)=mean(Spike_count_raster_final,2);
-            std_response{s}(event,:)=std(Spike_count_raster_final,[],2);
-            block{s}(event)=unique(block_labels_final);
-           
-        end
     
-        figure; hold on; set(gcf,'Position',[150 250 700 300]); 
-        plot(mean_response{s}(block{s}==1,:)','Color',[0.9 0.7 0.12],'LineWidth',2)
-        plot(mean_response{s}(block{s}==0,:)','Color',[0.5 0 0],'LineWidth',2)
-        xline(time_before_threat+2,'LineStyle','--')
-        ylabel('Mean firing rate (Hz)')
-        xlabel('Time')
-        legend('Threat when paired','','Threat when alone','','Threat onset')
-        set(gca,'FontSize',16); 
-        title(['session: ' sessions(s).name])
+            threat_to_subject_onset = behavior_log.start_time_round(find(strcmp(behavior_log.Behavior, "HIS")));
+            threat_to_partner_onset = behavior_log.start_time_round(find(strcmp(behavior_log.Behavior, "HIP")));
+    
+            %For threat to subject
+            for event = 1:length(threat_to_subject_onset)
+    
+                idx = threat_to_subject_onset(event)-time_before_threat : threat_to_subject_onset(event)+time_after_threat;
+    
+                Spike_count_raster_subject{event} = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+                block(event) =  unique(block_labels(idx));
+               
+            end
+            mean_response_subject = mean(cat(3,Spike_count_raster_subject{:}),3);
+            figure; plot(mean_response_subject(:,1))
+    
+            %For threat to partner
+            for event = 1:length(threat_to_partner_onset)
+    
+                idx = threat_to_partner_onset(event)-time_before_threat : threat_to_partner_onset(event)+time_after_threat;
+    
+                Spike_count_raster_partner{event} = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+                block(event) =  unique(block_labels(idx));
+               
+            end
+
+
+%         figure; hold on; set(gcf,'Position',[150 250 700 300]); 
+%         plot(mean_response{s}(block==1,:)','Color',[0.9 0.7 0.12],'LineWidth',2)
+%         plot(mean_response{s}(block==0,:)','Color',[0.5 0 0],'LineWidth',2)
+%         xline(time_before_threat+2,'LineStyle','--')
+%         ylabel('Mean firing rate (Hz)')
+%         xlabel('Time')
+%         legend('Threat when paired','','Threat when alone','','Threat onset')
+%         set(gca,'FontSize',16); 
+%         title(['session: ' sessions(s).name])
 %     
 %         cd(savePath)
 %         saveas(gcf,'Distance threat paired vs. alone.pdf')

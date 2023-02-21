@@ -31,7 +31,7 @@ sigma = 1;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
 simplify=1; %lump similar behavioral categories together
 min_occurrence = 15;
-agg_precedence = 1;
+threat_precedence = 1;
 
 %Select session range:
 if with_partner ==1
@@ -62,7 +62,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence);
         end
 
         disp('Data Loaded')
