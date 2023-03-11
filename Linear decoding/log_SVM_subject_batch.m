@@ -19,7 +19,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp = 1; temp_resolution = 10;
+temp = 1; temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
@@ -31,6 +31,7 @@ sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
 threat_precedence =0;
+exclude_sq=1;
 
 %Select session range:
 if with_partner ==1
@@ -62,7 +63,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence);
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
         end
 
         disp('Data Loaded')
@@ -277,7 +278,7 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
-save('SVM_results_subjectBehav_100msec.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 load('SVM_results_subjectBehav.mat')
 
 
@@ -293,9 +294,9 @@ sp1 = scatter(ones(size(data,1))*0.77,data(:,1), 'filled','b');
 sp1 = scatter(ones(size(data,1)),data(:,2), 'filled','r');
 sp1 = scatter(ones(size(data,1))*1.22,data(:,3), 'filled','y');
 
-sp1 = scatter(ones(size(data,1))*1.77,data_shuffle(:,1), 'filled','b');
-sp1 = scatter(ones(size(data,1))*2,data_shuffle(:,2), 'filled','r');
-sp1 = scatter(ones(size(data,1))*2.22,data_shuffle(:,3), 'filled','y');
+sp1 = scatter(ones(size(data_shuffle,1))*1.77,data_shuffle(:,1), 'filled','b');
+sp1 = scatter(ones(size(data_shuffle,1))*2,data_shuffle(:,2), 'filled','r');
+sp1 = scatter(ones(size(data_shuffle,1))*2.22,data_shuffle(:,3), 'filled','y');
 
 legend(bp,{'vlPFC','TEO','all'},'Location','best')
 
@@ -304,7 +305,7 @@ xticks([1 2]); xticklabels({'Real', 'Shuffled'}); xlim([0.25 2.75])
 ax = gca;
 ax.FontSize = 16;
 
-saveas(gcf,['SVM_results_subjectBehav_100msec.pdf'])
+saveas(gcf,['SVM_results_subjectBehav.pdf'])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

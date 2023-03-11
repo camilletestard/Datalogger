@@ -30,8 +30,9 @@ cohend_cutoff=0.3; p_cutoff=0.001;%Set "significance" thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want a null response by simulating a behavioral sequence with similar statistics
-agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
-n_iter=10;
+threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+n_iter=50;
+exclude_sq = 1;
 
 % %Initialize session batch variables:
 % n_behav = length(behav_categ)-1;
@@ -70,7 +71,7 @@ for s =session_range %1:length(sessions)
         [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
             reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
             log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma,agg_precedence);
+            is_mac, with_NC, isolatedOnly, smooth, sigma,threat_precedence, exclude_sq);
     end
 
     disp('Data Loaded')

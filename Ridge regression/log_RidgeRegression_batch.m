@@ -24,8 +24,10 @@ isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated
 smooth= 1; %smooth the data
 sigma = 1*temp_resolution; %set the smoothing window size (sigma)
 simplify=0;
-agg_precedence =1;
+threat_precedence =0;
+exclude_sq=0;
 is_plot=0;
+c_cutoff = 0.2;
 
 %Select session range:
 session_range = [3:6,11:13,15:16,18]; 
@@ -33,6 +35,7 @@ a_sessions=[3:6]; h_sessions = [11:13,15:16,18];
 %Some sessions have too bad video data to be analyzed.
 
 regGroupSessions=struct;
+
 s=15;
 for s =session_range %1:length(sessions)
     %Set path
@@ -54,18 +57,11 @@ for s =session_range %1:length(sessions)
 
 
         %% Get data with specified temporal resolution and channels
-        %Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
-        end
+       
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
         cd(filePath)
         %
@@ -87,7 +83,7 @@ for s =session_range %1:length(sessions)
         %before using model
 
         %Load DLC
-        dlc = readtable('mvmt_data_c04.csv');% Load DLC key point data
+        dlc = readtable(['mvmt_data_c' num2str(c_cutoff) '.csv']);% Load DLC key point data
         length(find(sum(isnan(table2array(dlc)),2)==0))/size(dlc,1); %proportion of full data
 
 
@@ -541,7 +537,7 @@ for s =session_range %1:length(sessions)
         %%% Save output %%%
         %%%%%%%%%%%%%%%%%%%
 
-        save(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults_v2_04.mat'],'regGroupSessions', 'Rsq_unique','Rsq_full', 'RsqFull')
+        save(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/ridgeRegResults_c' num2str(c_cutoff) '.mat'],'regGroupSessions', 'Rsq_unique','Rsq_full', 'RsqFull')
 
 %         output = cell2table(regGroups(3:size(regGroups,1),groups_of_interest),'VariableNames',regGroups(1,groups_of_interest),...
 %             'RowNames',{'Full (cvR^2)','Unique (dR^2)'});
@@ -589,4 +585,4 @@ grid on
 title('Monkey H')
 
 cd('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/')
-saveas(gcf,'RidgeRegressionResults_c04.pdf')
+saveas(gcf,['RidgeRegressionResults_c' num2str(c_cutoff) '.pdf'])

@@ -16,7 +16,8 @@ sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 %Select session range:
 session_range = [1:6,11:13,15:16,18];
 
-c_cutoff = 0.2;
+c_cutoff = 0.7;
+prop_missing_data = nan(1,max(session_range));
 
 s=3;
 for s =session_range %1:length(sessions)
@@ -57,15 +58,18 @@ for s =session_range %1:length(sessions)
 
     %Combine left and right videos for logger position
     %Default to left camera, and if data is missing replace with right camera data (both monkeys spent more time in the top left quad). This is for Hooke_2021-08-19 because Hooke spent more time in the
-    %left quad on this session. 
+    %left quad on this session.
     toplogger = tdl_logger_top;
     bottomlogger = tdl_logger_bottom;
     idx_to_replace = tdl_logger_top(:,3)<c_cutoff; %Find indices where certainty about location is low in left camera
     toplogger(idx_to_replace,:) = tdr_logger_top(idx_to_replace,:); %replace those indices with right camera
     bottomlogger(idx_to_replace,:) = tdr_logger_bottom(idx_to_replace,:);
 
-%     %Check visibility of top logger
-%     top_visible = nan(1,size(tdl_logger_top,1));
+    invalidpoints_logger = unique([find(isnan(toplogger(:,1))); find(isnan(bottomlogger(:,1)))]);
+    prop_missing_data(s) = length(invalidpoints_logger)/size(toplogger,1);
+
+    %     %Check visibility of top logger
+    %     top_visible = nan(1,size(tdl_logger_top,1));
 %     top_visible(toplogger(:,3)>c_cutoff)=1.4;
 %     figure; hold on; ylim([1.3 1.7])
 %     plot(top_visible_tdl,'LineWidth',6)
@@ -127,7 +131,6 @@ for s =session_range %1:length(sessions)
 
 end
 
-prop_missing_data(prop_missing_data==0)=nan;
 nanmean(prop_missing_data)
 nanstd(prop_missing_data)
 

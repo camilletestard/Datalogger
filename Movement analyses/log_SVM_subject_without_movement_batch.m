@@ -13,14 +13,10 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
 
 %%%%%%%%%%%%%%%%%%%%
 % ISSUE WITH SESSION 11. Camera was stopped after the recording. Adjusted
 % the code to allow for that to happen.
-
-% Other weird observation is that decoding 
 
 
 %Set parameters
@@ -36,7 +32,9 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma) to 1sec
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
-agg_precedence=0;
+threat_precedence =0;
+exclude_sq=1;
+c_cutoff = 0.6;
 
 %Select session range:
 session_range = [3:6,11:13,15:16,18]; 
@@ -55,20 +53,13 @@ for s =session_range
 
 
         %% Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
-        end
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
         %Load mvmt data
-        mvmt = readtable('mvmt_data.csv');% Load DLC key point data
+        mvmt = readtable(['mvmt_data_c' num2str(c_cutoff) '.csv']);% Load DLC key point data
         length(find(sum(isnan(table2array(mvmt)),2)==0))/size(mvmt,1) %proportion of full data
 
         %Trim neural data and behavioral to align with video data
@@ -154,7 +145,7 @@ for s =session_range
         behav_freq_table = behav_freq_table(behav_freq_table(:,1)~=length(behav_categ),:); % Discard 0 (non-defined behaviors)
 
         % Select behaviors with a minimum # of occurrences
-        min_occurrences = 100;
+        min_occurrences = 30;
         behav = behav_freq_table(behav_freq_table(:,2)>=min_occurrences,1);%Get behaviors with a min number of occurrences
 
         % Remove behaviors that are ill-defined or not characterized well enough
@@ -224,7 +215,7 @@ for s =session_range
                 Labels = labels_temp;
 
                 num_trials = hist(Labels,numericLabels); %number of trials in each class
-                minNumTrials = 100;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
+                minNumTrials = 30;%min(num_trials); %30; %find the minimum one %CT change to have 30 of each class
                 chosen_trials = [];
                 for i = 1:NumOfClasses %for each class
                     idx = find(Labels == numericLabels(i)); %find indexes of trials belonging to this class
@@ -267,20 +258,20 @@ for s =session_range
 
     %end %end of channel for loop
 
-    cd(savePath)
-
-    figure; hold on
-    y = [mean_hitrate{s} mean(mean_hitrate_shuffled{s})];
-    bar(y)
-%     std_dev = [sd_hitrate{s} sd_hitrate_shuffled{s}(1)];
-%     errorbar(y,std_dev,'s','MarkerSize',10)
-    xlim([0.5 4.5]); xticks([1:4])
-    yline(1/length(behav),'LineStyle','--')
-    xticklabels({'Raw firing rate','Regressing out mvmt & FOV','Regressing out behavior','shuffled (chance)'})
-    ylim([0 1]); ylabel('Decoding accuracy')
-    ax = gca;
-    ax.FontSize = 14;
-    %saveas(gcf, 'SVM_regressing_outMvmt.pdf')
+%     cd(savePath)
+% 
+%     figure; hold on
+%     y = [mean_hitrate{s} mean(mean_hitrate_shuffled{s})];
+%     bar(y)
+% %     std_dev = [sd_hitrate{s} sd_hitrate_shuffled{s}(1)];
+% %     errorbar(y,std_dev,'s','MarkerSize',10)
+%     xlim([0.5 4.5]); xticks([1:4])
+%     yline(1/length(behav),'LineStyle','--')
+%     xticklabels({'Raw firing rate','Regressing out mvmt & FOV','Regressing out behavior','shuffled (chance)'})
+%     ylim([0 1]); ylabel('Decoding accuracy')
+%     ax = gca;
+%     ax.FontSize = 14;
+%     %saveas(gcf, 'SVM_regressing_outMvmt.pdf')
 
 end %End of session for loop
 
@@ -288,8 +279,9 @@ end %End of session for loop
 
 %Change savePath for all session results folder:
 cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/Mvmt_results/']);
-save('SVM_results_mvmtControlled_rawRes.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
-load('SVM_results_mvmtControlled_rawRes.mat')
+save(['SVM_results_mvmtControlled_rawRes_c' num2str(c_cutoff) '.mat'], "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
+
+%load(['SVM_results_mvmtControlled_rawRes_c0.2.mat'])
 
 
 data = cell2mat(mean_hitrate');
@@ -308,6 +300,7 @@ ylabel('Accuracy relative to full model'); ylim([0 1])
 xticks([1:3]); xticklabels({'Regress out mvmt', 'Regress out behavior', 'Chance'}); xlim([0.25 3.75])
 ax = gca;
 ax.FontSize = 16;
+saveas(gcf, ['SVM_RegressingOutMvmt_RelativeToFull_c' num2str(c_cutoff) '.pdf'])
 
 figure; hold on
 bp = bar([mean(data(:,:)), mean(data_shuffle(:,1))],'FaceAlpha',0.2);
@@ -319,4 +312,4 @@ ylabel('Decoding Accuracy'); ylim([0 1])
 xticks([1:4]); xticklabels({'Real', 'Regress out mvmt', 'Regress out behavior', 'Chance'}); xlim([0.25 4.75])
 ax = gca;
 ax.FontSize = 16;
-saveas(gcf, 'SVM_regressingOut_Mvmt.pdf')
+saveas(gcf, ['SVM_regressingOut_Mvmt_c' num2str(c_cutoff) '.pdf'])

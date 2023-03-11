@@ -38,7 +38,7 @@ else
     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 end
 
-s=2;
+s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -52,10 +52,17 @@ for s =session_range %1:length(sessions)
 
 
         %% Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
-        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
+        if with_partner ==1
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma);
+        else
+            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
+                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence,exclude_sq);
+        end
 
         disp('Data Loaded')
 
@@ -67,14 +74,10 @@ for s =session_range %1:length(sessions)
 
         %Extract behavior labels and frequency
         behavior_labels = cell2mat({labels{:,3}}');
-        behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %Make proximity equal to rest
-        
-        %Lump all travel together
-        behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel");
-        behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel");
-
+       
         %Extract block labels
         block_labels = cell2mat({labels{:,12}}');
+        block_categ={"F","M","Alone"};
         
         % Select behaviors
 
@@ -107,7 +110,7 @@ for s =session_range %1:length(sessions)
         Spike_count_raster_final = Spike_count_raster;%(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels;%(idx);%Same as above but in behavior labels
         block_labels_final =  block_labels;%(idx);
-     
+ 
         if null
             %Simulate fake labels
             [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution);
@@ -126,7 +129,21 @@ for s =session_range %1:length(sessions)
 
         channel = char(channel_flag);
 
-        %Set colormap
+
+        %% Run Kmeans clustering
+
+        eva = evalclusters(umap_result{s,chan},'kmeans','CalinskiHarabasz','KList',3:20);
+%         eva = evalclusters(umap_result{s,chan},'kmeans','DaviesBouldin','KList',10:60)
+%         eva = evalclusters(umap_result{s,chan},'kmeans','gap','KList',10:60)
+%         eva = evalclusters(umap_result{s,chan},'kmeans','silhouette','KList',10:60)
+        n_clusters = eva.OptimalK; %30
+        idx_cluster = kmeans(umap_result{s,chan},n_clusters);
+
+        gm = fitgmdist(umap_result{s,chan},n_clusters);
+        idx_cluster = cluster(gm,umap_result{s,chan});
+
+
+        %% Set colormap
         Cmap = [[1 0 0];...%Aggression; red
             [1 0.4 0.1];...%Approach; dark orange
             [0 0 0];...%But sniff; NA
@@ -145,8 +162,8 @@ for s =session_range %1:length(sessions)
             [1 0.8 0.1];...%Travel; yellow orange
             [0 0 0];...%Proximity; NA
             [0 0 0];...%Rowdy room; NA
-            [1 0 0];...%SP; NA
-            [1 0 0];...%SS; NA
+            [1 0 0];...%SP; red
+            [1 0 0];...%SS; red
             [0.6314 0.5059 0.0118];...%Scratch; maroon
             [0.5 0.2 0.5];...%Self-groom; dark purple
             [ 1 0.07 0.65];...%Submission; dark pink
@@ -158,6 +175,8 @@ for s =session_range %1:length(sessions)
 
         Cmap_time = copper(length(idx));
 
+        Cmap_kmeans = hsv(n_clusters);
+
         mean_activity = int32(round(rescale(mean(Spike_count_raster_final,2)),2)*100); mean_activity(mean_activity==0)=1;
         std_activity = int32(round(rescale(std(Spike_count_raster_final,[],2)),2)*100);std_activity(std_activity==0)=1;
         Cmap_firingRate = jet(double(max(mean_activity)));
@@ -167,10 +186,19 @@ for s =session_range %1:length(sessions)
 
         %% Plot UMAP projection in 3D space
 
-        figure; hold on; set(gcf,'Position',[150 250 1000 500])
+        figure; hold on; set(gcf,'Position',[150 250 1500 500])
+
+%         for i=1:n_clusters
+%             scatter3(umap_result{s,chan}(idx==i,1), umap_result{s,chan}(idx==i,2),umap_result{s,chan}(idx==i,3),8,Cmap_kmeans(i,:),'filled')
+%             xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+%             %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+%             title('Block')
+%             set(gca,'FontSize',12);
+%             pause(2)
+%         end
 
         %Plot UMAP results color-coded by behavior
-        ax1=subplot(1,2,1);
+        ax1=subplot(1,3,1);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap(behavior_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
@@ -181,20 +209,27 @@ for s =session_range %1:length(sessions)
 
 
         %Color-coded by block
-        ax2=subplot(1,2,2);
+        ax2=subplot(1,3,2);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_block(block_labels_final,:),'filled')
         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
         title('Block')
         set(gca,'FontSize',12);
 
+        %Color-coded by kmeans cluster
+        ax3=subplot(1,3,3);
+        scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_kmeans(idx_cluster,:),'filled')
+        xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+        %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+        title('Kmeans cluster')
+        set(gca,'FontSize',12);
 
 %         %Color-coded by time
-%         ax3=subplot(1,3,3);
+%         ax2=subplot(1,2,2);
 %         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_time,'filled')
 %         xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
 %         %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
-%         title('Block')
+%         title('Time')
 %         set(gca,'FontSize',12);
 
 %         %Color-coded by mean activity
@@ -215,9 +250,8 @@ for s =session_range %1:length(sessions)
 % 
 %         %sgtitle([channel ' units, UMAP, ' sessions(s).name])
 
-        hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
+        hlink = linkprop([ax1,ax2, ax3],{'CameraPosition','CameraUpVector'});
         rotate3d on
-        grid on
 
         %savefig([savePath 'Umap_3Dprojection_' channel '.fig'])
         %saveas(gcf,[savePath '/umap_ColorCodedByBlock_' channel 'Units.png'])
@@ -240,7 +274,57 @@ for s =session_range %1:length(sessions)
         %         OptionZ.FrameRate=30;OptionZ.Duration=15;OptionZ.Periodic=true;
         %         CaptureFigVid([-20,10;-380,190],['Umap_3Dprojection_' channel],OptionZ)
 
-        chan=chan+1;
+        %behavior_labels=categorical(behavior_labels);
+
+        behav_mat = zeros(n_clusters, length(behav_categ));
+        for cl = 1:n_clusters
+            
+            cluster_behav = behavior_labels_final(idx_cluster==cl);
+            behav_tabulation = tabulate(cluster_behav); 
+            behav_mat(cl,behav_tabulation(:,1))= behav_tabulation(:,3);
+%             cluster_behav_distr{1,cl}=behav_tabulation{cl}(behav_tabulation{cl}(:,3)~=0,:);
+%             [max_behav, idx_max] =  max(cluster_behav_distr{1,cl}(:,3));
+%             cluster_behav_distr{2,cl} = behav_categ(cluster_behav_distr{1,cl}(idx_max,1));
+%             cluster_behav_distr{3,cl} = max_behav;
+% 
+            cluster_block = block_labels_final(idx_cluster==cl);
+            block_tabulation = tabulate(cluster_block); 
+            block_mat(cl,block_tabulation(:,1))= block_tabulation(:,3);
+
+%             cluster_block_distr{1,cl}=behav_tabulation(block_tabulation(:,3)~=0,:);
+
+        end
+
+        figure;
+        hm=heatmap(behav_mat);
+        hm.XDisplayLabels =behav_categ;
+
+        figure;
+        hm2=heatmap(block_mat);
+        hm2.XDisplayLabels =block_categ;
+
+% % %         %For session 1, with 30 clusters self-groom separates into two
+% % %         %clusters. What may be different between the two?
+% % %         coi = find(behav_mat(:,find(strcmp(behav_categ,"Self-groom"))) >50);
+% % %         times=find(idx_cluster == coi(1));
+% % %         time_plot = zeros(1,length(behavior_labels));
+% % %         time_plot(times)=1; 
+% % % 
+% % %         times2=find(idx_cluster == coi(2));
+% % %         time_plot2 = zeros(1,length(behavior_labels));
+% % %         time_plot2(times2)=1; 
+% % % 
+% % %         figure; hold on; plot(time_plot); plot(time_plot2); ylim([-0.5 1.5])
+% % %         figure; hold on; histogram(times); histogram(times2)
+% % %         hrs=floor(median(times)/3600)
+% % %         mins=floor((median(times)/3600-hrs)*60)
+% % %         secs=((median(times)/3600-hrs)*60-mins)*60
+% % %         
+% % %         hrs=floor(8380/3600)
+% % %         mins=floor((8380/3600-hrs)*60)
+% % %         secs=((8380/3600-hrs)*60-mins)*60
+        
+
 
      end %end of channel for loop
 

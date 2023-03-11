@@ -24,7 +24,8 @@ sigma = 1;%set the smoothing window size (sigma)
 var_explained_threshold=90;
 num_iter = 500; num_units = 200;
 simplify=4;
-agg_precedence =1;
+threat_precedence =1;
+exclude_sq=1;
 
 %Select session range:
 if with_partner ==1
@@ -36,19 +37,41 @@ else
 end
 
 
-Cmap = [[1 0 0];[1 0.4 0.1];[0 0 0];[0.1 0.8 0.9];[0 0.7 0];[1 0 1];[0 1 1];...
-    [0 0 1];[0.8 0 0];[1 0 0];[0 0 0];[0.2 0.9 0.76];[0 0 0];[0 0 0];[0.7 0 1];...
-    [0 0 0];[0 0 0];[0.9 0.5 0];[0 0 0];[0 0 0];[0.8 0 0];[1 0 0];[0.9 0.7 0.12];[0.5 0.2 0.5];...
-    [0 0 0];[0 0 0];[0.8 0.4 0.4];[0 0 0];[0.8 0.8 0.8]];
+%Set colormap
+Cmap = [[1 0 0];...%Aggression; red
+    [1 0.4 0.1];...%Approach; dark orange
+    [0 0 0];...%But sniff; NA
+    [0.3 0.7 1];...%Drinking; light blue
+    [0 0.7 0];...%Foraging; dark green
+    [1 0 1];...%Groom sollicitation; magenta
+    [0 1 1];...%Groom partner; cyan
+    [0 0 1];...%Getting groomed; dark blue
+    [0.8 0 0];...%Threat to partner; dark red
+    [1 0 0];...%Threat to subject; red
+    [0.9 0.9 0];...%leave; dark yellow
+    [0 0 0];...%Lipsmack
+    [0.2 0.9 0.76];...%Masturbating; turquoise
+    [0.7 0 1];...%Mounting; light purple
+    [0.9 0.5 0];...%Other monkeys vocalize; orange
+    [1 0.8 0.1];...%Travel; yellow orange
+    [0 0 0];...%Proximity; NA
+    [0 0 0];...%Rowdy room; NA
+    [1 0 0];...%SP; NA
+    [1 0 0];...%SS; NA
+    [0.6314 0.5059 0.0118];...%Scratch; maroon
+    [0.5 0.2 0.5];...%Self-groom; dark purple
+    [ 1 0.07 0.65];...%Submission; dark pink
+    [0 0.4 0.5];...%Vocalzation; blue green
+    [0 0 0];...%Yawning; NA
+    [0.8 0.8 0.8]];%Rest; grey
 
+%Set behaviors of interest to compare and associated colormap
 if simplify ==1
     dim = nan(max(session_range),2,5,num_iter);
     min_occurrences = 50;
-    Cmap = [[1 0 0]; [0 0.7 0]; [0 1 1]; [0.9 0.5 0]; [0.5 0.5 0.5]];
 elseif simplify ==2
     dim = nan(max(session_range),2,2,num_iter);
     min_occurrences = 230;
-    Cmap = [[0 1 1]; [0.5 0.5 0.5]];
 elseif simplify ==3
     dim = nan(max(session_range),2,4,num_iter);
     min_occurrences = 100;
@@ -80,7 +103,7 @@ for s =session_range %1:length(sessions)
             [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
                 reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
                 log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence );
+                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
         end
 
         disp('Data Loaded')
@@ -110,7 +133,7 @@ for s =session_range %1:length(sessions)
 
             behav = [1,5,7,18,29];
 
-        elseif simplify == 2 % Compare one behavior to all others
+        elseif simplify == 2 % Compare one behavior (grooming or foraging) to all others
 
             %Lump all that is not grooming together
             behavior_labels(ismember(behavior_labels,find(behav_categ~="Groom partner" & behav_categ~="Getting groomed")))=find(behav_categ=="Rest");
@@ -127,10 +150,13 @@ for s =session_range %1:length(sessions)
             %Lump all that is not grooming together
             behavior_labels(ismember(behavior_labels,find(behav_categ~="Groom partner" & behav_categ~="Getting groomed" & behav_categ~="Self-groom")))=find(behav_categ=="Rest");
 
-            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom",find(behav_categ=="Rest"))];
+            behav = [find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),find(behav_categ=="Self-groom"),find(behav_categ=="Rest")];
 
         else %Compare all behaviors separately (without pooling across)
-            behav = [4,5,7,8,9,10,24,29];
+            behav = [find(behav_categ=="Drinking"),find(behav_categ=="Foraging"),...
+                find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),...
+                find(behav_categ=="Threat to partner"),find(behav_categ=="Threat to subject"),...
+                find(behav_categ=="Self-groom"),find(behav_categ=="Rest")];
         end
 
         behav_freq_table = tabulate(behavior_labels);
@@ -260,16 +286,18 @@ for s =session_range %1:length(sessions)
 end%end of session loop
 
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Dimensionality_results/']);
-save('Dimensionality_allBehav.mat', "dim","behav","a_sessions","h_sessions","behav_categ","Cmap")
+save('Dimensionality_GroomRest.mat', "dim","var_explained_mean","behav","a_sessions","h_sessions","behav_categ","Cmap")
 
 %% Plot results across sessions
 
-load('Dimensionality_GroomCateg.mat')
+%load('Dimensionality_allBehav.mat')
+%load('Dimensionality_GroomRest.mat')
 
 dim_amos = squeeze(nanmean(dim(a_sessions,:,:,:),1));
 dim_hooke = squeeze(nanmean(dim(h_sessions,:,:,:),1));
 dim_all = squeeze(nanmean(dim,1));
 
+%Plot # dimensions needed to explain 90% of the variance.
 %All Pooled
 figure; hold on; lowlimit=17; uplimit=35;
 mean_dim = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
@@ -281,30 +309,30 @@ ax.FontSize = 14;
 ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
 
 
-
+%Plot the full realtionship between # dimensions and explained variance
 mean_alldims = mean(cat(3,(var_explained_mean{:})),3);
 sd_alldims =  std(cat(3,(var_explained_mean{:})),[],3);
-    figure; hold on
-    for b=1:size(mean_alldims,2)
-        y=mean_alldims(:,b);
-        sd=sd_alldims(:,b);
-        upper_lim=y+sd;
-        lower_lim=y-sd;
-%         p = fill([1:length(y) length(y):-1:1],[upper_lim; flip(lower_lim)],'red');
-%         p.FaceColor = Cmap(behav(b),:);
-%         p.FaceAlpha = 0.3;
-%         p.EdgeColor = 'none';
+figure; hold on
+for b=1:size(mean_alldims,2)
+    y=mean_alldims(:,b);
+    sd=sd_alldims(:,b);
+    upper_lim=y+sd;
+    lower_lim=y-sd;
+    p = fill([1:length(y) length(y):-1:1],[upper_lim; flip(lower_lim)],'red');
+    p.FaceColor = Cmap(behav(b),:);
+    p.FaceAlpha = 0.1;
+    p.EdgeColor = 'none';
 
-        plot(y,'LineWidth',3, 'Color', Cmap(behav(b),:))
-    end
-    yline(90,'LineStyle','--')
-    xline(3,'LineStyle',':')
-    xlabel('Dimensions')
-    ylabel('Var. explained')
-    legend(behav_categ(behav))
-    ax = gca;
-    ax.FontSize = 14;
-    %saveas(gcf,[savePath '/DimensionalityPerBehav_allExplainedVar.pdf'])
+    plot(y,'LineWidth',3, 'Color', Cmap(behav(b),:))
+end
+yline(90,'LineStyle','--')
+xline(3,'LineStyle',':')
+xlabel('Dimensions')
+ylabel('Var. explained')
+legend(behav_categ(behav))
+ax = gca;
+ax.FontSize = 14;
+    saveas(gcf,'DimensionalityPerBehav_allExplainedVar.pdf')
 
 % % % % %Separate per brain area, pooling both monkeys
 % % % % figure; hold on; set(gcf,'Position',[150 250 1000 500]); lowlimit=20; uplimit=35;

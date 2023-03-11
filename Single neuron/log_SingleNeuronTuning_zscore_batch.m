@@ -19,7 +19,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
+temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
@@ -28,7 +28,8 @@ cohend_cutoff=0.3; p_cutoff=0.01;%Set thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size in sec (sigma)
 null=0;%Set whether we want the null
-agg_precedence =1;
+threat_precedence =0;
+exclude_sq=1;
 
 %Initialize session batch variables:
 n_behav = 24;
@@ -58,27 +59,26 @@ for s =session_range %1:length(sessions)
     
 
     %% Load data
-    if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
-    else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
-            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
-    end
+
+    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
+
 
     session_length = size(Spike_rasters,2); % get session length
 
     %Extract behavior labels
     behavior_labels = cell2mat({labels{:,3}}');%Get behavior label from labels structure
+    
+    %Pool these behaviors with rest (effectively excluding them)
     behavior_labels(behavior_labels==find(behav_categ=="Proximity"))=length(behav_categ); %exclude proximity for now (i.e. mark as "undefined").
     behavior_labels(behavior_labels==find(behav_categ=="Rowdy Room"))=length(behav_categ)+1; %exclude rowdy room for now
     behavior_labels(behavior_labels==find(behav_categ=="Other monkeys vocalize"))=length(behav_categ)+1; %exclude rowdy room for now
-%     behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
-%     behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
+    
+    %Pool travel, approach and leave
+    behavior_labels(behavior_labels==find(behav_categ=="Approach"))=find(behav_categ=="Travel"); %Consider 'approach' to be 'Travel'.
+    behavior_labels(behavior_labels==find(behav_categ=="Leave"))=find(behav_categ=="Travel"); %Consider 'leave' to be 'Travel'.
 
     if null
         %Simulate fake labels
@@ -123,13 +123,13 @@ for s =session_range %1:length(sessions)
     end
 
     save_meanBehav{s}=mean_beh;
+    save_meanBehav_teo{s}=mean_beh(strcmp(brain_label, "TEO"),:);
+    save_meanBehav_vlpfc{s}=mean_beh(strcmp(brain_label, "vlPFC"),:);
 
     %sort columns in ascending order
     [~, orderIdx] = sort(nanmean(mean_beh), 'ascend');
     meanBehav_sorted = mean_beh(:,orderIdx);
 
-
-    AxesLabels_sorted_a = behav_categ(orderIdx);
     AxesLabels = behav_categ(1:end-1);
     lim=max(abs(max(max(mean_beh))), abs(min(min(mean_beh))));
     caxis_upper = 2;%max(max(mean_beh));
@@ -155,11 +155,15 @@ close all
 
 %Change savePath for all session results folder:
 savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
+all_sessions_data = cell2mat(save_meanBehav');
+all_sessions_data_teo = cell2mat(save_meanBehav_teo');
+all_sessions_data_vlpfc = cell2mat(save_meanBehav_vlpfc');
+all_sessions_data_a = cell2mat(save_meanBehav(a_sessions)');
+all_sessions_data_h = cell2mat(save_meanBehav(h_sessions)');
 
 %Plot massive heatmap
 figure; set(gcf,'Position',[150 250 1500 400]);
 subplot(1,2,1)
-all_sessions_data_a = cell2mat(save_meanBehav(a_sessions)');
 [~, sortIdx]= sort(nanmean(all_sessions_data_a,1));
 all_sessions_data_sorted_a = all_sessions_data_a(:,sortIdx); AxesLabels_sorted_a = AxesLabels(sortIdx);
 [nanrow nancol_a]=find(~isnan(all_sessions_data_sorted_a)); nancol_a = unique(nancol_a);
@@ -207,3 +211,51 @@ yline(0,'LineStyle','--')
 xticks(1:length(nancol_h)); xticklabels(AxesLabels_sorted_h(nancol_h))
 ylabel('Z-scored firight rate'); title('Hooke')
 %saveas(gcf, [savePath '/Zscore_VIOLINPLOT.pdf']); close all
+
+%Pooling monkeys
+
+%violin plots
+figure; set(gcf,'Position',[150 250 600 400]);
+[~, sortIdx]= sort(nanmean(all_sessions_data,1));
+all_sessions_data_sorted = all_sessions_data(:,sortIdx); AxesLabels_sorted = AxesLabels(sortIdx);
+[nanrow nancol]=find(~isnan(all_sessions_data_sorted)); nancol = unique(nancol);
+violin(all_sessions_data_sorted(:,nancol))
+yline(0,'LineStyle','--')
+xticks(1:length(nancol)); xticklabels(AxesLabels_sorted(nancol))
+ylabel('Z-scored firight rate');
+
+figure; set(gcf,'Position',[150 250 1500 400]);
+subplot(1,2,1); hold on
+[~, sortIdx_teo]= sort(nanmean(all_sessions_data_teo,1));
+all_sessions_data_sorted_teo = all_sessions_data_teo(:,sortIdx_teo); AxesLabels_sorted_teo = AxesLabels(sortIdx_teo);
+[nanrow nancol_teo]=find(~isnan(all_sessions_data_sorted_teo)); nancol_teo = unique(nancol_teo);
+violin(all_sessions_data_sorted_teo(:,nancol_teo))
+yline(0,'LineStyle','--')
+xticks(1:length(nancol_teo)); xticklabels(AxesLabels_sorted_teo(nancol_teo))
+ylabel('Z-scored firight rate')
+title('TEO');
+
+subplot(1,2,2); hold on
+[~, sortIdx_vlpfc]= sort(nanmean(all_sessions_data_vlpfc,1));
+all_sessions_data_sorted_vlpfc = all_sessions_data_vlpfc(:,sortIdx_vlpfc); AxesLabels_sorted_vlpfc = AxesLabels(sortIdx_vlpfc);
+[nanrow nancol_vlpfc]=find(~isnan(all_sessions_data_sorted_vlpfc)); nancol_vlpfc = unique(nancol_vlpfc);
+violin(all_sessions_data_sorted_vlpfc(:,nancol_vlpfc))
+yline(0,'LineStyle','--')
+xticks(1:length(nancol_vlpfc)); xticklabels(AxesLabels_sorted_vlpfc(nancol_vlpfc))
+ylabel('Z-scored firight rate')
+title('vlPFC');
+
+figure; set(gcf,'Position',[150 250 1500 400]);
+all_sessions_data_binary = sign(all_sessions_data_sorted);
+hp=heatmap(all_sessions_data_binary(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',jet); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([-1.5 1.5]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Amos'])
+ax = gca;
+ax.FontSize = 14;
+
+%% Plot number of neurons across time 
+n_neurons(n_neurons==0)=nan;
+n_neurons_plot = n_neurons(~isnan(n_neurons));
+figure;hold on
+scatter(1:6,n_neurons_plot(1:6),60,'filled','r') 
+scatter(1:6,n_neurons_plot(7:12),60,'filled','b') 
+ylabel('Number of units'); ylim([200, 310])
+xlabel('Session number'); xlim([0.5 6.5])

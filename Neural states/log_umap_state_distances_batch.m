@@ -106,10 +106,11 @@ for s =session_range %1:length(sessions)
 
     %Only consider indices with behavior of interest
     idx= find(ismember(behavior_labels,behav));
-    Spike_count_raster_final = Spike_count_raster;%(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-    behavior_labels_final = behavior_labels;%(idx);%Same as above but in behavior labels
-    block_labels_final =  block_labels;%(idx);
-  
+    Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+    behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
+    block_labels_final =  block_labels(idx);
+    behavior_labels_final_rand = randsample(behavior_labels_final, length(behavior_labels_final));
+
     if null
         %Simulate fake labels
         [sim_behav] = GenSimBehavior(behavior_labels_final,behav_categ, temp_resolution);
@@ -258,7 +259,7 @@ for s =session_range %1:length(sessions)
 
     %Visualize distances between social context given a particular
     %behavior
-    beh=length(behav_categ);
+    beh=1;
 
     if ismember(beh,1)
         %Pull threats to partner and subject together
@@ -266,9 +267,9 @@ for s =session_range %1:length(sessions)
         behavior_labels_final(behavior_labels_final==10)=1;
     end
 
-    plot_behav_labels = behavior_labels(behavior_labels==beh);
-    plot_block_labels = block_labels(behavior_labels==beh);
-    plot_neural_states_umap = umap_result(behavior_labels==beh,:);
+    plot_behav_labels = behavior_labels_final(behavior_labels_final==beh);
+    plot_block_labels = block_labels_final(behavior_labels_final==beh);
+    plot_neural_states_umap = umap_result(behavior_labels_final==beh,:);
 
     idx_block1= find(plot_block_labels==1);
     idx_block2= find(plot_block_labels==2);
@@ -280,7 +281,7 @@ for s =session_range %1:length(sessions)
             idx_ordered = [idx_block1(randsample(length(idx_block1),idx_length));...
                 idx_block2(randsample(length(idx_block2),idx_length))];
         else
-            idx_length = 100;
+            idx_length = min([length(idx_block1), length(idx_block2), length(idx_block3)]);
             idx_ordered = [idx_block1(randsample(length(idx_block1),idx_length));...
                 idx_block2(randsample(length(idx_block2),idx_length));...
                 idx_block3(randsample(length(idx_block3),idx_length))];

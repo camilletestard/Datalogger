@@ -1,5 +1,5 @@
-function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original] = log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq)
-%Log GenerateDataToRes_function
+function [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original] = log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq)
+%Log GenerateDataToRes_function_temp
 % Input data:
 %   1. Behavior of the subject: "EVENTLOG_restructured.csv"
 %   2. Behavior of the partner: "EVENTLOG_restructured_partner.csv"
@@ -225,7 +225,7 @@ else %include noise cluster (or first channel)
 end
 
 %Exclude very low or very high firing units
-include_neurons = find(mean(Spike_rasters,2)>0.1./temp_resolution & mean(Spike_rasters,2)<150./temp_resolution);
+include_neurons = find(mean(Spike_rasters,2)>0.1*temp_resolution & mean(Spike_rasters,2)<150*temp_resolution);
 Spike_rasters=Spike_rasters(include_neurons,:);
 brain_label=brain_label(include_neurons);
 
