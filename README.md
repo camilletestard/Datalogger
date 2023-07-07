@@ -13,12 +13,21 @@ Our understanding of the neurobiology of primate behavior largely derives from a
 This repository contains all the code used for the analysis and visualization of the data collected in our study. It's organized into several directories:
 
 _Behavior_: ...
+
 _GLM_
+
 _Linear decoding_
+
 _Movement analysis_
+
 _Neural preprocessing_
+
 _Neural states_
+
 _Ridge regression_
+
 _SanityChecksToyExamples_
+
 _Single neuron_
+
 _Toolboxes__
