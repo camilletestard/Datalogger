@@ -13,7 +13,7 @@ function [sim_behav] = GenSimBehavior(labels,names, temp_resolution, plot_toggle
 
 use_markov = 1; %Leaving this as a toggle in here since it isn't really something we need constant access to change.
 
-duration = size(labels,1);
+duration = length(labels);
 
 obs_behav = labels;%cell2mat(labels(:,3)); %Note assumes that column 3 is the correct column for the data
 %Note: I think we should give the function the vector of labels we want simualted. Much

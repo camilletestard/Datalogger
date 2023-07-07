@@ -12,7 +12,7 @@ if nargin<2
 end
 %%
 ops.nC = getOr(ops, 'nC', 30);
-ops.iPC = getOr(ops, 'iPC', 1:100);
+ops.iPC = getOr(ops, 'iPC', 1:50);
 ops.isort = getOr(ops, 'isort', []);
 ops.useGPU = getOr(ops, 'useGPU', 0);
 ops.upsamp = getOr(ops, 'upsamp', 100);

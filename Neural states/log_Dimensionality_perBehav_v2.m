@@ -67,16 +67,12 @@ Cmap = [[1 0 0];...%Aggression; red
 
 %Set behaviors of interest to compare and associated colormap
 if simplify ==1
-    dim = nan(max(session_range),2,5,num_iter);
     min_occurrences = 50*temp_resolution;
 elseif simplify ==2
-    dim = nan(max(session_range),2,2,num_iter);
-    min_occurrences = 230*temp_resolution;
+    min_occurrences = 100*temp_resolution;
 elseif simplify ==3
-    dim = nan(max(session_range),2,4,num_iter);
     min_occurrences = 100*temp_resolution;
 else
-    dim = nan(max(session_range),2,8,num_iter);
     min_occurrences = 50*temp_resolution;
 end
 
@@ -180,10 +176,10 @@ for s =session_range %1:length(sessions)
                     std_Hz{s, b}(iter,:) = std(neural_data);
                     cv_Hz{s, b}(iter,:) = std(neural_data)./mean(neural_data);
                     corr_data=reshape(triu(corrcoef(neural_data)), 1,[]);
-                    correl_Hz{s, b, iter} = corr_data(corr_data~=0 & corr_data~=1);
+                    correl_Hz{s, b}(iter,:) = corr_data;
 
                     %PCA
-                    Input_matrix = zscore(neural_data);
+                    Input_matrix = neural_data;
                     [coeff,score,latent,~,explained] = pca(Input_matrix);
 
                     %Get dimensionality
@@ -210,6 +206,7 @@ for s =session_range %1:length(sessions)
                 var_explained_logEigen_mean{b}(s,:) = mean(var_explained_logEigen);
                 var_explained_Eigen_mean{b}(s,:) = mean(var_explained_Eigen);
                 loadings_shesh{b,s} = mean(loadings);
+                dim_mean{b}(s) = mean(dim{b}(s,:));
 
             end %end of behavior loop
 
@@ -223,11 +220,21 @@ for s =session_range %1:length(sessions)
 
 
 % % % %     figure; hold on
-% % % %     for b=1:size(var_explained_mean{s},2)
-% % % %         plot(var_explained_mean{s}(:,b),'LineWidth',3, 'Color', Cmap(behav(b),:))
+% % % %     for b=1:size(var_explained_cumul_mean,2)
+% % % %         plot(var_explained_cumul_mean{b}(s,:),'LineWidth',3, 'Color', Cmap(behav(b),:))
 % % % %     end
 % % % %     yline(90,'LineStyle','--')
 % % % %     xline(3,'LineStyle',':')
+% % % %     xlabel('Dimensions')
+% % % %     ylabel('Var. explained')
+% % % %     legend(behav_categ(behav))
+% % % %     ax = gca;
+% % % %     ax.FontSize = 14;
+% % % % 
+% % % %     figure; hold on
+% % % %     for b=1:size(var_explained_cumul_mean,2)
+% % % %         plot(var_explained_logEigen_mean{b}(s,:),'LineWidth',3, 'Color', Cmap(behav(b),:))
+% % % %     end
 % % % %     xlabel('Dimensions')
 % % % %     ylabel('Var. explained')
 % % % %     legend(behav_categ(behav))
@@ -286,27 +293,99 @@ for s =session_range %1:length(sessions)
 end%end of session loop
 
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Dimensionality_results/']);
-save('Dimensionality_GroomRest.mat', "dim","var_explained_mean","behav","a_sessions","h_sessions","behav_categ","Cmap")
+save('Dimensionality_acrossBehav_100Units_50sec_8categ.mat', "dim","var_explained_cumul_mean", ...
+    "var_explained_logEigen_mean","behav","a_sessions","h_sessions","behav_categ","Cmap", ...
+    "mean_Hz","std_Hz","cv_Hz","correl_Hz")
 
 %% Plot results across sessions
 
-%load('Dimensionality_allBehav.mat')
-%load('Dimensionality_GroomRest.mat')
 
-dim_amos = squeeze(nanmean(dim(a_sessions,:,:,:),1));
-dim_hooke = squeeze(nanmean(dim(h_sessions,:,:,:),1));
-dim_all = squeeze(nanmean(dim,1));
+%Mean firing rate
+for b=1:length(behav)
+    mean_Hz_all(:,b) = reshape(cell2mat(mean_Hz(:,b)),[],1);
+end
+[~, idx_sort]=sort(nanmean(mean_Hz_all));
+figure; hold on
+violin(mean_Hz_all(:,idx_sort))
+xlim([0 length(behav)+1]); ylabel('Mean firing rate'); %ylim([0 6])
+xticks([1:length(behav)]); xticklabels(behav_categ(behav(idx_sort)))
+
+%Variation in firing rate measured by SD
+for b=1:length(behav)
+    std_Hz_all(:,b) = reshape(cell2mat(std_Hz(:,b)),[],1);
+end
+[~, idx_sort]=sort(nanmean(std_Hz_all));
+figure; hold on
+violin(std_Hz_all(:,idx_sort))
+xlim([0 length(behav)+1]); ylabel('Variation in firing rate (SD)'); %ylim([0 6])
+xticks([1:length(behav)]); xticklabels(behav_categ(behav(idx_sort)))
+
+%Coefficient of variation
+for b=1:length(behav)
+    cv_Hz_all(:,b) = reshape(cell2mat(cv_Hz(:,b)),[],1);
+end
+[~, idx_sort]=sort(nanmean(cv_Hz_all));
+figure; hold on
+violin(cv_Hz_all(:,idx_sort))
+xlim([0 length(behav)+1]); ylabel('Coefficient variation'); ylim([0 6])
+xticks([1:length(behav)]); xticklabels(behav_categ(behav(idx_sort)))
+
+
+%Correlation between neurons
+for b=1:length(behav)
+    correl_Hz_all(:,b) = reshape(cell2mat(correl_Hz(:,b)),[],1);
+    idx_nan = (correl_Hz_all(:,b)== 1 | correl_Hz_all(:,b)== 0);
+    correl_Hz_all(idx_nan,b)=nan;
+end
+[~, idx_sort]=sort(nanmean(correl_Hz_all));
+figure; hold on
+boxchart(correl_Hz_all(:,idx_sort))
+ylabel('Correlation between neurons'); %ylim([0 6])
+xticklabels(behav_categ(behav(idx_sort)))
+
+
+%Variance explained cumulated
+figure; hold on; clear y
+for b=1:length(behav)
+    var_explained_cumul_mean{b}(var_explained_cumul_mean{b}==0)=nan;
+    y=nanmean(var_explained_cumul_mean{b})';
+    plot(y,'LineWidth',3,'Color',Cmap(behav(b),:))
+    xlabel('Dimensions')
+    ylabel('Cumulative % variance explained')
+    ylim([0 100])
+    ax = gca;
+    ax.FontSize = 14;
+end
+yline(90,'LineStyle','-')
+legend(behav_categ(behav))
+
+%Log eigenvalues
+figure; hold on; clear y
+for b=1:length(behav)
+    var_explained_logEigen_mean{b}(var_explained_logEigen_mean{b}==0)=nan;
+    y=nanmean(var_explained_logEigen_mean{b})';
+    plot(y,'LineWidth',3,'Color',Cmap(behav(b),:))
+    xlabel('Dimensions')
+    ylabel('Log10 Eigenvalues')
+    ax = gca;
+    ax.FontSize = 14;
+end
+%ylim([-1.5 1.5])
+legend(behav_categ(behav))
 
 %Plot # dimensions needed to explain 90% of the variance.
 %All Pooled
-figure; hold on; lowlimit=15; uplimit=30;
-mean_dim = squeeze(mean(dim_all(1,:,:),3)); [~, orderIdx] = sort(mean_dim);
-violin(squeeze(dim_all(1,orderIdx,:))', 'facecolor',Cmap(behav(orderIdx),:))
-xticks([1:length(behav)]); xlim([0.5 length(behav)+0.5]);
-xticklabels(behav_categ(behav(orderIdx))); ylim([lowlimit uplimit])
-ax = gca;
-ax.FontSize = 14;
-ylabel(['Dims needed to explain ' num2str(var_explained_threshold) '% of variation'],'FontSize', 14);
+
+for b=1:length(behav)
+    dim{b}(dim{b}==0)=nan;
+    dim{b}=reshape(dim{b},[],1);
+end
+dim_all = cell2mat(dim);
+[~, idx_sort]=sort(nanmedian(dim_all));
+figure; hold on
+boxchart(dim_all(:,idx_sort))
+ylabel('# Dim to explain 90% of variance')
+xticklabels(behav_categ(behav(idx_sort)))
 
 
 %Plot the full relationship between # dimensions and explained variance

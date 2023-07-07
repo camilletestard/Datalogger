@@ -27,7 +27,7 @@ unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
-sigma = 10*temp_resolution;%set the smoothing window size (sigma)
+sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 threat_precedence =1;
 exclude_sq=1;
 plot_toggle=0;
@@ -52,10 +52,10 @@ for s =session_range %1:length(sessions)
     %% Load data
 
     %% Get data with specified temporal resolution and channels
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
-        log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
+      [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
         disp('Data Loaded')
 
@@ -94,14 +94,15 @@ for s =session_range %1:length(sessions)
         %Exclude axctivity at the very beginning and very end of the
         %session
         session_with_buffer = [250*temp_resolution:size(Spike_count_raster,1)-250*temp_resolution];
-        activity_all = Spike_count_raster(session_with_buffer,:)';
-        activity_vlpfc = Spike_count_raster(session_with_buffer,strcmp(brain_label,'TEO'))';
-        activity_teo = Spike_count_raster(session_with_buffer,strcmp(brain_label,'vlPFC'))';
+        idx = [500:1000] %session_with_buffer;%[500:2500];
+        activity_all = Spike_count_raster(idx,:)';
+        activity_vlpfc = Spike_count_raster(idx,strcmp(brain_label,'TEO'))';
+        activity_teo = Spike_count_raster(idx,strcmp(brain_label,'vlPFC'))';
 
         %% Plot actvity for one session in relation to behavior
 
         % Sort activity using rastermap.
-        [isort1_all, isort2_all, amap_all] = mapTmap(activity_all); %all units considered
+        [isort1_all, isort2_all, amap_all, clusters] = mapTmap(activity_all); %all units considered
         [isort1_teo, isort2_teo, amap_teo] = mapTmap(activity_teo); %just teo units
         [isort1_vlpfc, isort2_vlpfc, amap_vlpfc] = mapTmap(activity_vlpfc); %just vlpfc units
         sorted_activity_all = activity_all(isort1_all,:);
@@ -110,15 +111,23 @@ for s =session_range %1:length(sessions)
         if plot_toggle %plot rastermap
             figure; imagesc(amap_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
             figure; imagesc(sorted_activity_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
+            figure; imagesc(activity_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
 
             figure; imagesc([amap_vlpfc;amap_teo]); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2,'LineStyle','-')
             figure; imagesc(sorted_activity_byArea); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2)
 
-            figure; imagesc(Spike_count_raster(session_with_buffer,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
-            figure; imagesc(behavior_labels(session_with_buffer,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4);colormap(Cmap); colorbar
+            figure; imagesc(Spike_count_raster(idx,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
+            figure; imagesc(behavior_labels(idx)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4); colormap(Cmap); colorbar
 
-            y=mean(Spike_count_raster(session_with_buffer,:)');
-            y_std=std(Spike_count_raster(session_with_buffer,:)');
+            figure; hold on
+            subplot(2,1,1)
+            imagesc(behavior_labels(idx)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4); %colormap(Cmap); colorbar
+            subplot(2,1,2)
+            imagesc(sorted_activity_byArea); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2)
+
+
+            y=mean(Spike_count_raster(idx,:)');
+            y_std=std(Spike_count_raster(idx,:)');
             figure; hold on
             upper_lim=y+y_std;
             lower_lim=y-y_std;
@@ -152,7 +161,7 @@ for s =session_range %1:length(sessions)
         n_neurons(s) = size(Spike_rasters,1); %Get number of neurons
         n_behav = length(unqLabels); %Get number of unique behavior labels
    
-    n= 138;%randsample(unit_count(3),1);%42;138;218;222
+    n= 135;%randsample(unit_count(3),1);%42;138;218;222
  
     %Plot distribution of firing rate across behaviors for example neuron n
     figure; hold on; set(gcf,'Position',[150 250 1500 300]); i=1;
@@ -187,6 +196,7 @@ for s =session_range %1:length(sessions)
     idx_travel = find(behavior_labels == 2 | behavior_labels == 12 |behavior_labels == 18);
 
     unit=n;
+    session_length = size(Spike_rasters,2)
     figure; hold on; set(gcf,'Position',[150 250 1500 500]);
     xline([block_times.end_time_round(1), block_times.end_time_round(2)], "-",["Block 1 end", "Block 2 end"], "LineWidth",2);
     session_with_buffer = [120:session_length-120];

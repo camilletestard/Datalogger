@@ -34,7 +34,8 @@ smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null 
 simplify=0;%lump similar behavioral categories together to increase sample size.
-threat_precedence = 0;
+threat_precedence =1;
+exclude_sq=1;
 
 %Initialize
 % mean_hitrate = cell(length(sessions),3);
@@ -62,22 +63,25 @@ for s =session_range %1:length(sessions)
 
 
         %% Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence);
-        end
-
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
+        
         disp('Data Loaded')
 
         Spike_count_raster = Spike_rasters';
         behavior_labels = cell2mat({labels{:,3}}'); %Extract unique behavior info for subject
+
+        %% Visualize sequences of event with grooming
+        behav = [find(behav_categ=="Groom sollicitation"),find(behav_categ=="Foraging"),...
+                find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),...
+                find(behav_categ=="Threat to partner"),find(behav_categ=="Threat to subject"),...
+                find(behav_categ=="approach")];
+        behavior_labels_plot = behavior_labels;
+        behavior_labels_plot(find(~ismember(behavior_labels,behav)))=26;
+        figure; imagesc(behavior_labels_plot'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4); colormap(Cmap); colorbar
+
 
         %% Decode grooming context for groom give and groom receive separately
         %Beginning vs. end of grooming bout

@@ -54,17 +54,10 @@ for s =session_range %1:length(sessions)
 
 
         %% Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
-        end
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
         disp('Data Loaded')
 
@@ -141,7 +134,10 @@ for s =session_range %1:length(sessions)
         Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
         behavior_labels_final = behavior_labels(idx,:);%Same as above but in behavior labels
         tabulate(removecats(categorical(behavior_labels_final)));
-
+        
+%         figure; plot(behavior_labels_final)
+%         behavior_labels_final =behavior_labels_final(1:3000);
+%         Spike_count_raster_final =Spike_count_raster_final(1:3000,:);
 
         %% Run SVM over multiple iterations
 
@@ -154,7 +150,7 @@ for s =session_range %1:length(sessions)
             if randomsample==1
                 Input_matrix = Spike_count_raster_final(:,randsample(unit_count(chan), min(unit_count)));
             else
-                Input_matrix = Spike_count_raster_final;
+                Input_matrix = zscore(Spike_count_raster_final);
             end
 
 

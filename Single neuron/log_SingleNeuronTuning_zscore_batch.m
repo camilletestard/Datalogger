@@ -19,7 +19,7 @@ session_range_with_partner=[1:6,11:13,15:16,18];
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
+temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
@@ -154,12 +154,17 @@ close all
 %% Results across sessions
 
 %Change savePath for all session results folder:
-savePath = [home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/'];
+cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/']);
 all_sessions_data = cell2mat(save_meanBehav');
 all_sessions_data_teo = cell2mat(save_meanBehav_teo');
 all_sessions_data_vlpfc = cell2mat(save_meanBehav_vlpfc');
 all_sessions_data_a = cell2mat(save_meanBehav(a_sessions)');
 all_sessions_data_h = cell2mat(save_meanBehav(h_sessions)');
+% save('Zscored_responses_allSessions.mat', 'all_sessions_data', 'all_sessions_data_teo',...
+%     'all_sessions_data_vlpfc', 'all_sessions_data_a', 'all_sessions_data_h', 'a_sessions', ...
+%     'h_sessions', 'AxesLabels')
+% cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SingleUnit_results/']);
+% load('Zscored_responses_allSessions.mat')
 
 %Plot massive heatmap
 figure; set(gcf,'Position',[150 250 1500 400]);
@@ -259,3 +264,16 @@ scatter(1:6,n_neurons_plot(1:6),60,'filled','r')
 scatter(1:6,n_neurons_plot(7:12),60,'filled','b') 
 ylabel('Number of units'); ylim([200, 310])
 xlabel('Session number'); xlim([0.5 6.5])
+
+%% Plot Relationship between threat to partner and threat to subject
+
+figure; hold on
+scatter(all_sessions_data(:,9), all_sessions_data(:,10))
+xlim([-2 5]); ylim([-2 5]);
+plot([-2 5],[-2 5],'DisplayName','Diagonal'); 
+ylabel('Mean Z-scored firing rate during Threat to subject'); xlabel('Mean Z-scored firing rate during Threat to partner')
+corr(all_sessions_data(:,9), all_sessions_data(:,10), 'rows','complete')
+diff_Response = all_sessions_data(:,9)- all_sessions_data(:,10);
+diff_Response=diff_Response(~isnan(diff_Response));
+stronger_partner = length(find(diff_Response>0))/length(diff_Response);
+stronger_subjects = length(find(diff_Response<0))/length(diff_Response);

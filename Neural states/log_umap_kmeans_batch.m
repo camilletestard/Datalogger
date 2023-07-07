@@ -52,19 +52,13 @@ for s =session_range %1:length(sessions)
 
 
         %% Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence,exclude_sq);
-        end
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
         disp('Data Loaded')
+
 
         %Raw data
         Spike_count_raster = zscore(Spike_rasters');
@@ -132,11 +126,11 @@ for s =session_range %1:length(sessions)
 
         %% Run Kmeans clustering
 
-        eva = evalclusters(umap_result{s,chan},'kmeans','CalinskiHarabasz','KList',3:20);
-%         eva = evalclusters(umap_result{s,chan},'kmeans','DaviesBouldin','KList',10:60)
-%         eva = evalclusters(umap_result{s,chan},'kmeans','gap','KList',10:60)
-%         eva = evalclusters(umap_result{s,chan},'kmeans','silhouette','KList',10:60)
-        n_clusters = eva.OptimalK; %30
+        eva = evalclusters(umap_result{s,chan},'kmeans','CalinskiHarabasz','KList',3:20); eva.OptimalK
+%         eva = evalclusters(umap_result{s,chan},'kmeans','DaviesBouldin','KList',3:20);eva.OptimalK
+%         eva = evalclusters(umap_result{s,chan},'kmeans','gap','KList',3:20);eva.OptimalK
+%         eva = evalclusters(umap_result{s,chan},'kmeans','silhouette','KList',3:20);eva.OptimalK
+        n_clusters = 7;%eva.OptimalK; %30
         idx_cluster = kmeans(umap_result{s,chan},n_clusters);
 
         gm = fitgmdist(umap_result{s,chan},n_clusters);
@@ -216,6 +210,7 @@ for s =session_range %1:length(sessions)
         title('Block')
         set(gca,'FontSize',12);
 
+
         %Color-coded by kmeans cluster
         ax3=subplot(1,3,3);
         scatter3(umap_result{s,chan}(:,1), umap_result{s,chan}(:,2),umap_result{s,chan}(:,3),8,Cmap_kmeans(idx_cluster,:),'filled')
@@ -276,7 +271,8 @@ for s =session_range %1:length(sessions)
 
         %behavior_labels=categorical(behavior_labels);
 
-        behav_mat = zeros(n_clusters, length(behav_categ));
+        behaviors = unique(behavior_labels_final);
+        behav_mat = zeros(n_clusters, length(behaviors));
         for cl = 1:n_clusters
             
             cluster_behav = behavior_labels_final(idx_cluster==cl);
@@ -295,9 +291,13 @@ for s =session_range %1:length(sessions)
 
         end
 
+        behav_mat_final = behav_mat(:,behaviors);
+
+        %Get list of behaviors which actually occur
         figure;
-        hm=heatmap(behav_mat);
-        hm.XDisplayLabels =behav_categ;
+        hm=heatmap(behav_mat_final);
+        hm.XDisplayLabels =behav_categ(behaviors);
+        colormap jet
 
         figure;
         hm2=heatmap(block_mat);

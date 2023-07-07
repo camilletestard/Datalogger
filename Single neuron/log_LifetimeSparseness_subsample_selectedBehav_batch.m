@@ -26,7 +26,7 @@ channel_flag = "all"; %Channels considered. vlPFC, TEO or all
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =50*temp_resolution; %Minimum number of occurrences in the session needed to be considered for this analysis.
-cohend_cutoff=0.3; p_cutoff=0.01;%Set "significance" thresholds
+cohend_cutoff=0.3; p_cutoff=0.005;%Set "significance" thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want a null response by simulating a behavioral sequence with similar statistics
@@ -85,7 +85,11 @@ for s =session_range %1:length(sessions)
 
 
     %% Set parameters
-    unqLabels = 1:length(behav_categ)-1; %Get unique behavior labels (exclude rest)
+     behav = [find(behav_categ=="Drinking"),find(behav_categ=="Foraging"),...
+                find(behav_categ=="Groom partner"),find(behav_categ=="Getting groomed"),...
+                find(behav_categ=="Threat to partner"),find(behav_categ=="Threat to subject"),...
+                find(behav_categ=="Self-groom"),find(behav_categ=="Rest")];
+    unqLabels = behav; %Get unique behavior labels (exclude rest)
     n_neurons(s) = size(Spike_rasters,1); %Get number of neurons
     n_behav = length(unqLabels); %Get number of unique behavior labels
 

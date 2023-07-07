@@ -82,6 +82,7 @@ for s =session_range
     % Get alone block
     %For behavior labels
     lbls = cell2mat(labels_trimmed(:,3));
+    context_lbls = cell2mat(labels_trimmed(:,12));
     lbls = categorical(lbls);
 
     tabulate(lbls)
@@ -104,6 +105,34 @@ for s =session_range
     lbls_final = removecats(lbls(idx_to_keep));
     lbls_final_notCateg = dummyvar(lbls_final);
     mvmt_final = mvmt(idx_to_keep,:);
+    context_lbls_final = context_lbls(idx_to_keep);
+    mvmt_final_random=mvmt_final(randsample(1:size(mvmt_final,1), size(mvmt_final,1)),:)
+
+    %% Run umap on mvmt
+    tabulate(lbls_final)
+    [umap_results]=run_umap(mvmt_final_random, 'n_neighbors', 15, 'min_dist', 0.1, 'n_components', 3); %Run umap to get 2d embedded states
+        close
+
+        figure; hold on; 
+    
+            %Plot UMAP results color-coded by behavior
+            ax1=subplot(1,2,1);
+            scatter3(umap_results(:,1), umap_results(:,2),umap_results(:,3),8,Cmap(lbls_final,:),'filled')
+            xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+            %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+            title('Behavior')
+            set(gca,'FontSize',12);
+    
+            ax1=subplot(1,2,2);
+            scatter3(umap_results(:,1), umap_results(:,2),umap_results(:,3),8,Cmap_block(context_lbls_final,:),'filled')
+            xlabel('UMAP 1'); ylabel('UMAP 2'); zlabel('UMAP 3')
+            %set(gca,'xtick',[]); set(gca,'ytick',[]); set(gca,'ztick',[])
+            title('Context')
+            set(gca,'FontSize',12);
+    
+            hlink = linkprop([ax1,ax2],{'CameraPosition','CameraUpVector'});
+            rotate3d on
+            grid on
 
     %% Select behaviors to decode
 

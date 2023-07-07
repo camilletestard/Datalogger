@@ -1,5 +1,7 @@
-function [hitrate, C] = log_SVM_basic_function(Input_matrix, Labels, kfolds, ldaflag, Normalize)
+function [hitrate, C, nErr] = log_SVM_basic_function(Input_matrix, Labels, kfolds, ldaflag, Normalize)
 % This script was written by SdT to run SVM on the w8a dataset using the LIBSVM library
+
+crossval_style="random"; %or group, i.e. chunks of the session
 
 Input_matrix = double(Input_matrix); %Augment data to double precision
 Labels = double(Labels);
@@ -22,7 +24,27 @@ Predicted_labels = zeros(size(Labels)); %Initate matrix of predicted labels for 
 cumError = 0; %Count the number of prediction errors
 
 %Generate k-fold training/testing indices:
-indices = crossvalind('Kfold', Labels, kfolds);
+%Random idx cross-validation
+if strcmp(crossval_style,'random')
+    indices = crossvalind('Kfold', Labels, kfolds);
+end
+
+%Group cross-validation
+if strcmp(crossval_style,'group')
+    if kfolds>2
+        Q = quantile(1:length(Labels),kfolds-1);
+        bounds = [1 round(Q) length(Labels)];
+    else
+        Q=round(length(Labels)/2);
+        bounds = [1 round(Q) length(Labels)];
+    end
+
+    for fold=1:kfolds
+        indices(bounds(fold):bounds(fold+1))=fold;
+    end
+end
+
+%Leave on out cross-validation
 if kfolds == length(Labels) %If kfold equals the number of trials as for a leave-one out cross validation
     indices = 1:length(Labels);
 end
@@ -47,8 +69,8 @@ for fold = 1:kfolds
     model = svmtrain(trainlbls, traindata, '-t, 0, -q'); %train the model using a linear kernel (-t: 0) or a RBF kernel (-t: 2) and default parameters
     [svmlbls] = svmpredict(testlbls, testdata, model, '-q'); %get predicted labels given model
 
-    nErr= length(find( (testlbls - svmlbls) ~= 0 )); %Find misclassifications
-    cumError = cumError + nErr; %Count number of errors
+    nErr(fold)= length(find( (testlbls - svmlbls) ~= 0 )); %Find misclassifications
+    cumError = cumError + nErr(fold); %Count number of errors
     Predicted_labels(indices == fold) = svmlbls; %Keep track of the predicted labels
 
 end

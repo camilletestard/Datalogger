@@ -61,17 +61,10 @@ for s =session_range %1:length(sessions)
     
 
     %% Load data
-    if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
+   [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
             log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
-    else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
-            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma,threat_precedence, exclude_sq);
-    end
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
     disp('Data Loaded')
 
@@ -211,14 +204,14 @@ for s =session_range %1:length(sessions)
 %         order_units = mapTmap(cohend_sorted);
         %unit_lim = length(find(strcmp(brain_label,"TEO")))+1; yline(unit_lim); %plot the
         %brain area limit
-        hp=heatmap(cohend_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
+        hp=heatmap(cohend_sorted(order_units,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); title(['Cohens-d heatmap'])
         ax = gca;
         ax.FontSize = 14;
         %saveas(gcf, [savePath '/Cohend_heatmap_sorted.pdf']); close all
 
         %Plot ordered heatmap thresholded
         figure; %set(gcf,'Position',[150 250 1000 500]);
-        hp=heatmap(cohend_thresh_sorted(:,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); 
+        hp=heatmap(cohend_thresh_sorted(order_units,nancol), 'MissingDataColor', 'w', 'GridVisible', 'off', 'MissingDataLabel', " ",'Colormap',cmap); hp.XDisplayLabels = AxesLabels_sorted(nancol); caxis([caxis_lower caxis_upper]); hp.YDisplayLabels = nan(size(hp.YDisplayData)); 
         title(['Cohens-d heatmap, FDR-corrected p<' num2str(p_cutoff)])
         ax = gca;
         ax.FontSize = 14;
