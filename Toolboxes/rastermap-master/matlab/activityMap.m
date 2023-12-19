@@ -12,7 +12,10 @@ if nargin<2
 end
 %%
 ops.nC = getOr(ops, 'nC', 30);
-ops.iPC = getOr(ops, 'iPC', 1:50);
+%%%%%%%%%%%%%%% CT CHANGE %%%%%%%%%%%%%%%%%%%%%%%%%
+numPC = min([50, round(size(S,2)/2), size(S,1), size(S,2)]);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ops.iPC = getOr(ops, 'iPC', 1:numPC);
 ops.isort = getOr(ops, 'isort', []);
 ops.useGPU = getOr(ops, 'useGPU', 0);
 ops.upsamp = getOr(ops, 'upsamp', 100);

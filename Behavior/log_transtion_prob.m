@@ -11,11 +11,8 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
 
 %Set parameters
-with_partner =0;
 temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
@@ -24,19 +21,15 @@ with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly= 0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; %smooth the data
 sigma = 1;%set the smoothing window size (sigma)
-only_beh_states =1; %1:only consider behavioral states (with extended duration). 
+only_beh_states =0; %1:only consider behavioral states (with extended duration). 
                     % I.e. exclude short point behaviors such as yawning,
                     % vocalization and scratch. 0: consider short behaviors
-agg_precedence=1; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
+exclude_sq=1;
 
 %Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
+session_range = [1:6,8,11:13,15:18];
+a_sessions = [1:6,8]; h_sessions = [11:13,15:18];
 
 s=1;
 for s =session_range %1:length(sessions)
@@ -45,18 +38,11 @@ for s =session_range %1:length(sessions)
     filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/Behavior_results/'];
 
-    %Get data with specified temporal resolution and channels
-    if with_partner ==1
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma);
-    else
-        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-            reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label]= ...
-            log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-            is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
-    end
+     % Get data with specified temporal resolution and channels
+    [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+        is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
     disp('Data Loaded')
 
@@ -72,21 +58,24 @@ for s =session_range %1:length(sessions)
 
 
     %Consider squeeze partner to be threat to partner
-    behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze partner"))=find(behav_categ=="Threat to partner");
-    behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Squeeze Subject"))=find(behav_categ=="Threat to subject");
+%     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Threat to partner"))=find(behav_categ=="Aggression");
+%     behavior_labels_subject(behavior_labels_subject==find(behav_categ=="Threat to subject"))=find(behav_categ=="Aggression");
 
-    %Remove rest, proximity, behaviors from other individuals and short point behaviors
-    behavior_labels_subject_select = behavior_labels_subject(behavior_labels_subject~=find(behav_categ=="Rest")); %remove "rest"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Proximity")); %remove "proximity"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Other monkeys vocalize")); %remove "other monkeys vocalize"
-    behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Rowdy Room")); %remove "rowdy room"
-
+    %Proximity & behaviors from other individuals set to rest
+    behavior_labels_subject_select = behavior_labels_subject;%(behavior_labels_subject~=find(behav_categ=="Rest")); %remove "rest"
+    behavior_labels_subject_select(behavior_labels_subject_select==find(behav_categ=="Proximity"))= find(behav_categ=="Rest"); %remove "proximity"
+    behavior_labels_subject_select(behavior_labels_subject_select==find(behav_categ=="Other monkeys vocalize"))= find(behav_categ=="Rest"); %remove "other monkeys vocalize"
+   
+    %Exclude short point behaviors, rest and rowdy room to only consider long behavioral
+    %states of ethological relevance
     if only_beh_states ==1
         behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Scratch")); %remove "Scratch"
         behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Butt sniff")); %remove "butt sniff"
         behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Vocalization")); %remove "Vocalization"
         behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Lip smack")); %remove "Lip smack"
         behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Yawning")); %remove "Scratch"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Rowdy Room")); %remove "rowdy room"
+        behavior_labels_subject_select = behavior_labels_subject_select(behavior_labels_subject_select~=find(behav_categ=="Rest")); %remove "rowdy room"
     end
 
     %Get transitions
@@ -119,19 +108,14 @@ for s =session_range %1:length(sessions)
     row_non_zeros = intersect(find(any(P{s} ~= 0)), find(any(P{s} ~= 0,2))'); %only consider transitions that occur at least once?  Any() serves to check each row.  
     P_final{s} = P{s}(row_non_zeros,row_non_zeros);
 
-%     figure; set(gcf,'Position',[150 250 1200 700])
-%     heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_final{s},'Colormap',jet)
-%     xlabel('Following behavior'); ylabel('Preceding behavior')
-%     ax = gca;
-%     ax.FontSize = 16;
+    figure; set(gcf,'Position',[150 250 1200 700])
+    heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_final{s})
+    xlabel('Following behavior'); ylabel('Preceding behavior')
+    ax = gca;
+    ax.FontSize = 16;
+    caxis([0, 20]);
     %saveas(gcf,[savePath '/TransitionProbabilityMatrix.pdf'])
 
-    %Plot transition graph
-%     mc = dtmc(P_final{s},'StateNames',behav_categ(row_non_zeros)); %get transition graph object
-%     figure;set(gcf,'Position',[150 250 1200 700])
-%     graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-    %saveas(gcf,[savePath '/TransitionProbabilityPlot.pdf'])
-    %close all
 end
 
 cd([home '/Dropbox (Penn)/Datalogger/Results/All_sessions/Behavior_results/']);
@@ -143,55 +127,50 @@ row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); 
 P_total_final = P_total(row_non_zeros,row_non_zeros);
 
 figure; set(gcf,'Position',[150 250 1200 700])
-heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-xlabel('Following behavior'); ylabel('Preceding behavior'); title('Monkeys combined, n=12 sessions')
+heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final)%,'Colormap',jet)
+xlabel('Following behavior'); ylabel('Preceding behavior'); title('Monkeys combined, n=14 sessions')
 ax = gca;
 ax.FontSize = 16;
 caxis([0, 40]);
-saveas(gcf,'TransitionProbabilityMatrix_bothMonkeys_onlyStateas.pdf')
+if only_behav_states==1
+    saveas(gcf,'TransitionProbabilityMatrix_bothMonkeys_onlyStates.pdf')
+else
+    saveas(gcf,'TransitionProbabilityMatrix_bothMonkeys_allBehav.pdf')
+end
 
+%% Make transition graph
 
-% % % % %%%%%%%%%%%%%%%%%%%
-% % % % %% AMOS
-% % % % 
-% % % % %Combined sessions for amos
-% % % % P_total = sum(cat(3,P{a_sessions}),3);
-% % % % row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
-% % % % P_total_final = P_total(row_non_zeros,row_non_zeros);
-% % % % 
-% % % % figure; set(gcf,'Position',[150 250 1200 700])
-% % % % heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-% % % % xlabel('Following behavior'); ylabel('Preceding behavior'); title('Amos')
-% % % % ax = gca;
-% % % % ax.FontSize = 16;
-% % % % saveas(gcf,'/TransitionProbabilityMatrix_AMOS.pdf')
-% % % % 
-% % % % %Plot transition graph
-% % % % mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
-% % % % 
-% % % % figure;set(gcf,'Position',[150 250 1200 700])
-% % % % graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-% % % % saveas(gcf,'/TransitionProbabilityPlot_AMOS.pdf')
-% % % % 
-% % % % %%%%%%%%%%%%%%%%%%%
-% % % % %% HOOKE
-% % % % 
-% % % % %Combined sessions for Hooke
-% % % % P_total = sum(cat(3,P{h_sessions}),3);
-% % % % row_non_zeros = intersect(find(any(P_total ~= 0)), find(any(P_total ~= 0,2))'); %only consider transitions that occur more than twice?  Any() serves to check each row.  I don't understand the use of intersect here
-% % % % P_total_final = P_total(row_non_zeros,row_non_zeros);
-% % % % 
-% % % % figure; set(gcf,'Position',[150 250 1200 700])
-% % % % heatmap(behav_categ(row_non_zeros), behav_categ(row_non_zeros), P_total_final,'Colormap',jet)
-% % % % xlabel('Following behavior'); ylabel('Preceding behavior'); title('Hooke')
-% % % % ax = gca;
-% % % % ax.FontSize = 16;
-% % % % saveas(gcf,'/TransitionProbabilityMatrix_HOOKE.pdf')
-% % % % 
-% % % % %Plot transition graph
-% % % % mc = dtmc(P_total_final,'StateNames',behav_categ(row_non_zeros));
-% % % % 
-% % % % figure;set(gcf,'Position',[150 250 1200 700])
-% % % % graphplot(mc,'ColorNodes',true,'ColorEdges',true,'LabelEdges',true)
-% % % % saveas(gcf,'/TransitionProbabilityPlot_Hooke.pdf')
+%Transform frequency into probability matrix
+Trans_prob = P_total_final;
+
+for i = 1:size(P_total_final,1)
+    Trans_prob(i,:) = P_total_final(i,:)/sum(P_total_final(i,:));
+end
+
+%Output matrices
+xvalues = ["Aggression" "Approach" "Drinking" "Foraging" "Groom sollicitation" "Groom partner" "Getting groomed" "Threat to partner" "Threat to subject" "Leave" "Masturbating" "Mounting" "Travel" "Self-groom" "Submission"];
+yvalues = ["Aggression" "Approach" "Drinking" "Foraging" "Groom sollicitation" "Groom partner" "Getting groomed" "Threat to partner" "Threat to subject" "Leave" "Masturbating" "Mounting" "Travel" "Self-groom" "Submission"];
+figure; h = heatmap(xvalues,yvalues,P_total_final);
+
+h.Title = 'Number of behavioral transitions';
+h.YLabel = 'Current state';
+h.XLabel = 'Following state';
+
+figure; h = heatmap(xvalues,yvalues,Trans_prob);
+
+h.Title = 'Probability of behavioral transitions';
+h.YLabel = 'Current state';
+h.XLabel = 'Following state';
+
+%Using digraph function to plot transitions
+Trans_prob(Trans_prob<.20) = 0; %eliminate low probabilities for better vizualisation
+Trans_prob(12,:) = []; Trans_prob(:,12) = []; %Eliminate mounting which has no points that cross the 20% threshold.
+
+stateNames = ["Aggression" "Approach" "Drinking" "Foraging" "Groom sollicitation" "Groom partner" "Getting groomed" "Threat to partner" "Threat to subject" "Leave" "Masturbating" "Travel" "Self-groom" "Submission"];
+G = digraph(Trans_prob, stateNames);
+LWidths = 10*G.Edges.Weight/max(G.Edges.Weight);
+figure; h = plot(G, 'LineWidth',LWidths);
+h.MarkerSize = 7;
+h.NodeColor = 'r';
+
 

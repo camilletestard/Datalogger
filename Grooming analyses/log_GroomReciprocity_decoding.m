@@ -1,4 +1,5 @@
-%% log_SVM_GroomContext_v3.m
+%% log_SVM_GroomReciprocity.m
+%Decode grooming reciprocity from neural population activity.
 
 %Set session list
 is_mac = 1;
@@ -325,10 +326,10 @@ for s =session_range %1:length(sessions)
             Labels_shuffled = Labels(randperm(length(Labels)));
 
             % Run svm
-            [hitrate(iter), C{iter}, nErr] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0, crossval_style);
+            [hitrate(iter), C{iter}, nErr] = log_SVM_basic_function(Input_matrix, Labels, 5, 0, 0);
             %NOTE: we changed the cross-validation to be continuous
             %chunks instead of randomly generated folds
-            [hitrate_shuffled(iter), C_shuffled{iter}, nErr] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0, 'random');
+            [hitrate_shuffled(iter), C_shuffled{iter}, nErr] = log_SVM_basic_function(Input_matrix, Labels_shuffled, 5, 0, 0);
 
             %                     if mod(iter,10)==1
             disp(['SVM run' num2str(iter) '/' num2str(num_iter)])
@@ -378,7 +379,7 @@ for s =session_range %1:length(sessions)
 end
 
 cd('~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/')
-save('SVM_reciprocity.mat')
+%save('SVM_reciprocity.mat')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -398,3 +399,5 @@ sp1 = scatter(ones(size(data_shuffle,1))*2.15,data_shuffle(:,2), 'filled','r');
 sp1 = scatter(ones(size(data,1))*2.85,data(:,3), 'filled','b');
 sp1 = scatter(ones(size(data_shuffle,1))*3.15,data_shuffle(:,3), 'filled','r');
 
+xticks([1 2 3])
+xticklabels({"Net duration", "Net number of bouts", "Chronological bout number"})

@@ -1,4 +1,6 @@
-%% Log_grooming_behavior.m
+%% Log_grooming_TimeWarping.m
+% Plot time warped firing rate during grooming bouts (cut or lengthened to
+% match median grooming bout length).
 
 %Set session list
 is_mac = 1;
@@ -10,6 +12,8 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
+session_range = session_range_no_partner;
+a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 
 
 %Set parameters
@@ -60,14 +64,6 @@ Cmap = [[1 0 0];...%Aggression; red
     [0.8 0.8 0.8]];%Rest; grey
 Cmap_block = [[0.9 0.7 0.12];[0 0.6 0.8];[0.5 0 0];[0.8 0.8 0.8]];
 
-%Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-%     a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
 
 s=1; event1=1; event2=1; event3=1; event4=1; event5=1; event6=1;event7=1; event8=1;event9=1;
 for s =session_range %1:length(sessions)

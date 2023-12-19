@@ -12,15 +12,14 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
+session_range=[1:6,11:13,15:16,18];
 
 %Set parameters
 plot_toggle = 0;
 select_behav=0;
 with_partner = 0;
-temp_resolution = 10; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
-channel_flag = "all"; %Channels considered
+temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
+channel_flag = "vlPFC"; %Channels considered
 with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
 isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =30*temp_resolution;
@@ -32,7 +31,7 @@ threat_precedence =0;
 exclude_sq=1;
 
 %Initialize session batch variables:
-n_behav = 24;
+n_behav = 26;
 mean_cohend_per_behav = nan(length(sessions), n_behav);
 median_cohend_per_behav = nan(length(sessions), n_behav);
 std_cohend_per_behav = nan(length(sessions), n_behav);
@@ -42,13 +41,8 @@ num_selective_behav_per_neuron=cell(1,length(sessions));
 n_per_behav = nan(length(sessions),n_behav);
 
 %Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
-end
+a_sessions = 1:6; h_sessions = [11:13,15:16,18];
+
 
 s=1;
 for s =session_range %1:length(sessions)
@@ -149,7 +143,7 @@ for s =session_range %1:length(sessions)
 end
 
 close all
-
+sum(n_neurons)
 
 %% Results across sessions
 

@@ -170,7 +170,7 @@ end
 
 %Create spike matrix structure
 
-if with_NC==0 && isolatedOnly==0 %If don't include noise cluster
+if with_NC==0 %If don't include noise cluster
     unit=1;
     for i = channels %For all channels
         if length(SpikeData.(Chan_name{i}))>1 %If there are sorted units on this channel
@@ -182,11 +182,17 @@ if with_NC==0 && isolatedOnly==0 %If don't include noise cluster
                 Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
                 clear ticks Spike_counts
 
+                if ismember(Chan_num(i),TEO_chan)
+                    brain_label(unit) = "TEO";
+                else
+                    brain_label(unit) = "vlPFC";
+                end
+
                 unit = unit+1;
             end
         end
     end
-elseif with_NC==2 && isolatedOnly==0 %if ONLY include the noise cluster
+elseif with_NC==2 %if ONLY include the noise cluster
     unit=1;
     for i = channels %For all channels
         if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
@@ -196,13 +202,20 @@ elseif with_NC==2 && isolatedOnly==0 %if ONLY include the noise cluster
                 ticks = round(SpikeData.(Chan_name{i}){j}*temp_resolution);
                 Spike_counts = hist(ticks, 1:round(length_recording*temp_resolution));
                 Spike_rasters(unit, :) = Spike_counts; %Fill in spikes in the raster
+
+                if ismember(Chan_num(i),TEO_chan)
+                    brain_label(unit) = "TEO";
+                else
+                    brain_label(unit) = "vlPFC";
+                end
+
                 clear ticks Spike_counts
 
                 unit = unit+1;
             end
         end
     end
-else %include noise cluster (or first channel)
+else %include multi-unit cluster (or first channel)
     unit=1;
     for i = channels %For all channels
         if ~isempty(SpikeData.(Chan_name{i})) %If there are sorted units on this channel
@@ -305,7 +318,7 @@ for s = 1:length_recording %for all secs in a session
 
             if length(labels{s,2})>1 %If one behavior co-occurs with other behavior(s)
                 if ~isempty(setdiff(labels{s,2}, double_behav_set)) %If behavior co-occurs with proximity, other monkeys vocalize or RR
-                    labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity and RR)
+                    labels{s,3} = setdiff(labels{s,2}, double_behav_set); % only consider the other behavior (it takes precedence over proximity, OMV and RR)
                     labels{s,4} = 'co-occur with prox, omv or RR';
                     labels{s,5} = 2;
                 elseif isempty(setdiff(labels{s,2}, double_behav_set(1:2))) && any(labels{s,3}==omv) %if RR or proximity co-occur with omv

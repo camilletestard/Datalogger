@@ -12,7 +12,8 @@ end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
 session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
+session_range = session_range_no_partner;
+a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
@@ -29,16 +30,8 @@ simplify=1; %lump similar behavioral categories together
 threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 exclude_sq=1;
 
-%Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
 
-s=2;
+s=1;
 for s =session_range %1:length(sessions)
 
     %Set path
@@ -104,9 +97,9 @@ for s =session_range %1:length(sessions)
 
         %Only consider indices with behavior of interest
         idx= find(ismember(behavior_labels,behav));% & ismember(block_labels,3));
-        Spike_count_raster_final = Spike_count_raster;%(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
-        behavior_labels_final = behavior_labels;%(idx);%Same as above but in behavior labels
-        block_labels_final =  block_labels;%(idx);
+        Spike_count_raster_final = Spike_count_raster(idx,:);%Only keep timepoints where the behaviors of interest occur in spiking data
+        behavior_labels_final = behavior_labels(idx);%Same as above but in behavior labels
+        block_labels_final =  block_labels(idx);
      
         if null
             %Simulate fake labels

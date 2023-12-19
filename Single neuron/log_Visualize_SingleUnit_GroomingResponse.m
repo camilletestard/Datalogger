@@ -1,4 +1,4 @@
-%% Log_Visualize_SingleUnit_Selectivity
+%% Log_Visualize_SingleUnit_GroomingResponse
 %  This script produces two plots for a given neuron to illustrate its
 %  response profile. First, it computes firing rate of individual neuron 
 %  under different behavioral conditions. 
@@ -15,8 +15,7 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
+session_range=[1:6,11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
@@ -30,17 +29,7 @@ smooth= 1; %smooth the data
 sigma = 10*temp_resolution;%set the smoothing window size (sigma)
 threat_precedence =0;
 exclude_sq=1;
-plot_toggle=1;
-
-%Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:3; h_sessions = 11:13;
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16];
-end
-
+plot_toggle=0;
 
 s=1;
 for s =session_range %1:length(sessions)
@@ -53,7 +42,7 @@ for s =session_range %1:length(sessions)
 
     %% Get data with specified temporal resolution and channels
     [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-        unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+        unit_count, groom_labels_all, brain_label{s}, behavior_log, behav_categ_original]= ...
         log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
         is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
 
@@ -112,58 +101,7 @@ for s =session_range %1:length(sessions)
     %Exclude axctivity at the very beginning and very end of the
     %session
     session_with_buffer = [250*temp_resolution:size(Spike_count_raster,1)-250*temp_resolution];
-    idx = session_with_buffer;%1:size(Spike_count_raster,1);%session_with_buffer;%[500:2500];
-    activity_all = Spike_count_raster(idx,:)';
-    activity_vlpfc = Spike_count_raster(idx,strcmp(brain_label,'TEO'))';
-    activity_teo = Spike_count_raster(idx,strcmp(brain_label,'vlPFC'))';
-
-    % Sort activity using rastermap.
-    [isort1_all, isort2_all, amap_all, clusters] = mapTmap(activity_all); %all units considered
-    [isort1_teo, isort2_teo, amap_teo] = mapTmap(activity_teo); %just teo units
-    [isort1_vlpfc, isort2_vlpfc, amap_vlpfc] = mapTmap(activity_vlpfc); %just vlpfc units
-    sorted_activity_all = activity_all(isort1_all,:);
-    sorted_activity_byArea = [activity_vlpfc(isort1_vlpfc,:); activity_teo(isort1_teo,:)];
-
-    if plot_toggle %plot rastermap
-        %             figure; imagesc(amap_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
-        %             figure; imagesc(sorted_activity_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
-        %             figure; imagesc(activity_all); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
-        %
-        %             figure; imagesc([amap_vlpfc;amap_teo]); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2,'LineStyle','-')
-        %             figure; imagesc(sorted_activity_byArea); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2]); yline(size(amap_vlpfc,1),'LineWidth',2)
-        %
-        %             figure; imagesc(Spike_count_raster(idx,:)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); colorbar; caxis([-2 2])
-        %             figure; imagesc(behavior_labels(idx)'); xline(block_times.start_time(2)*temp_resolution,'LineWidth',4); xline(block_times.start_time(3)*temp_resolution,'LineWidth',4); colormap(Cmap); colorbar
-
-        figure;
-        imagesc(behavior_labels(idx)'); 
-        xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); 
-        xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); 
-        colormap(Cmap); colorbar
-        figure;
-        imagesc(sorted_activity_byArea); 
-        xline(block_times.start_time(2)*temp_resolution,'LineWidth',2); 
-        xline(block_times.start_time(3)*temp_resolution,'LineWidth',2); 
-        colorbar; caxis([-2 2]); 
-        yline(size(amap_vlpfc,1),'LineWidth',2)
-
-
-        %             y=mean(Spike_count_raster(idx,:)');
-        %             y_std=std(Spike_count_raster(idx,:)');
-        %             figure; hold on
-        %             upper_lim=y+y_std;
-        %             lower_lim=y-y_std;
-        %             p = fill([1:length(y) length(y):-1:1],[upper_lim flip(lower_lim)],'red');
-        %             p.FaceColor = [0.9 0.7 0.12];
-        %             p.FaceAlpha = 0.3;
-        %             p.EdgeColor = 'none';
-        %             plot(y,'Color',[0.9 0.7 0.12],'LineWidth',2)
-        %             ylim([-2 4])
-
-    end
-
-
-        
+    
     %% Plot firing rate profile across macaques behavioral repertoire
 
     %Set parameters
@@ -180,27 +118,24 @@ for s =session_range %1:length(sessions)
     %1: Sensitive to grooming
 
     n=49;
-    for n=1:length(neurons)
+    for n=1:size(Spike_rasters,1)
+    
+        idx_gg = find(behavior_labels == 7); %get idx where behavior b occurred
+        idx_gr = find(behavior_labels == 8);
 
-        %Plot distribution of firing rate across behaviors for example neuron n
-        figure; hold on; set(gcf,'Position',[150 250 1500 300]); i=1;
-        for b = unqLabels
-            subplot(1, length(unqLabels), i); hold on
-            idx = find(behavior_labels == b); %get idx where behavior b occurred
-            idx_rest = find(behavior_labels == length(behav_categ));
+        mean_gg{s}(n) = mean(Spike_count_raster(idx_gg,n));
+        mean_gr{s}(n) = mean(Spike_count_raster(idx_gr,n));
 
-            %plot firing rate distribution for example unit
-            histogram(Spike_rasters(n, idx),'BinWidth',1,'Normalization','pdf', 'FaceColor',Cmap(b,:))
-            histogram(Spike_rasters(n, idx_rest),'BinWidth',1,'Normalization','pdf', 'FaceColor',[0.5 0.5 0.5])
-            legend({behav_categ(b),'Rest'})
-            title([behav_categ(b)])
+        if plot_toggle
+        %plot firing rate distribution for example unit
+        figure; hold on;
+        histogram(Spike_rasters(n, idx_gg),'BinWidth',0.5,'Normalization','pdf', 'FaceColor',Cmap(7,:))
+        histogram(Spike_rasters(n, idx_gr),'BinWidth',0.5,'Normalization','pdf', 'FaceColor',Cmap(8,:))
+        legend({'Groom give','Groom receive'})
 
-            set(gca,'FontSize',15);
-            xlabel('Firing rate (Hz)'); ylabel('Normalized Frequency');
+        set(gca,'FontSize',15);
+        xlabel('Firing rate (Hz)'); ylabel('Normalized Frequency');
 
-            %ylim([0 0.2])
-            i=i+1;
-        end
         sgtitle(['Unit #' num2str(n)])
         %saveas(gcf, [savePath '/ExampleUnitSelectivity.eps'])
 
@@ -211,12 +146,8 @@ for s =session_range %1:length(sessions)
         %Get behavior indices
         idx_groom = find(behavior_labels == 7);
         idx_getgroom = find(behavior_labels == 8);
-        idx_selfgroom = find(behavior_labels == 22);
-        idx_forage = find(behavior_labels == 5);
-        idx_agg = find(behavior_labels == 1);
         idx_rest = find(behavior_labels == length(behav_categ));
-        idx_travel = find(behavior_labels == 2 | behavior_labels == 11 |behavior_labels == 16);
-
+      
         unit=n;
         session_length = size(Spike_rasters,2);
         figure; hold on; set(gcf,'Position',[150 250 1500 500]);
@@ -238,35 +169,47 @@ for s =session_range %1:length(sessions)
         to_plot=nan(1,session_length); to_plot(idx_groom)=Spike_rasters(unit,idx_groom);
         plot(1:session_length, to_plot, "LineWidth",2, "Color",'c')
 
-% %         %Self-groom
-% %         to_plot=nan(1,session_length); to_plot(idx_selfgroom)=Spike_rasters(unit,idx_selfgroom);
-% %         plot(1:session_length, to_plot, "LineWidth",2, "Color",[0.8 0 0.8])
-% % 
-% %         %Foraging
-% %         to_plot=nan(1,session_length); to_plot(idx_forage)=Spike_rasters(unit,idx_forage);
-% %         plot(1:session_length, to_plot, "LineWidth",2, "Color",[0 0.7 0])
-% % 
-% %         %Aggression
-% %         to_plot=nan(1,session_length); to_plot(idx_agg)=Spike_rasters(unit,idx_agg);
-% %         plot(1:session_length, to_plot, "LineWidth",2, "Color","r")
-% % 
-% %         %Travel
-% %         to_plot=nan(1,session_length); to_plot(idx_travel)=Spike_rasters(unit,idx_travel);
-% %         plot(1:session_length, to_plot, "LineWidth",2, "Color","y")
-% % 
 % %         legend({'','','Smooth spike trace', 'Rest','Getting groomed','Grooming','Self-groom','Foraging','Aggression','Travel','Scratch'},...
 % %             'Location','bestoutside')
 
         set(gca,'FontSize',15);
         ylabel('Firing rate (Hz)'); xlabel('Time (s)');
-        title(['Example Unit #' num2str(neurons(n)) ' from ' brain_label(neurons(n))])
+        title(['Example Unit #' num2str(n) ' from ' brain_label(n)])
         %saveas(gcf, [savePath '/ExampleUnitLabeledSmoothTrace.eps'])
-
+        end
+    
     end
+
+%     figure; hold on
+%     scatter(mean_gg{s},mean_gr{s})
+%     xlabel("Zscore activity guring groom give")
+%     ylabel("Zscore activity durin groom receive")
+%     hL=plot([-1.5 1.5],[-1.5 1.5],'DisplayName','Diagonal'); 
+    
     
     close all
 
 end
+
+mean_gg_all = cat(2,mean_gg{:});
+mean_gr_all = cat(2,mean_gr{:});
+brain_label_all = cat(2,brain_label{:});
+
+
+figure; hold on
+scatter(mean_gg_all(strcmp(brain_label_all,"TEO")),mean_gr_all(strcmp(brain_label_all,"TEO")), 'Color','g')
+scatter(mean_gg_all(strcmp(brain_label_all,"vlPFC")),mean_gr_all(strcmp(brain_label_all,"vlPFC")), 'Color', 'b')
+xlabel("Zscore activity guring groom give")
+ylabel("Zscore activity durin groom receive")
+hL=plot([-2 2],[-2 2],'DisplayName','Diagonal');
+
+% [p, h, stats ]= signrank(mean_gg_all,mean_gr_all);
+% [h,p,ci,stats]=ttest(mean_gg_all,mean_gr_all);
+% 
+% figure
+% histogram(mean_gg_all-mean_gr_all, 'BinWidth',0.1)
+% length(find(mean_gg_all-mean_gr_all>0))/length(mean_gg_all)
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Old code

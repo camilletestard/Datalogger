@@ -1,4 +1,6 @@
 %% Log_grooming_behavior.m
+% Characterize grooming reciprocity behaviorally. Run simulations to
+% identify if reciprocity occurred more frequently than chance.
 
 %Set session list
 is_mac = 1;

@@ -1,4 +1,5 @@
 %% log_crossValReg_groom
+% Run cross-validated regression to predict reciprocity from neural data
 
 %Set session list
 is_mac = 1;
@@ -283,7 +284,7 @@ for s =session_range %1:length(sessions)
 %     groom_variables=[cumul_groomTime, cumul_groomBout, ...
 %         cumul_total_time];
     groom_variables=[cumul_groomTime, cumul_groomBout, ...
-        cumul_total_time, time_boutNum_combo, timInBout_num_combo];
+        cumul_total_time, time_boutNum_combo, timInBout_numold_combo];
 %     groom_variables=[cumul_groomTime_categ, cumul_groomBout_categ, ...
 %         time_in_bout_categ];
 
@@ -339,7 +340,7 @@ for s =session_range %1:length(sessions)
 
         %% Predict observed reciprocity from neural data
         %Fit ridge regression with 5-fold cross-validation (in blocks)
-        [yfit]=log_crossValModel(X1, y_obs{s,var}, [1:size(X1,2)], [1:size(X1,2)], [1:size(X1,2)], 5);
+        [yfit]=log_crossValModel_groom(X1, y_obs{s,var}, [1:size(X1,2)], [1:size(X1,2)], [1:size(X1,2)], 5);
         Rsq_obs(s,var) = corr(y_obs{s,var}', yfit').^2; % Get rsquared
         residuals{s,var}= y_obs{s,var}' - yfit';
         yfit_plot{s,var} = yfit;

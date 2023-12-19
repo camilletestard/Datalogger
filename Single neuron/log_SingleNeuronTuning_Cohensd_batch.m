@@ -23,8 +23,8 @@ select_behav=0; %If only plot heatmap for desired behavior
 with_partner = 0; %need partner info? 0: No; 1:yes
 temp_resolution = 1; %Temporal resolution of firing rate. 1: 1sec; 10:100msec; 0.1: 10sec
 channel_flag = "all"; %Channels considered. vlPFC, TEO or all
-with_NC =1; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
-isolatedOnly=0; %Only consider isolated units. 0=all units; 1=only well isolated units
+with_NC =0; %0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
+isolatedOnly=1; %Only consider isolated units. 0=all units; 1=only well isolated units
 min_occurrence =30; %Minimum number of occurrences in the session needed to be considered for this analysis.
 cohend_cutoff=0.3; p_cutoff=0.01;%Set "significance" thresholds
 smooth= 1; % 1: smooth the data; 0: do not smooth
@@ -34,7 +34,7 @@ threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and 
 exclude_sq = 1;
 
 %Initialize session batch variables:
-n_behav = 25;
+n_behav = 26;
 mean_cohend_per_behav = nan(length(sessions), n_behav);
 median_cohend_per_behav = nan(length(sessions), n_behav);
 std_cohend_per_behav = nan(length(sessions), n_behav);

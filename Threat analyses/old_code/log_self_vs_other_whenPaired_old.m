@@ -11,35 +11,24 @@ else
 end
 cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
 sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range_no_partner=[1:6,11:13,15:16,18];
-%session_range_no_partner=[1:3,11:13];
-%session_range_no_partner=[4:6,15:16,18];
-session_range_with_partner=[1:6,11:13,15:16,18];
+session_range=[1:6,11:13,15:16,18];
+a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 
 %Set parameters
 with_partner =0;
-temp_resolution = 30;
+temp_resolution = 1;
 channel_flag = "all";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
-with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY noise cluster
+with_NC =1;%0: NC is excluded; 1:NC is included; 2:ONLY multi-unit cluster
 isolatedOnly=0;%Only consider isolated units. 0=all units; 1=only well isolated units
 smooth= 1; % 1: smooth the data; 0: do not smooth
 sigma = 1*temp_resolution;%set the smoothing window size (sigma)
 null=0;%Set whether we want the null
 simplify=1; %lump similar behavioral categories together
-agg_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
-time_before_threat = 30*temp_resolution;
-time_after_threat = 60*temp_resolution;
-
-%Select session range:
-if with_partner ==1
-    session_range = session_range_with_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-else
-    session_range = session_range_no_partner;
-    a_sessions = 1:6; h_sessions = [11:13,15:16,18];
-end
+time_after_threat = 30*temp_resolution;
+threat_precedence=1; % 0: aggression takes precedence; 1: Threat to partner and subject states take precedence
+exclude_sq = 1;
 
 s=1; chan=1; e=1; e2=1;
 for s =session_range %1:length(sessions)
@@ -50,17 +39,11 @@ for s =session_range %1:length(sessions)
     
     
         %% Get data with specified temporal resolution and channels
-        if with_partner ==1
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all]= ...
-                log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma);
-        else
-            [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
-                reciprocal_set, social_set, ME_final,unit_count, groom_labels_all, brain_label, behavior_log]= ...
-                log_GenerateDataToRes_function_temp(filePath, temp_resolution, channel_flag, ...
-                is_mac, with_NC, isolatedOnly, smooth, sigma, agg_precedence);
-        end
+        
+        [Spike_rasters, labels, labels_partner, behav_categ, block_times, monkey, ...
+            unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
+            log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
+            is_mac, with_NC, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
     
         disp('Data Loaded')
     
@@ -84,8 +67,8 @@ for s =session_range %1:length(sessions)
             idx = threat_to_subject_onset(event) : threat_to_subject_onset(event)+time_after_threat;
             idx_groom = grooming_onset(event) : grooming_onset(event)+time_after_threat;
 
-            Spike_count_raster_subject{e,1} = Spike_count_raster(idx,1:250)';%Only keep timepoints where the behaviors of interest occur in spiking data
-            Spike_count_raster_groom{e,1} = Spike_count_raster(idx_groom,1:250)';
+            Spike_count_raster_subject{e,1} = Spike_count_raster(idx,:)';%Only keep timepoints where the behaviors of interest occur in spiking data
+            Spike_count_raster_groom{e,1} = Spike_count_raster(idx_groom,:)';
 %             Spike_count_raster_groom{e,1} = Spike_count_raster(idx_groom,randsample(unit_count(3),250))';
             block_selfthreat(e) =  unique(block_labels(idx));
 
@@ -99,7 +82,7 @@ for s =session_range %1:length(sessions)
 
             idx = threat_to_partner_onset(event) : threat_to_partner_onset(event)+time_after_threat;
 
-            Spike_count_raster_partner{e2,1} = Spike_count_raster(idx,1:250)';%Only keep timepoints where the behaviors of interest occur in spiking data
+            Spike_count_raster_partner{e2,1} = Spike_count_raster(idx,:)';%Only keep timepoints where the behaviors of interest occur in spiking data
             block_otherthreat(e2) =  unique(block_labels(idx));
            
             e2=e2+1;
@@ -125,10 +108,25 @@ for s =session_range %1:length(sessions)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         disp(s)
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+
 end %end of session for loop
 
-partner_threat_activity = mean(cat(3, Spike_count_raster_partner{block_otherthreat==1}),3);
-subject_threat_activity = mean(cat(3, Spike_count_raster_subject{block_selfthreat==1}),3);
-groom_activity = mean(cat(3, Spike_count_raster_groom{block_selfthreat==1}),3);
+%CAMILLE NOTE: FIGURE out how to get correlation coefficient.
+
+% Get mean response to threat to self, threat to partner, grooming
+partner_threat_activity = mean(cat(1, Spike_count_raster_partner{block_otherthreat==1}));
+subject_threat_activity = mean(cat(1, Spike_count_raster_subject{block_selfthreat==1}));
+groom_activity = mean(cat(1, Spike_count_raster_groom{block_selfthreat==1}));
+
+%Plot matrices
+figure; hold on
+plot(partner_threat_activity); 
+plot(subject_threat_activity); 
+plot(groom_activity)
+
+%Get correlation between mean activity
 corrcoef(subject_threat_activity,partner_threat_activity)
 corrcoef(subject_threat_activity,groom_activity)
+
+
+
