@@ -2,8 +2,11 @@
 Lead authors: Camille Testard & Sebastien Tremblay
 
 <div align="center">
-  <img src="Movement%20analyses/Video%20Tracking/demo-vids/gh.gif" width="480" height="270" />
+  <img src="Movement%20analyses/Video%20Tracking/demo-vids/gh.gif" alt="Lovelace grooms Amos" width="480" />
+  <br>
+  <p>Lovelace grooms Amos</p>
 </div>
+
 
 This repository contains the code associated with our research on the neural underpinnings of natural primate social behavior (Testard & Tremblay et al., 2023). 
 
