@@ -2,7 +2,7 @@
 Lead authors: Camille Testard & Sebastien Tremblay
 
 <div align="center">
-  <img src="Movement%20analyses/Video%20Tracking/demo-vids/gh.gif" alt="Lovelace grooms Amos" width="480" />
+  <img src="Movement%20analyses/Video%20Tracking/gh.gif" alt="Lovelace grooms Amos" width="480" />
   <br>
   <p>Lovelace grooms Amos</p>
 </div>
