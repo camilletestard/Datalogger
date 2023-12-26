@@ -3,9 +3,7 @@ Testard & Tremblay et al., 2023
 
 This repository contains the code associated with our research on the neural underpinnings of natural primate social behavior. 
 
-Read our [preprint here](https://www.biorxiv.org/content/10.1101/2023.07.05.547833v1). 
-
-Data and example videos can be found on [the Open Science Framework](https://osf.io/e2xsu/).
+Read our [preprint here](https://www.biorxiv.org/content/10.1101/2023.07.05.547833v1). Data and example videos can be found on [the Open Science Framework](https://osf.io/e2xsu/).
 
 #### Abstract
 
