@@ -9,15 +9,9 @@ Finally, integrating computer vision-based tracking into (monkey) neuroscience e
 ### Contents
 
 Video Tracking/
-|--- configs/
-|--- demo-scripts/
-|--- demo-vids/
-
-Video Tracking/
----| configs/
----| demo-scripts/
----| demo-vids/
-
+  - configs/
+  - demo-scripts/
+  - demo-vids/
 
 ### Usage
 1. Create a conda environment following the [mmpose](https://mmpose.readthedocs.io/en/latest/) instructions.
