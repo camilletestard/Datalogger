@@ -1,4 +1,5 @@
-# Neural signatures of natural behavior in socializing macaques (Testard & Tremblay et al., 2023)
+# Neural signatures of natural behavior in socializing macaques
+Testard & Tremblay et al., 2023
 
 This repository contains the code associated with our research on the neural underpinnings of natural primate social behavior. 
 
