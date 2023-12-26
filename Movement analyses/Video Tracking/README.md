@@ -8,7 +8,26 @@ Finally, integrating computer vision-based tracking into (monkey) neuroscience e
 
 ### Contents
 
-...
+|--- Video Tracking
+  |--- configs
+  |--- demo-scripts
+  |--- demo-vids
 
 ### Usage
-...
+1. Create a conda environment following the [mmpose](https://mmpose.readthedocs.io/en/latest/) instructions.
+
+2. Download the model configs from this [google drive link](https://drive.google.com/drive/folders/16greEMThJV7bKUbvTxQz4y6_BOXm91yl?usp=drive_link).
+
+3. Activate your conda environment and run:
+```
+python video_demo.py \
+  <detection-model-config> \
+  <detection-model-weights> \
+  <pose-model-config> \
+  <pose-model-weights> \
+  --input <input-video.mp4> \
+  --device cuda:0 \
+  --save-predictions \
+  --output-root <output-root.json>
+```
+This will save a video with the visualized pose predictions and a json file containing the predictions for all detected instances.
