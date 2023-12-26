@@ -9,8 +9,9 @@ Finally, integrating computer vision-based tracking into (monkey) neuroscience e
 ### Contents
 
 Video Tracking/
+  - README.md
+  - video_demo.py
   - configs/
-  - demo-scripts/
   - demo-vids/
 
 ### Usage
