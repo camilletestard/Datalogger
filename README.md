@@ -11,6 +11,9 @@ Our understanding of the neurobiology of primate behavior largely derives from a
 
 ![Grooming-Demo](Datalogger/Movement%20analyses/Video%20Tracking/demo-vids/github_groom_demo.mp4)
 
+[![Grooming-demo](https://youtu.be/7KScpwpBp4Y)
+
+
 #### Contents
 
 This repository contains all the code used for the analyses and visualization of the data collected in our study:
