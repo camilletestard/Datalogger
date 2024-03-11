@@ -1,6 +1,6 @@
 # Neural signatures of natural behavior in socializing macaques
 
-This repository contains the code and resources associated with our research on the neural underpinnings of natural primate social behavior. 
+This repository contains the code associated with our research on the neural underpinnings of natural social behavior in primates (rhesus macaques). To access to raw data, go to: https://osf.io/e2xsu/
 
 Our work, titled "_Neural signatures of natural behavior in freely-socializing macaques_", was conducted by Testard & Tremblay et al. (2023) and can be accessed [here](https://www.biorxiv.org/content/10.1101/2023.07.05.547833v1). 
 
@@ -10,24 +10,7 @@ Our understanding of the neurobiology of primate behavior largely derives from a
 
 ### Repo Contents
 
-This repository contains all the code used for the analysis and visualization of the data collected in our study. It's organized into several directories:
+This repository contains all the code used for the analysis and visualization of the behavioral and neural data collected in our study. Most of the code is in Matlab with some pieces in R (behavioral data visualization only). 
+The code is organized into several directories which are split by figure content and topic. We also include a folder for external toolboxes used in the code and a folder for preprcossing the data. Each script takes the preprocessed and formatted data as input (starts by running the function "log_GenerateDatToRes_function.m"). Make sure to add the full github directory to your path in Matlab. 
 
-_Behavior_: ...
-
-_GLM_
-
-_Linear decoding_
-
-_Movement analysis_
-
-_Neural preprocessing_
-
-_Neural states_
-
-_Ridge regression_
-
-_SanityChecksToyExamples_
-
-_Single neuron_
-
-_Toolboxes__
+If you have any questions about the code or data please reach Dr. Camille Testard at ctestard@fas.harvard.edu or camille.testard94@gmail.com
