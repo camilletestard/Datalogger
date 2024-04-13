@@ -13,4 +13,4 @@ Our understanding of the neurobiology of primate behavior largely derives from a
 This repository contains all the code used for the analysis and visualization of the behavioral and neural data collected in our study. Most of the code is in Matlab with some pieces in R (behavioral data visualization only). 
 The code is organized into several directories which are split by figure content and topic. We also include a folder for external toolboxes used in the code and a folder for preprcossing the data. Each script takes the preprocessed and formatted data as input (starts by running the function "log_GenerateDatToRes_function.m"). Make sure to add the full github directory to your path in Matlab. 
 
-If you have any questions about the code or data please reach Dr. Camille Testard at ctestard@fas.harvard.edu or camille.testard94@gmail.com
+If you have any questions about the code or data please reach out to Dr. Camille Testard at ctestard@fas.harvard.edu or camille.testard94@gmail.com
