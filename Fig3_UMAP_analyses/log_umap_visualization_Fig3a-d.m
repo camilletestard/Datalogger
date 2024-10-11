@@ -18,7 +18,7 @@ a_sessions = 1:6; h_sessions = [11:13,15:16,18];
 %Set parameters
 with_partner =0;
 temp_resolution = 1;
-channel_flag = "all";
+channel_flag = "TEO";
 randomsample=0; %subsample neurons to match between brain areas
 unq_behav=0; %If only consider epochs where only 1 behavior happens
 with_MU =1;%0: MU cluster is excluded; 1:MU cluster is included; 2:ONLY multi-unit cluster
@@ -30,7 +30,7 @@ simplify=1; %lump similar behavioral categories together
 threat_precedence=0; % 1: aggression takes precedence; 0: Threat to partner and subject states take precedence
 exclude_sq=1;
 
-s=1;
+s=2;
 for s =session_range %1:length(sessions)
 
     %Set path
