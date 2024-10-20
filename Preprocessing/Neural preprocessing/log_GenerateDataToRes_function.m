@@ -100,7 +100,9 @@ end
 length_recording = size(Unit_rasters,2); %Unit rasters in second resolution
 
 %get unit count
-num_unit_allsessions = readtable('~/Dropbox (Penn)/Datalogger/Results/All_sessions/Number of units/Session_log_num_units.csv');% Load number of unit data
+% CHANGE TO MATCH YOUR SETUP: assume working directory is the root of the github repo
+repo_root = '~/Documents/projects/Datalogger'
+num_unit_allsessions = readtable([repo_root '/Preprocessing/Neural preprocessing/Session_log_num_units.csv']);% Load number of unit data
 session_idx = find(~cellfun(@isempty,(strfind(num_unit_allsessions.session_name,session))));
 unit_count = [num_unit_allsessions.num_units_vlPFC(session_idx), num_unit_allsessions.num_units_TEO(session_idx), num_unit_allsessions.num_units(session_idx)];
 

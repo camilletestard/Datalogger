@@ -66,10 +66,16 @@ for fold = 1:kfolds
 
     % Train/test SVM model:
     % !!!!!!!!!! CHANGE SVM KERNEL HERE !!!!!!!!!!!!!!!
-    model = svmtrain(trainlbls, traindata, '-t, 0, -q'); %train the model using a linear kernel (-t: 0) or a RBF kernel (-t: 2) and default parameters
-    [svmlbls] = svmpredict(testlbls, testdata, model, '-q'); %get predicted labels given model
+    % model = svmtrain(trainlbls, traindata, '-t, 0, -q'); %train the model using a linear kernel (-t: 0) or a RBF kernel (-t: 2) and default parameters
+    % [svmlbls] = svmpredict(testlbls, testdata, model, '-q'); %get predicted labels given model
 
-    nErr(fold)= length(find( (testlbls - svmlbls) ~= 0 )); %Find misclassifications
+    model = fitcecoc(traindata, trainlbls, 'Learners', templateSVM('KernelFunction', 'linear'), 'Coding', 'onevsone');
+    svmlbls = predict(model, testdata);
+
+
+    % nErr(fold)= length(find( (testlbls - svmlbls) ~= 0 )); %Find misclassifications
+    nErr(fold) = sum(testlbls ~= svmlbls); % find misclassifications
+
     cumError = cumError + nErr(fold); %Count number of errors
     Predicted_labels(indices == fold) = svmlbls; %Keep track of the predicted labels
 

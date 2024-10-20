@@ -12,10 +12,46 @@ if is_mac
 else
     home ='C:/Users/GENERAL';
 end
-cd([home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/'])
-sessions = dir('Ready to analyze output'); sessions = sessions(5:end,:);
-session_range=[1:6,11:13,15:16,18];
-a_sessions = 1:6; h_sessions = [11:13,15:16,18]; %Split sessions by monkey
+
+% cd([home '/Dropbox (Penn)/data/monkey/'])
+% get all session directories in top-level directory (should have both A
+% and H sessions)
+% sessions = dir('Ready to analyze output'); 
+% skip some hidden files junk at this beginning? (should not be excluding
+% sessions)
+% sessions = sessions(5:end,:);
+% subset of sessions which are inlcuded - not necessary if using OSF data, 
+% which already excluded bad sessions
+% session_range=[1:6,11:13,15:16,18];
+% a_sessions = 1:6; h_sessions = [11:13,15:16,18]; %Split sessions by monkey
+
+% alternative for OSF data is to load (with dir) a_sessions and h_sessions
+% separately, since they are already separated on OSF
+
+% CHANGE THIS TO MATCH YOUR DIRECTORY CONTAINING
+% OSF NEURAL DATA
+source_directory = [home '/Dropbox (Penn)/data/monkey'];
+
+a_directory = [source_directory '/Data_MonkeyA']; % Specify the path for a_sessions directory
+h_directory = [source_directory '/Data_MonkeyH']; % Specify the path for h_sessions directory
+
+% Get all files and directories in a_directory and h_directory
+a_sessions = dir(a_directory);
+h_sessions = dir(h_directory);
+
+% Filter out hidden files and directories (starting with '.') and '.' or '..'
+a_sessions = a_sessions(~startsWith({a_sessions.name}, '.'));
+h_sessions = h_sessions(~startsWith({h_sessions.name}, '.'));
+
+
+% Concatenate the two lists
+sessions = [a_sessions; h_sessions];
+
+% Update the name field to include the full file paths
+for i = 1:length(sessions)
+    sessions(i).path = fullfile(sessions(i).folder, sessions(i).name);
+end
+
 
 %Set parameters
 temp = 1; temp_resolution = 1;
@@ -33,11 +69,11 @@ threat_precedence =0;
 exclude_sq=1;
 
 s=1;
-for s =session_range %1:length(sessions)
+for s = 1:length(sessions)
 
     %Set path
-    filePath = [home '/Dropbox (Penn)/Datalogger/Deuteron_Data_Backup/Ready to analyze output/' sessions(s).name]; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
-    savePath = [home '/Dropbox (Penn)/Datalogger/Results/' sessions(s).name '/SVM_results/'];
+    filePath = sessions(s).path; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
+    savePath = [home '/Documents/projects/Datalogger/Results/' sessions(s).name '/SVM_results/'];
 
     chan = 1;
     for channel_flag = ["vlPFC", "TEO", "all"]
@@ -48,6 +84,7 @@ for s =session_range %1:length(sessions)
             unit_count, groom_labels_all, brain_label, behavior_log, behav_categ_original]= ...
             log_GenerateDataToRes_function(filePath, temp_resolution, channel_flag, ...
             is_mac, with_MU, isolatedOnly, smooth, sigma, threat_precedence, exclude_sq);
+
 
         disp('Data Loaded')
 
