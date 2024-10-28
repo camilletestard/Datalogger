@@ -43,7 +43,6 @@ h_sessions = dir(h_directory);
 a_sessions = a_sessions(~startsWith({a_sessions.name}, '.'));
 h_sessions = h_sessions(~startsWith({h_sessions.name}, '.'));
 
-
 % Concatenate the two lists
 sessions = [a_sessions; h_sessions];
 
@@ -51,6 +50,15 @@ sessions = [a_sessions; h_sessions];
 for i = 1:length(sessions)
     sessions(i).path = fullfile(sessions(i).folder, sessions(i).name);
 end
+
+% Define the sessions (directory names) you want to skip
+sessions_to_skip = {'Hooke_2021-09-09', 'Amos_2021-09-14'};
+
+% Use logical indexing to find sessions that are NOT in the sessions_to_skip list
+keep_sessions = ~ismember({sessions.name}, sessions_to_skip);
+
+% Filter the sessions list based on the logical array
+sessions = sessions(keep_sessions);
 
 
 %Set parameters
@@ -68,12 +76,30 @@ simplify=0;%lump similar behavioral categories together to increase sample size.
 threat_precedence =0;
 exclude_sq=1;
 
-s=1;
-for s = 1:length(sessions)
+disp(['Length of sessions: ', num2str(length(sessions))]);
+
+
+% Pre-allocate cell arrays based on the number of sessions
+num_sessions = length(sessions);      % Should be 12 as per your observation
+num_channels = 3;                     % "vlPFC", "TEO", "all"
+
+% Initialize cell arrays to store results
+mean_hitrate = cell(num_sessions, 1);
+sd_hitrate = cell(num_sessions, 1);
+mean_hitrate_shuffled = cell(num_sessions, 1);
+sd_hitrate_shuffled = cell(num_sessions, 1);
+
+confusion_mat_avg = cell(num_sessions, num_channels);
+rowNames = cell(num_sessions, 1);
+colNames = cell(num_sessions, 1);
+C_table = cell(num_sessions, num_channels);
+
+for s = 1:num_sessions
 
     %Set path
     filePath = sessions(s).path; % Enter the path for the location of your Deuteron sorted neural .nex files (one per channel)
     savePath = [home '/Documents/projects/Datalogger/Results/' sessions(s).name '/SVM_results/'];
+    mkdir(savePath)
 
     chan = 1;
     for channel_flag = ["vlPFC", "TEO", "all"]
@@ -300,7 +326,8 @@ end %End of session for loop
 %% Plot all sessions results
 
 %Change savePath for all session results folder:
-cd(['~/Dropbox (Penn)/Datalogger/Results/All_sessions/SVM_results/']);
+mkdir([home '/Documents/projects/Datalogger/Results/All_sessions/SVM_results/']);
+cd([home '/Documents/projects/Datalogger/Results/All_sessions/SVM_results/']);
 save('SVM_results_subjectBehav.mat', "mean_hitrate","sd_hitrate","mean_hitrate_shuffled","behav","a_sessions","h_sessions","behav_categ")
 load('SVM_results_subjectBehav.mat')
 
@@ -309,8 +336,8 @@ load('SVM_results_subjectBehav.mat')
 % Bar plot decoding accuracy (Fig 3e)
 
 figure; hold on
-data = cell2mat(mean_hitrate');
-data_shuffle = cell2mat(mean_hitrate_shuffled');
+data = cell2mat(mean_hitrate);
+data_shuffle = cell2mat(mean_hitrate_shuffled);
 bp = bar([mean(data(:,:)); mean(data_shuffle(:,:))],'FaceAlpha',0.2);
 
 sp1 = scatter(ones(size(data,1))*0.77,data(:,1), 'filled','b');

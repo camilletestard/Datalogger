@@ -633,4 +633,12 @@ if temp_resolution >= 1
     groom_labels_all(find(groom_labels_all(:,1)~=7 & groom_labels_all(:,1)~=8),2:end)=0; %Make all non-groom indices as "0".
 end
 
+
+% Save outputs to a .mat file
+% Define th e file name based on the input filePath or another convention
+saveFileName = [filePath '/processed_for_SVM_' num2str(channel_flag) '.mat'];
+save(saveFileName, 'Spike_rasters', 'labels', 'labels_partner', 'behav_categ', ...
+    'block_times', 'monkey', 'unit_count', 'groom_labels_all', 'brain_label', ...
+    'behavior_log', 'behav_categ_original');
+
 end
