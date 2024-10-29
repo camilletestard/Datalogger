@@ -179,7 +179,7 @@ for s = 1:num_sessions
         %Print behaviors selected
         behavs_eval = behav_categ(behav);
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-        fprintf('Behaviors evaluated are: %s \n', behavs_eval);
+        fprintf('Behaviors evaluated are: %s \n', cell2mat(behavs_eval));
         disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
         %Only keep the behaviors of interest

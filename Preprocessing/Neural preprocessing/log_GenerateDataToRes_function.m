@@ -634,6 +634,15 @@ if temp_resolution >= 1
 end
 
 
+% Convert 'string' variables to cell arrays
+behav_categ = cellstr(behav_categ);
+behav_categ_original = cellstr(behav_categ_original);
+brain_label = cellstr(brain_label);
+
+% Convert 'table' variables to structs
+behavior_log = table2struct(behavior_log, 'ToScalar', true);
+block_times = table2struct(block_times, 'ToScalar', true);
+
 % Save outputs to a .mat file
 % Define th e file name based on the input filePath or another convention
 saveFileName = [filePath '/processed_for_SVM_' num2str(channel_flag) '.mat'];
